@@ -1,0 +1,19 @@
+---
+import { weddingConfig } from '../config';
+---
+
+<footer class="py-16 px-4 bg-brand-bg text-center space-y-4">
+  <div class="w-8 h-[1px] bg-brand-title/20 mx-auto mb-6"></div>
+  
+  <p class="font-wedding text-4xl md:text-5xl text-brand-title select-none">
+    {weddingConfig.names.bride.charAt(0)} & {weddingConfig.names.groom.charAt(0)}
+  </p>
+
+  <p class="font-sans text-xs uppercase tracking-widest text-brand-text/70">
+    Vi gleder oss til å feire dagen med dere!
+  </p>
+  
+  <p class="font-sans text-[10px] text-brand-text/50 pt-8">
+    &copy; {new Date().getFullYear()} &mdash; Laget med kjærlighet
+  </p>
+</footer>

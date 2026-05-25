@@ -1,0 +1,110 @@
+---
+import { weddingConfig } from '../config';
+---
+
+<header class="relative min-h-screen flex items-center justify-center p-4 md:p-8 bg-brand-bg overflow-hidden border-b border-brand-title/10">
+  <!-- Subtle overlay gradient to blend edges if needed -->
+  <div class="absolute inset-0 bg-radial-[circle_at_center,_transparent_60%,_#f2f1eb_100%] pointer-events-none z-10"></div>
+  
+  <!-- Outer Card Frame representing physical invitation -->
+  <div class="relative w-full max-w-4xl min-h-[80vh] flex flex-col items-center justify-between p-6 md:p-12 text-center rounded-2xl shadow-xl border border-brand-title/5 z-0 bg-cover bg-center overflow-hidden" 
+       style="background-image: url('/images/watercolor_border.png');">
+    
+    <!-- Top Spacer for alignment -->
+    <div class="h-6 md:h-12"></div>
+
+    <!-- Invitation Text & Names -->
+    <div class="my-auto space-y-6 md:space-y-8 z-20 max-w-xl mx-auto px-4">
+      <p class="uppercase tracking-widest text-xs md:text-sm font-sans font-medium text-brand-title/80">
+        Velkommen til vår bryllupsside
+      </p>
+      
+      <h1 class="text-6xl md:text-8xl lg:text-9xl font-wedding leading-none text-brand-title drop-shadow-sm select-none py-2">
+        {weddingConfig.names.bride} <span class="font-sans text-3xl md:text-5xl font-light italic opacity-90 mx-1">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
+      </h1>
+
+      <div class="w-16 h-[1px] bg-brand-title/30 mx-auto"></div>
+
+      <div class="space-y-2">
+        <p class="font-wedding text-2xl md:text-3xl text-brand-text/90 italic">
+          {weddingConfig.date.displayDate}
+        </p>
+        <p class="font-sans uppercase tracking-wider text-xs md:text-sm font-semibold text-brand-title/90">
+          {weddingConfig.venue.name}, {weddingConfig.venue.city}
+        </p>
+      </div>
+    </div>
+
+    <!-- Countdown Timer & Scroll Down Button -->
+    <div class="w-full space-y-8 z-20 mt-auto">
+      <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg/85 backdrop-blur-xs py-4 px-6 rounded-xl border border-brand-title/10 shadow-sm transition-all duration-300">
+        <p class="text-xs uppercase tracking-wider text-brand-title/70 font-semibold mb-3">Tid igjen til vi sier ja</p>
+        <div id="countdown" class="flex justify-center gap-4 md:gap-6 font-sans">
+          <div class="flex flex-col items-center">
+            <span id="cd-days" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
+            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Dager</span>
+          </div>
+          <span class="text-2xl font-light text-brand-title/50">:</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-hours" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
+            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Timer</span>
+          </div>
+          <span class="text-2xl font-light text-brand-title/50">:</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-minutes" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
+            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Min</span>
+          </div>
+          <span class="text-2xl font-light text-brand-title/50">:</span>
+          <div class="flex flex-col items-center">
+            <span id="cd-seconds" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
+            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Sek</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scroll Indicator -->
+      <a href="#story" class="inline-flex flex-col items-center gap-1 group text-brand-title/80 hover:text-brand-title transition-colors">
+        <span class="text-xs uppercase tracking-widest font-semibold font-sans">Les mer</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 animate-bounce group-hover:translate-y-0.5 transition-transform">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </a>
+    </div>
+
+  </div>
+</header>
+
+<script define:vars={{ targetDateIso: weddingConfig.date.iso }}>
+  const target = new Date(targetDateIso).getTime();
+
+  function updateCountdown() {
+    const now = new Date().getTime();
+    const difference = target - now;
+
+    const daysEl = document.getElementById('cd-days');
+    const hoursEl = document.getElementById('cd-hours');
+    const minutesEl = document.getElementById('cd-minutes');
+    const secondsEl = document.getElementById('cd-seconds');
+
+    if (difference <= 0) {
+      const container = document.getElementById('countdown-container');
+      if (container) {
+        container.innerHTML = "<p class='font-wedding text-3xl md:text-4xl text-center text-brand-title py-2'>Dagen er her! 💖</p>";
+      }
+      return;
+    }
+
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+    if (daysEl) daysEl.innerText = String(days).padStart(2, '0');
+    if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
+    if (minutesEl) minutesEl.innerText = String(minutes).padStart(2, '0');
+    if (secondsEl) secondsEl.innerText = String(seconds).padStart(2, '0');
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>

@@ -1,0 +1,35 @@
+---
+import '../styles/global.css';
+import { weddingConfig } from '../config';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { 
+  title = `${weddingConfig.names.fullTitle} - Bryllupsinvitasjon`,
+  description = `Velkommen til bryllupssiden for ${weddingConfig.names.fullTitle}. Her finner du program, lokasjon, gavelister og annen praktisk informasjon.` 
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="no" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- Google Fonts for typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  </head>
+  <body class="min-h-screen selection:bg-brand-title/20 selection:text-brand-text bg-brand-bg text-brand-text">
+    <slot />
+  </body>
+</html>

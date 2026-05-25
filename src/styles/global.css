@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #f2f1eb;
+  --color-brand-title: #3a5a40;
+  --color-brand-text: #6e001b;
+
+  --font-wedding: "Breathing", "Playfair Display", "Cormorant Garamond", serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@font-face {
+  font-family: 'Breathing';
+  src: url('/fonts/Breathing.woff2') format('woff2'),
+       url('/fonts/Breathing.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Base styles for dark and premium theme look */
+@layer base {
+  body {
+    background-color: var(--color-brand-bg);
+    color: var(--color-brand-text);
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-brand-title);
+  }
+}
