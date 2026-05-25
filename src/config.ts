@@ -2,87 +2,156 @@ export const weddingConfig = {
   names: {
     groom: "Anders",
     bride: "Kristine",
-    ampersand: "og", // "og" in Norwegian
+    ampersand: "og",
     fullTitle: "Kristine & Anders"
   },
   date: {
-    iso: "2026-08-15T14:00:00", // ISO date string for countdown timer
-    displayDate: "Lørdag 15. August 2026",
-    displayTime: "Kl. 14:00",
+    iso: "2026-09-26T11:00:00",
+    displayDate: "Lørdag 26. September 2026",
+    displayTime: "Kl. 11:00",
   },
   venue: {
-    name: "Herregården Hallen",
+    name: "Tårnet Kulturarena",
     city: "Oslo, Norge",
-    address: "Herregårdsveien 42, 1150 Oslo",
-    googleMapsLink: "https://maps.google.com/?q=Herregårdsveien+42,+Oslo",
-    embedMapSrc: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2002.5!2d10.79!3d59.91!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x46416e50!2sOslo!5e0!3m2!1sno!2sno!4v1"
+    address: "Kabelgata 51, 0581 Oslo",
+    googleMapsLink: "https://maps.google.com/?q=Tårnet+Kulturarena,+Oslo",
+    embedMapSrc: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2754.258417190076!2d10.816381977151805!3d59.926990474909225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x46416fb7de792a47%3A0x5971fe1774ec4171!2sT%C3%A5rnet%20Kulturarena!5e1!3m2!1sno!2sno!4v1779748057725!5m2!1sno!2sno"
   },
   toastmaster: {
-    name: "Morten Hansen",
+    name: "Sandra Ingdal",
     contact: "toastmaster@example.com / +47 999 99 999",
     info: "Meld gjerne ifra om taler eller innslag innen 1. juli."
   },
   story: [
     {
-      year: "2018",
+      year: "2010",
       title: "Vårt første møte",
-      content: "Vi møttes på en solrik sommerdag i Oslo, og siden har vi vært uadskillelige."
+      content: "Vi møttes for første gang på fest i Skien"
     },
     {
-      year: "2022",
-      title: "Samboere",
-      content: "Vi flyttet inn i vår første felles leilighet og lærte at begge elsker morgenkaffe."
+      year: "2010",
+      title: "Kjærester",
+      content: "Et halvt år senere ble vi kjærester"
+    },
+    {
+      year: "2019",
+      title: "Lilo",
+      content: "Vi fikk Lilo, vår firbeinte bestevenn"
+    },
+    {
+      year: "2019",
+      title: "Flyttet til Oslo",
+      content: "Vi flyttet til Oslo for å både jobbe og studere"
+    },
+    {
+      year: "2021",
+      title: "Første leilighet kjøpt",
+      content: "Vi kjøpte vår første leilighet på Rodeløkka/Grünerløkka."
     },
     {
       year: "2025",
-      title: "Forlovet!",
-      content: "Under en gåtur i fjellet gikk Anders ned på kne. Kristine sa ja før han i det hele tatt rakk å spørre."
+      title: "Forlovet",
+      content: "Anders fridde i Sofienbergparken på valentinsdagen. Kristine sa ja!"
+    },
+    {
+      year: "2025",
+      title: "Nora",
+      content: "Nora kom til verden 23. Oktober 2025"
     }
   ],
   schedule: [
     {
-      time: "14:00",
+      time: "12:30",
+      title: "Oppmøte Paulus Kirke",
+      description: "Vi anbefaler å beregne litt god tid til oppmøte da det er gateparkering for de som kommer med bil og kirken er i et populært område.",
+      icon: "church"
+    },
+    {
+      time: "13:00",
       title: "Vielse",
-      description: "Vielsen finner sted i den vakre hagen bak herregården. Oppmøte senest kl 13:45.",
+      description: "Vielsen starter klokka 13:00",
       icon: "ring"
     },
     {
+      time: "14:40",
+      title: "Fotografi Birkelunden",
+      description: "Etter vielsen så blir det fotografering med gjester, forlovede og brudepar i Birkelunden, like ved kirken.",
+      icon: "camera"
+    },
+    {
       time: "15:00",
-      title: "Mottakelse & Champagne",
-      description: "Mingling, fingermat og bobler i glasset mens brudeparet tar bilder.",
+      title: "Egentid",
+      description: "Brudeparret reiser for å ta bilder, i mellomtiden er det lagt opp til en ettermiddag der man selv kan utforske nærområdet vårt. Dersom du trenger ideer, så har vi laget en liten oversikt over hva vi anbefaler",
+      icon: "social"
+    },
+    {
+      time: "16:00",
+      title: "Mingling / Aperitiff",
+      description: "Tårnet åpner klokka 16:00 og det serveres aperitiff og snacks i nest øverste etasje",
       icon: "glass"
     },
     {
       time: "17:00",
-      title: "Middag",
-      description: "Tre-retters festmiddag i storsalen. Taler og underholdning koordineres av toastmaster.",
+      title: "Til bords",
+      description: "Vi trekker oss opp til øverste etasje og finner plassene ved bordene",
       icon: "food"
     },
     {
-      time: "21:30",
-      title: "Kake & Kaffe",
-      description: "Kakeskjæring fulgt av nytraktet kaffe og avec.",
+      time: "17:25",
+      title: "Forrett",
+      description: "Til forrett serveres XXX",
+      icon: "food"
+    },
+    {
+      time: "18:40",
+      title: "Hovedrett",
+      description: "Til hovedrett serveres YYY",
+      icon: "food"
+    },
+    {
+      time: "19:50",
+      title: "Dessert",
+      description: "Til dessert serveres ZZZ",
+      icon: "food"
+    },
+
+    {
+      time: "20:25",
+      title: "Kaffe & kakebuffet",
+      description: "Etter maten blir det kaker og i etasjen under mens det ryddes i toppetasjen",
       icon: "cake"
     },
     {
-      time: "22:30",
-      title: "Fest & Dans",
-      description: "Brudevals, DJ, åpen bar og dans ut i de sene nattetimer.",
+      time: "21:10",
+      title: "Fest (DJ / bar åpen)",
+      description: "Baren åpner og festen fortsetter med musikk og dans",
+      icon: "music"
+    },
+    {
+      time: "00:00",
+      title: "Nattmat",
+      description: "Det serveres enkel nattmat for de blir sultne utover kvelden",
+      icon: "food"
+    },
+    {
+      time: "01:30",
+      title: "Siste bestilling",
+      description: "Last call i baren!",
+      icon: "glass"
+    },
+    {
+      time: "02:00",
+      title: "Avslutt",
+      description: "Festen avsluttes på Tårnet",
       icon: "music"
     }
   ],
   accommodations: [
     {
-      name: "Grand Hotel Oslo",
-      distance: "15 min unna",
-      description: "Hotell midt i sentrum med rabatterte priser for bryllupsgjester ved bruk av kode 'K&A2026'.",
-      link: "https://grand.no"
-    },
-    {
-      name: "Villa Sandviken B&B",
+      name: "Quality Hotel™ 33",
       distance: "5 min unna",
-      description: "Et koselig overnattingssted rett i nærheten av selskapslokalet.",
-      link: "https://villasandviken.no"
+      description: "Hotellet er et prisvinnende designhotell på Økern i Oslo, bare en kort t-banetur fra alt byen har å by på. Hotellet ligger også 5 minutter gange fra selskapslokalene.",
+      link: "https://www.strawberry.no/hotell/norge/oslo/quality-hotel-33"
     }
   ],
   registry: {
