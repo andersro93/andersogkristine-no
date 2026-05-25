@@ -1,0 +1,135 @@
+---
+import { weddingConfig } from '../config';
+
+const { eigentid } = weddingConfig;
+const initialContributor = eigentid.contributors[0];
+---
+
+<section id="egentid" class="py-20 px-4 md:px-8 bg-brand-bg/40 border-b border-brand-title/5 scroll-mt-6">
+  <div class="max-w-6xl mx-auto">
+    
+    <!-- Title & Subtitle -->
+    <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+      <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">{eigentid.title}</h2>
+      <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>
+      <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">{eigentid.subtitle}</p>
+      <p class="font-sans text-sm text-brand-text/80 font-light leading-relaxed max-w-lg mx-auto pt-2">
+        {eigentid.description}
+      </p>
+    </div>
+
+    <!-- 4-Grid Polaroid Section -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto mb-12">
+      {eigentid.contributors.map((c, index) => {
+        // Playful slightly rotated polaroids
+        const rotations = ['-rotate-1', 'rotate-2', '-rotate-2', 'rotate-1'];
+        const rotClass = rotations[index % rotations.length];
+        const isFirst = index === 0;
+
+        return (
+          <div 
+            data-contributor-id={c.id}
+            class={`relative bg-white p-3 pb-8 rounded-sm shadow-md border ${
+              isFirst ? 'border-brand-title ring-2 ring-brand-title/15 scale-105 z-10' : 'border-gray-200/60'
+            } ${rotClass} hover:rotate-0 hover:scale-105 hover:z-20 hover:shadow-xl transition-all duration-300 cursor-pointer group`}
+          >
+            <!-- Photo Frame (looks for image, falls back to decorative avatar letter) -->
+            <div class="aspect-square w-full rounded-xs bg-brand-title/5 border border-gray-100 overflow-hidden flex items-center justify-center relative">
+              <img 
+                src={c.photo} 
+                alt={c.name}
+                class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                onload="this.classList.remove('opacity-0');"
+                onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"
+              />
+              <div class="hidden w-full h-full flex flex-col items-center justify-center bg-brand-title/10 text-brand-title/80 select-none">
+                <span class="font-wedding text-4xl">{c.name.charAt(0)}</span>
+                <span class="text-[9px] uppercase tracking-wider font-semibold opacity-75 font-sans mt-1">Legg til foto</span>
+              </div>
+            </div>
+
+            <!-- Polaroid Signature Label -->
+            <div class="text-center mt-3 select-none">
+              <span class="font-wedding text-2xl text-brand-title group-hover:text-brand-text transition-colors">
+                {c.name}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- Inline Suggestions Card (Dynamically updated) -->
+    <div class="max-w-2xl mx-auto bg-brand-bg rounded-xl border border-brand-title/15 shadow-sm p-6 md:p-8 min-h-[250px]">
+      
+      <!-- Framing decorative line -->
+      <div id="egentid-content-container" class="opacity-100 transition-opacity duration-200 ease-in-out space-y-6">
+        <div>
+          <h3 id="egentid-role" class="font-wedding text-3xl text-brand-title font-semibold mb-2">
+            {initialContributor.role}
+          </h3>
+          <p id="egentid-desc" class="font-sans text-xs uppercase tracking-widest text-brand-text/75 font-semibold">
+            {initialContributor.description}
+          </p>
+        </div>
+
+        <div class="w-full h-[1px] bg-brand-title/10"></div>
+
+        <ul id="egentid-list" class="space-y-3">
+          {initialContributor.suggestions.map((s) => (
+            <li class="flex items-start gap-3 text-brand-text/90 text-sm leading-relaxed font-light">
+              <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
+              <span set:html={s}></span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<script define:vars={{ contributors: eigentid.contributors }}>
+  const cards = document.querySelectorAll('[data-contributor-id]');
+  const titleEl = document.getElementById('egentid-role');
+  const descEl = document.getElementById('egentid-desc');
+  const listEl = document.getElementById('egentid-list');
+  const container = document.getElementById('egentid-content-container');
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.getAttribute('data-contributor-id');
+      const contributor = contributors.find(c => c.id === id);
+      if (!contributor) return;
+
+      // Update active polaroid styling
+      cards.forEach(c => {
+        c.classList.remove('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10');
+        c.classList.add('border-gray-200/60');
+      });
+      card.classList.add('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10');
+      card.classList.remove('border-gray-200/60');
+
+      // Update suggestion content card with a smooth fade
+      if (container) {
+        container.style.opacity = '0';
+        setTimeout(() => {
+          if (titleEl) titleEl.innerText = contributor.role;
+          if (descEl) descEl.innerText = contributor.description;
+          
+          if (listEl) {
+            listEl.innerHTML = contributor.suggestions
+              .map(s => `
+                <li class="flex items-start gap-3 text-brand-text/90 text-sm leading-relaxed font-light">
+                  <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
+                  <span>${s}</span>
+                </li>
+              `).join('');
+          }
+          container.style.opacity = '1';
+        }, 150);
+      }
+    });
+  });
+</script>
