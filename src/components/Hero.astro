@@ -2,25 +2,29 @@
 import { weddingConfig } from '../config';
 ---
 
-<header class="relative min-h-screen flex items-center justify-center p-4 md:p-8 bg-brand-bg overflow-hidden border-b border-brand-title/10">
-  <!-- Subtle overlay gradient to blend edges if needed -->
-  <div class="absolute inset-0 bg-radial-[circle_at_center,_transparent_60%,_#f2f1eb_100%] pointer-events-none z-10"></div>
+<header class="relative min-h-screen flex items-center justify-center p-4 md:p-8 overflow-hidden border-b border-brand-title/10 bg-cover bg-center bg-no-repeat"
+        style="background-image: url('/images/collage.jpg');">
+  <!-- Soft overlay to blend with the cream theme and tone down the busy collage -->
+  <div class="absolute inset-0 bg-brand-bg/45 backdrop-blur-[1px] pointer-events-none z-10"></div>
+  
+  <!-- Subtle fade out at the bottom of the collage to blend with the next section -->
+  <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-brand-bg to-transparent pointer-events-none z-10"></div>
   
   <!-- Outer Card Frame representing physical invitation -->
-  <div class="relative w-full max-w-4xl min-h-[80vh] flex flex-col items-center justify-between p-6 md:p-12 text-center rounded-2xl shadow-xl border border-brand-title/5 z-0 bg-cover bg-center overflow-hidden" 
+  <div class="relative w-full max-w-3xl min-h-[75vh] flex flex-col items-center justify-between p-6 md:p-12 text-center rounded-2xl shadow-2xl border border-brand-title/10 z-20 bg-cover bg-center overflow-hidden bg-brand-bg" 
        style="background-image: url('/images/watercolor_border.png');">
     
     <!-- Top Spacer for alignment -->
-    <div class="h-6 md:h-12"></div>
+    <div class="h-6 md:h-8"></div>
 
     <!-- Invitation Text & Names -->
-    <div class="my-auto space-y-6 md:space-y-8 z-20 max-w-xl mx-auto px-4">
-      <p class="uppercase tracking-widest text-xs md:text-sm font-sans font-medium text-brand-title/80">
+    <div class="my-auto space-y-6 md:space-y-8 z-30 max-w-xl mx-auto px-4">
+      <p class="uppercase tracking-widest text-xs md:text-sm font-sans font-semibold text-brand-title/80">
         Velkommen til vår bryllupsside
       </p>
       
-      <h1 class="text-6xl md:text-8xl lg:text-9xl font-wedding leading-none text-brand-title drop-shadow-sm select-none py-2">
-        {weddingConfig.names.bride} <span class="font-sans text-3xl md:text-5xl font-light italic opacity-90 mx-1">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
+      <h1 class="text-6xl md:text-7xl lg:text-8xl font-wedding leading-none text-brand-title drop-shadow-sm select-none py-2">
+        {weddingConfig.names.bride} <span class="font-sans text-3xl md:text-4xl font-light italic opacity-95 mx-1">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
       </h1>
 
       <div class="w-16 h-[1px] bg-brand-title/30 mx-auto"></div>
@@ -36,8 +40,8 @@ import { weddingConfig } from '../config';
     </div>
 
     <!-- Countdown Timer & Scroll Down Button -->
-    <div class="w-full space-y-8 z-20 mt-auto">
-      <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg/85 backdrop-blur-xs py-4 px-6 rounded-xl border border-brand-title/10 shadow-sm transition-all duration-300">
+    <div class="w-full space-y-8 z-30 mt-auto">
+      <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg/90 backdrop-blur-xs py-4 px-6 rounded-xl border border-brand-title/10 shadow-sm transition-all duration-300">
         <p class="text-xs uppercase tracking-wider text-brand-title/70 font-semibold mb-3">Tid igjen til vi sier ja</p>
         <div id="countdown" class="flex justify-center gap-4 md:gap-6 font-sans">
           <div class="flex flex-col items-center">
