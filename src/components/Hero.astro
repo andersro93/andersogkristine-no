@@ -10,9 +10,13 @@ import { weddingConfig } from '../config';
   <!-- Subtle fade out at the bottom of the collage to blend with the next section -->
   <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-brand-bg to-transparent pointer-events-none z-10"></div>
   
-  <!-- Outer Card Frame representing physical invitation -->
-  <div class="relative w-full max-w-3xl min-h-[75vh] flex flex-col items-center justify-between p-6 md:p-12 text-center rounded-2xl shadow-2xl border border-brand-title/10 z-20 bg-cover bg-center overflow-hidden bg-brand-bg" 
-       style="background-image: url('/images/watercolor_border.png');">
+  <!-- Outer Card Frame representing physical invitation (Double Bordered Clean Card) -->
+  <div class="relative w-full max-w-2xl min-h-[75vh] flex flex-col items-center justify-between p-8 md:p-12 text-center rounded-md shadow-2xl border border-brand-title/10 z-20 bg-brand-bg overflow-hidden">
+    
+    <!-- Outer framing line -->
+    <div class="absolute inset-3 border border-brand-title/20 pointer-events-none"></div>
+    <!-- Inner framing line -->
+    <div class="absolute inset-4 border border-brand-title/5 pointer-events-none"></div>
     
     <!-- Top Spacer for alignment -->
     <div class="h-6 md:h-8"></div>
@@ -27,13 +31,18 @@ import { weddingConfig } from '../config';
         {weddingConfig.names.bride} <span class="font-sans text-3xl md:text-4xl font-light italic opacity-95 mx-1">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
       </h1>
 
-      <div class="w-16 h-[1px] bg-brand-title/30 mx-auto"></div>
+      <!-- Classic decorative divider ornament -->
+      <div class="flex items-center justify-center gap-3 mx-auto">
+        <div class="w-12 h-[1px] bg-brand-title/20"></div>
+        <span class="text-brand-title/40 text-xs">&#9670;</span>
+        <div class="w-12 h-[1px] bg-brand-title/20"></div>
+      </div>
 
       <div class="space-y-2">
         <p class="font-wedding text-2xl md:text-3xl text-brand-text/90 italic">
           {weddingConfig.date.displayDate}
         </p>
-        <p class="font-sans uppercase tracking-wider text-xs md:text-sm font-semibold text-brand-title/90">
+        <p class="font-sans uppercase tracking-wider text-xs md:text-sm font-semibold text-brand-title/95">
           {weddingConfig.venue.name}, {weddingConfig.venue.city}
         </p>
       </div>
@@ -41,7 +50,7 @@ import { weddingConfig } from '../config';
 
     <!-- Countdown Timer & Scroll Down Button -->
     <div class="w-full space-y-8 z-30 mt-auto">
-      <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg/90 backdrop-blur-xs py-4 px-6 rounded-xl border border-brand-title/10 shadow-sm transition-all duration-300">
+      <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg/95 py-4 px-6 rounded-lg border border-brand-title/15 shadow-sm transition-all duration-300">
         <p class="text-xs uppercase tracking-wider text-brand-title/70 font-semibold mb-3">Tid igjen til vi sier ja</p>
         <div id="countdown" class="flex justify-center gap-4 md:gap-6 font-sans">
           <div class="flex flex-col items-center">
