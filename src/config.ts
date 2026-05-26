@@ -187,7 +187,7 @@ export const weddingConfig = {
       {
         id: "bride",
         name: "Kristine",
-        photo: "/images/egentid/kristine.jpg",
+        photo: "/images/egentid/kristine.webp",
         role: "Brudens favoritter",
         description: "Koselige kafeer og rolige, grønne lunger.",
         suggestions: [
@@ -199,7 +199,7 @@ export const weddingConfig = {
       {
         id: "groom",
         name: "Anders",
-        photo: "/images/egentid/anders.jpg",
+        photo: "/images/egentid/anders.webp",
         role: "Groomens favoritter",
         description: "Beste ølserveringer, rask mat og utsiktspunkter.",
         suggestions: [
@@ -211,7 +211,7 @@ export const weddingConfig = {
       {
         id: "nora",
         name: "Nora",
-        photo: "/images/egentid/nora.jpg",
+        photo: "/images/egentid/nora.webp",
         role: "Noras favoritter (Datter)",
         description: "Lekeplasser, vaffel og byens beste isbarer.",
         suggestions: [
@@ -223,7 +223,7 @@ export const weddingConfig = {
       {
         id: "lilo",
         name: "Lilo",
-        photo: "/images/egentid/lilo.jpg",
+        photo: "/images/egentid/lilo.webp",
         role: "Lilos favoritter (Hunden)",
         description: "Hundeparker, turområder og de beste snusestoppene.",
         suggestions: [
