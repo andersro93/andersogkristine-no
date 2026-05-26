@@ -18,24 +18,25 @@ interface Props {
 export default function SeatingChart({ tables }: Props) {
   const [query, setQuery] = useState('');
 
-  // Compute matches reactively
+  // Compute matched guest IDs
   const matchedGuestIds = useMemo(() => {
     if (query.trim().length < 2) return new Set<string>();
     const q = query.toLowerCase().trim();
     const ids = new Set<string>();
-    for (const table of tables) {
-      for (const guest of table.guests) {
-        if (guest.name.toLowerCase().includes(q)) ids.add(guest.id);
-      }
-    }
+    tables.forEach((t) => {
+      t.guests.forEach((g) => {
+        if (g.name.toLowerCase().includes(q)) ids.add(g.id);
+      });
+    });
     return ids;
   }, [query, tables]);
 
+  // Compute matched table IDs (tables that contain any matched guest)
   const matchedTableIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const table of tables) {
-      if (table.guests.some((g) => matchedGuestIds.has(g.id))) ids.add(table.id);
-    }
+    tables.forEach((t) => {
+      if (t.guests.some((g) => matchedGuestIds.has(g.id))) ids.add(t.id);
+    });
     return ids;
   }, [matchedGuestIds, tables]);
 
@@ -44,7 +45,7 @@ export default function SeatingChart({ tables }: Props) {
 
   return (
     <div>
-      {/* Sticky search bar */}
+      {/* Search bar */}
       <div className="max-w-md mx-auto mb-16 relative sticky top-4 z-30">
         <div className="bg-[#fcfbf9]/90 backdrop-blur-md border border-brand-title/15 rounded-xl p-3 shadow-lg shadow-brand-title/5">
           <div className="relative flex items-center">
@@ -87,16 +88,15 @@ export default function SeatingChart({ tables }: Props) {
         {isSearching && (
           <div className="mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md animate-fade-in">
             {matchCount > 0
-              ? `Fant ${matchCount} treff! Uthevede bord viser plassen din.`
+              ? `Fant ${matchCount} treff!`
               : 'Ingen gjester funnet med det navnet.'}
           </div>
         )}
       </div>
 
-      {/* Tables grid */}
+      {/* Tables grid – now only name + guest list */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {tables.map((table) => {
-          const numSeats = table.guests.length || 8;
           const isHighlighted = isSearching && matchedTableIds.has(table.id);
           const isDimmed = isSearching && !matchedTableIds.has(table.id) && matchCount > 0;
 
@@ -111,93 +111,43 @@ export default function SeatingChart({ tables }: Props) {
                   : 'border-brand-title/10 hover:shadow-lg'
               }`}
             >
-              <div>
-                {/* Table name */}
-                <h3
-                  className={`font-serif text-2xl text-center mb-8 transition-colors duration-300 ${
-                    isHighlighted ? 'text-brand-text' : 'text-brand-title'
-                  }`}
-                >
-                  {table.name}
-                </h3>
+              <h3
+                className={`font-serif text-2xl text-center mb-8 transition-colors duration-300 ${
+                  isHighlighted ? 'text-brand-text' : 'text-brand-title'
+                }`}
+              >
+                {table.name}
+              </h3>
 
-                {/* Circular seating visual */}
-                <div className="relative w-48 h-48 mx-auto mb-10 flex items-center justify-center">
-                  {/* Centre table disc */}
-                  <div
-                    className={`w-24 h-24 rounded-full border flex items-center justify-center shadow-inner z-10 transition-all duration-300 ${
-                      isHighlighted
-                        ? 'bg-brand-text/10 border-brand-text/30'
-                        : 'bg-brand-title/10 border-brand-title/20'
-                    }`}
-                  >
-                    <span
-                      className={`font-wedding text-lg font-bold tracking-wider ${
-                        isHighlighted ? 'text-brand-text' : 'text-brand-title'
-                      }`}
-                    >
-                      {table.name}
-                    </span>
-                  </div>
+              <div className="w-12 h-px bg-brand-title/10 mx-auto mb-6" />
 
-                  {/* Seat dots */}
-                  {table.guests.map((guest, seatIdx) => {
-                    const angle = (seatIdx * 2 * Math.PI) / numSeats - Math.PI / 2;
-                    const radius = 62;
-                    const left = 50 + (radius * Math.cos(angle)) / 96 * 100;
-                    const top = 50 + (radius * Math.sin(angle)) / 96 * 100;
-                    const isGuestMatch = matchedGuestIds.has(guest.id);
-
+              {/* Guest list */}
+              <div className="space-y-2">
+                <h4 className="text-xs uppercase font-bold tracking-wider text-brand-title/50 mb-3 text-center">
+                  Gjesteliste
+                </h4>
+                <ul className="space-y-1.5 font-sans">
+                  {table.guests.map((guest) => {
+                    const isMatch = matchedGuestIds.has(guest.id);
                     return (
-                      <div
+                      <li
                         key={guest.id}
-                        title={guest.name}
-                        style={{ left: `${left}%`, top: `${top}%`, transform: 'translate(-50%, -50%)' }}
-                        className={`absolute w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shadow-sm select-none z-20 transition-all duration-300 ${
-                          isGuestMatch
-                            ? 'bg-brand-text border-brand-text text-brand-bg scale-110 shadow-brand-text/40 shadow-md'
-                            : 'bg-white border-brand-title/15 text-brand-title/60 border'
+                        className={`text-sm px-2 py-1 rounded transition duration-150 flex items-center justify-between ${
+                          isMatch
+                            ? 'bg-brand-text/8 text-brand-text font-bold border-l-2 border-brand-text pl-1.5'
+                            : 'text-brand-title/80 hover:text-brand-text hover:bg-brand-title/5'
                         }`}
                       >
-                        {seatIdx + 1}
-                      </div>
+                        <span className="font-medium">{guest.name}</span>
+                      </li>
                     );
                   })}
-                </div>
-
-                <div className="w-12 h-px bg-brand-title/10 mx-auto mb-6" />
-
-                {/* Guest list */}
-                <div className="space-y-2">
-                  <h4 className="text-xs uppercase font-bold tracking-wider text-brand-title/50 mb-3 text-center">
-                    Gjesteliste
-                  </h4>
-                  <ul className="space-y-1.5 font-sans">
-                    {table.guests.map((guest, seatIdx) => {
-                      const isGuestMatch = matchedGuestIds.has(guest.id);
-                      return (
-                        <li
-                          key={guest.id}
-                          className={`text-sm px-2 py-1 rounded transition duration-150 flex items-center justify-between ${
-                            isGuestMatch
-                              ? 'bg-brand-text/8 text-brand-text font-bold border-l-2 border-brand-text pl-1.5'
-                              : 'text-brand-title/80 hover:text-brand-text hover:bg-brand-title/5'
-                          }`}
-                        >
-                          <span className="font-medium">{guest.name}</span>
-                          <span className={`text-xs ${isGuestMatch ? 'text-brand-text/60' : 'text-brand-title/40'}`}>
-                            Sete {seatIdx + 1}
-                          </span>
-                        </li>
-                      );
-                    })}
-                    {table.guests.length === 0 && (
-                      <li className="text-xs text-brand-title/40 italic text-center py-2">
-                        Ingen gjester plassert på dette bordet ennå.
-                      </li>
-                    )}
-                  </ul>
-                </div>
+                  {table.guests.length === 0 && (
+                    <li className="text-xs text-brand-title/40 italic text-center py-2">
+                      Ingen gjester plassert på dette bordet ennå.
+                    </li>
+                  )}
+                </ul>
               </div>
             </div>
           );
