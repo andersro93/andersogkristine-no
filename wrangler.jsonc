@@ -8,5 +8,11 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "WEDDING_CACHE",
+      "id": "WEDDING_CACHE_PLACEHOLDER"
+    }
+  ]
 }

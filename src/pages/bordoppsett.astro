@@ -1,0 +1,333 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { fetchAllSeatingData } from '../services/notion';
+
+let tables = [];
+let errorMsg = null;
+
+try {
+  tables = await fetchAllSeatingData();
+} catch (err) {
+  console.error("Error loading seating in page:", err);
+  errorMsg = "Det oppstod en feil ved lasting av bordoppsettet. Vennligst prøv igjen senere.";
+}
+---
+
+<Layout title="Bordoppsett & Bordplassering - Kristine og Anders">
+  <main class="min-h-screen py-16 px-4 md:px-8 max-w-7xl mx-auto">
+    
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
+      <h1 class="font-wedding text-5xl md:text-6xl text-brand-title mb-3">Bordplassering</h1>
+      <p class="font-serif italic text-lg opacity-90 text-brand-text/80 max-w-xl mx-auto">
+        Finn din plass for kvelden. Skriv inn navnet ditt i søkefeltet under for å finne ditt bord og sete.
+      </p>
+      <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="max-w-md mx-auto mb-16 relative sticky top-4 z-30">
+      <div class="bg-[#fcfbf9]/90 backdrop-blur-md border border-brand-title/15 rounded-xl p-3 shadow-lg shadow-brand-title/5">
+        <div class="relative flex items-center">
+          <svg class="w-5 h-5 text-brand-title/50 absolute left-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <input 
+            type="text" 
+            id="guest-search" 
+            placeholder="Søk etter ditt eller andres navn..." 
+            class="w-full pl-12 pr-4 py-3 rounded-lg border border-brand-title/10 bg-white font-sans text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 focus:border-transparent text-sm"
+          />
+          <button 
+            id="clear-search" 
+            class="hidden text-brand-title/40 hover:text-brand-title absolute right-4 focus:outline-none"
+            aria-label="Tøm søk"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <!-- Search suggestions / results banner -->
+      <div id="search-result-banner" class="hidden mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md animate-fade-in">
+        Finn en treff! Klikk på navnet eller bla ned til det uthevede bordet.
+      </div>
+    </div>
+
+    <!-- Error State -->
+    {errorMsg ? (
+      <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl text-center max-w-lg mx-auto font-sans shadow-md">
+        {errorMsg}
+      </div>
+    ) : (
+      <!-- Seating Tables Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8" id="tables-grid">
+        {tables.map((table: any) => {
+          const numSeats = table.guests.length || 8; // Default to 8 chairs visual if table has no guests yet
+          
+          return (
+            <div 
+              class="bg-[#fcfbf9]/85 backdrop-blur-sm border border-brand-title/10 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden flex flex-col justify-between group table-card"
+              data-table-id={table.id}
+              data-table-name={table.name.toLowerCase()}
+            >
+              <!-- Decorative border glow on hover/highlight -->
+              <div class="absolute inset-0 border-2 border-transparent rounded-2xl group-[.highlighted]:border-brand-text/50 pointer-events-none transition-all duration-300"></div>
+
+              <div>
+                <!-- Table Header -->
+                <h3 class="font-serif text-2xl text-center text-brand-title mb-8 group-[.highlighted]:text-brand-text transition-colors duration-300">
+                  {table.name}
+                </h3>
+
+                <!-- CIRCULAR VISUAL -->
+                <div class="relative w-48 h-48 mx-auto mb-10 flex items-center justify-center">
+                  
+                  <!-- Main central table -->
+                  <div class="w-24 h-24 rounded-full bg-brand-title/10 border border-brand-title/20 flex items-center justify-center shadow-inner z-10 group-[.highlighted]:bg-brand-text/10 group-[.highlighted]:border-brand-text/30 transition-all duration-300">
+                    <span class="font-wedding text-lg text-brand-title font-bold tracking-wider group-[.highlighted]:text-brand-text">
+                      {table.name}
+                    </span>
+                  </div>
+
+                  <!-- Chairs / Seats arranged around the table -->
+                  {table.guests.map((guest: any, seatIdx: number) => {
+                    // Trigonometric layout: spacing seats evenly around the circle
+                    // Starting from top (12 o'clock) by subtracting PI/2
+                    const angle = (seatIdx * 2 * Math.PI) / numSeats - Math.PI / 2;
+                    const radius = 62; // Distance of chairs from center in px
+                    const left = 50 + (radius * Math.cos(angle)) / 96 * 100; // Normalized to percent of w-48/h-48 (96px radius)
+                    const top = 50 + (radius * Math.sin(angle)) / 96 * 100;
+
+                    return (
+                      <div
+                        class="absolute w-8 h-8 rounded-full bg-white border border-brand-title/15 flex items-center justify-center text-[10px] text-brand-title/60 font-semibold shadow-sm select-none z-20 transition-all duration-300 seat-dot"
+                        style={`left: ${left}%; top: ${top}%; transform: translate(-50%, -50%);`}
+                        data-guest-id={guest.id}
+                        data-seat-index={seatIdx}
+                        title={guest.name}
+                      >
+                        {seatIdx + 1}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div class="w-12 h-px bg-brand-title/10 mx-auto mb-6"></div>
+
+                <!-- Guests List below -->
+                <div class="space-y-2">
+                  <h4 class="text-xs uppercase font-bold tracking-wider text-brand-title/50 mb-3 text-center">Gjesteliste</h4>
+                  <ul class="space-y-1.5 font-sans">
+                    {table.guests.map((guest: any, seatIdx: number) => (
+                      <li 
+                        class="text-sm text-brand-title/80 hover:text-brand-text hover:bg-brand-title/5 px-2 py-1 rounded transition duration-150 flex items-center justify-between cursor-pointer guest-item group/item"
+                        data-guest-id={guest.id}
+                        data-guest-name={guest.name.toLowerCase()}
+                        data-seat-index={seatIdx}
+                      >
+                        <span class="font-medium group-[.highlighted-guest]/item:text-brand-text group-[.highlighted-guest]/item:font-bold">
+                          {guest.name}
+                        </span>
+                        <span class="text-xs text-brand-title/40 group-[.highlighted-guest]/item:text-brand-text/60">
+                          Sete {seatIdx + 1}
+                        </span>
+                      </li>
+                    ))}
+                    {table.guests.length === 0 && (
+                      <li class="text-xs text-brand-title/40 italic text-center py-2">
+                        Ingen gjester plassert på dette bordet ennå.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+  </main>
+</Layout>
+
+<style>
+  /* Transition class when highlighted */
+  .table-card.highlighted {
+    border-color: var(--color-brand-text);
+    box-shadow: 0 10px 25px -5px rgba(110, 0, 27, 0.15);
+    background-color: #fffdfa;
+    transform: scale(1.02);
+  }
+
+  /* Highlight chair styling */
+  .seat-dot.highlighted-seat {
+    background-color: var(--color-brand-text);
+    border-color: var(--color-brand-text);
+    color: var(--color-brand-bg);
+    box-shadow: 0 0 12px var(--color-brand-text);
+    transform: translate(-50%, -50%) scale(1.2) !important;
+    z-index: 30;
+  }
+
+  /* Highlight guest in list */
+  .guest-item.highlighted-guest {
+    background-color: rgba(110, 0, 27, 0.08);
+    color: var(--color-brand-text);
+    font-weight: bold;
+    border-left: 2px solid var(--color-brand-text);
+    padding-left: 6px;
+  }
+</style>
+
+<!-- Client Side Seating Interactions -->
+<script>
+  const searchInput = document.getElementById('guest-search') as HTMLInputElement;
+  const clearSearchBtn = document.getElementById('clear-search');
+  const resultBanner = document.getElementById('search-result-banner');
+  const guestItems = document.querySelectorAll('.guest-item');
+  const tableCards = document.querySelectorAll('.table-card');
+  const seatDots = document.querySelectorAll('.seat-dot');
+
+  // Search Logic
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase().trim();
+      
+      // Clear previous highlights
+      clearHighlights();
+
+      if (query.length < 2) {
+        clearSearchBtn.classList.add('hidden');
+        resultBanner.classList.add('hidden');
+        return;
+      }
+
+      clearSearchBtn.classList.remove('hidden');
+      let foundCount = 0;
+      let firstMatchedTable = null;
+
+      // Search guests
+      guestItems.forEach((item) => {
+        const guestName = item.getAttribute('data-guest-name') || '';
+        const guestId = item.getAttribute('data-guest-id');
+        const seatIdx = item.getAttribute('data-seat-index');
+        
+        if (guestName.includes(query)) {
+          foundCount++;
+          
+          // 1. Highlight guest in list
+          item.classList.add('highlighted-guest');
+          item.setAttribute('data-highlighted', 'true');
+          
+          // Find parent table card
+          const tableCard = item.closest('.table-card');
+          if (tableCard) {
+            tableCard.classList.add('highlighted');
+            if (!firstMatchedTable) {
+              firstMatchedTable = tableCard;
+            }
+
+            // 2. Highlight matching seat dot on the table circle
+            const matchingSeat = tableCard.querySelector(`.seat-dot[data-guest-id="${guestId}"]`);
+            if (matchingSeat) {
+              matchingSeat.classList.add('highlighted-seat');
+            }
+          }
+        }
+      });
+
+      if (foundCount > 0) {
+        resultBanner.innerText = `Fant ${foundCount} treff! Uthevede bord viser plassen din.`;
+        resultBanner.classList.remove('hidden');
+        
+        // Scroll first matched table into view
+        if (firstMatchedTable) {
+          firstMatchedTable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        resultBanner.innerText = "Ingen gjester funnet med det navnet.";
+        resultBanner.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Clear Search button
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      resultBanner.classList.add('hidden');
+      clearHighlights();
+    });
+  }
+
+  // Chair Highlight on Hovering Names in list
+  guestItems.forEach((item) => {
+    item.addEventListener('mouseenter', () => {
+      // Only do hover highlights if not currently searching
+      const isSearching = searchInput && searchInput.value.length >= 2;
+      if (isSearching) return;
+
+      const guestId = item.getAttribute('data-guest-id');
+      const tableCard = item.closest('.table-card');
+      
+      if (tableCard) {
+        const seatDot = tableCard.querySelector(`.seat-dot[data-guest-id="${guestId}"]`);
+        if (seatDot) {
+          seatDot.classList.add('highlighted-seat');
+        }
+      }
+    });
+
+    item.addEventListener('mouseleave', () => {
+      const isSearching = searchInput && searchInput.value.length >= 2;
+      if (isSearching) return;
+
+      const guestId = item.getAttribute('data-guest-id');
+      const tableCard = item.closest('.table-card');
+      
+      if (tableCard) {
+        const seatDot = tableCard.querySelector(`.seat-dot[data-guest-id="${guestId}"]`);
+        if (seatDot) {
+          seatDot.classList.remove('highlighted-seat');
+        }
+      }
+    });
+
+    // Clicking name also scrolls/highlights
+    item.addEventListener('click', () => {
+      const guestId = item.getAttribute('data-guest-id');
+      const tableCard = item.closest('.table-card');
+      if (tableCard) {
+        clearHighlights();
+        
+        // Apply focus highlight
+        tableCard.classList.add('highlighted');
+        item.classList.add('highlighted-guest');
+        
+        const seatDot = tableCard.querySelector(`.seat-dot[data-guest-id="${guestId}"]`);
+        if (seatDot) {
+          seatDot.classList.add('highlighted-seat');
+        }
+      }
+    });
+  });
+
+  // Helper: Clear all highlight classes
+  function clearHighlights() {
+    guestItems.forEach((item) => {
+      item.classList.remove('highlighted-guest');
+      item.removeAttribute('data-highlighted');
+    });
+    tableCards.forEach((card) => {
+      card.classList.remove('highlighted');
+    });
+    seatDots.forEach((dot) => {
+      dot.classList.remove('highlighted-seat');
+    });
+  }
+</script>
