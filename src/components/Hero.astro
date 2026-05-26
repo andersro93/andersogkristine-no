@@ -4,8 +4,8 @@ import { weddingConfig } from '../config';
 
 <header class="relative w-full">
   
-  <!-- 1. Fullscreen Splash Screen (First Fold - 100vh) -->
-  <div class="relative h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat select-none"
+  <!-- 1. Fullscreen Splash Screen (First Fold - 100dvh) -->
+  <div class="relative h-dvh w-full flex items-center justify-center bg-cover bg-center bg-no-repeat select-none"
        style="background-image: url('/images/collage.webp');">
     
     <!-- Subtle dark vignette overlay to make white text pop on light/dark areas of collage -->
@@ -13,7 +13,7 @@ import { weddingConfig } from '../config';
     
     <!-- Names Centered (No Box, Bright Text with Dark Shadow) -->
     <div class="relative z-20 text-center px-4 max-w-4xl">
-      <h1 class="text-7xl md:text-9xl lg:text-[10rem] font-wedding leading-none text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.75)] py-4">
+      <h1 class="text-5xl sm:text-7xl md:text-9xl lg:text-[10rem] font-wedding leading-none text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.75)] py-4">
         {weddingConfig.names.bride} <span class="font-sans text-3xl md:text-5xl font-light italic opacity-95 mx-1">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
       </h1>
     </div>

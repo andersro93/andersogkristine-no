@@ -30,8 +30,8 @@ const initialContributor = egentid.contributors[0];
           <div 
             data-contributor-id={c.id}
             class={`relative bg-white p-3 pb-8 rounded-sm shadow-md border ${
-              isFirst ? 'border-brand-title ring-2 ring-brand-title/15 scale-105 z-10' : 'border-gray-200/60'
-            } ${rotClass} hover:rotate-0 hover:scale-105 hover:z-20 hover:shadow-xl transition-all duration-300 cursor-pointer group`}
+              isFirst ? 'border-brand-title ring-2 ring-brand-title/15 scale-105 z-10 rotate-0' : 'border-gray-200/60 ' + rotClass
+            } hover:rotate-0 hover:scale-105 hover:z-20 hover:shadow-xl transition-all duration-300 cursor-pointer group`}
           >
             <!-- Photo Frame (looks for image, falls back to decorative avatar letter) -->
             <div class="aspect-square w-full rounded-xs bg-brand-title/5 border border-gray-100 overflow-hidden flex items-center justify-center relative">
@@ -104,12 +104,13 @@ const initialContributor = egentid.contributors[0];
       if (!contributor) return;
 
       // Update active polaroid styling
-      cards.forEach(c => {
-        c.classList.remove('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10');
-        c.classList.add('border-gray-200/60');
+      const rotations = ['-rotate-1', 'rotate-2', '-rotate-2', 'rotate-1'];
+      cards.forEach((c, idx) => {
+        c.classList.remove('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10', 'rotate-0');
+        c.classList.add('border-gray-200/60', rotations[idx % rotations.length]);
       });
-      card.classList.add('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10');
-      card.classList.remove('border-gray-200/60');
+      card.classList.add('border-brand-title', 'ring-2', 'ring-brand-title/15', 'scale-105', 'z-10', 'rotate-0');
+      card.classList.remove('border-gray-200/60', '-rotate-1', 'rotate-2', '-rotate-2', 'rotate-1');
 
       // Update suggestion content card with a smooth fade
       if (container) {

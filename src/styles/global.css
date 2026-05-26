@@ -12,9 +12,7 @@
 
 @font-face {
   font-family: 'Breathing';
-  src: url('/fonts/Breathing.woff2') format('woff2'),
-       url('/fonts/Breathing.woff') format('woff'),
-       url('/fonts/Breathing.ttf') format('truetype');
+  src: url('/fonts/Breathing.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

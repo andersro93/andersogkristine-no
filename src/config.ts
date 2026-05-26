@@ -200,7 +200,7 @@ export const weddingConfig = {
         id: "groom",
         name: "Anders",
         photo: "/images/egentid/anders.webp",
-        role: "Groomens favoritter",
+        role: "Brudgommens favoritter",
         description: "Beste ølserveringer, rask mat og utsiktspunkter.",
         suggestions: [
           "Fyrhuset Kubaparken &mdash; Fantastisk uteservering og avslappet atmosfære midt i Kubaparken rett ved Akerselva.",
