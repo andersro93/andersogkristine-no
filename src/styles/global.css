@@ -20,13 +20,16 @@
   font-display: swap;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Base styles for dark and premium theme look */
 @layer base {
   body {
     background-color: var(--color-brand-bg);
     color: var(--color-brand-text);
     font-family: var(--font-sans);
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
