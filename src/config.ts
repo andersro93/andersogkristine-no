@@ -141,9 +141,9 @@ export const weddingConfig = {
     },
     {
       time: "02:00",
-      title: "Avslutt",
-      description: "Festen avsluttes på Tårnet",
-      icon: "music"
+      title: "Senga kaller",
+      description: "Festen avsluttes på Tårnet og vi takker for en fantastisk dag!",
+      icon: "sleep"
     }
   ],
   accommodations: [
