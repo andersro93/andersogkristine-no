@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import RSVPForm from '../components/RSVPForm';
 import { fetchInviteByCode } from '../services/notion';
 import { weddingConfig } from '../config';
 
-// Server-side code check
+// Server-side invite lookup
 const code = Astro.url.searchParams.get('code');
 let invite = null;
 let errorMsg = null;
@@ -35,14 +36,14 @@ if (code) {
     <!-- MAIN CARD -->
     <div class="bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl p-8 md:p-12 shadow-xl shadow-brand-title/5 relative overflow-hidden">
       
-      <!-- Golden corner ornaments -->
+      <!-- Corner ornaments -->
       <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
       <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
       <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
       <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
 
-      <!-- State A: Error or No Code Provided -> Show Code Finder -->
       {!invite ? (
+        /* State A: Code entry form (no JS needed — plain HTML form GET) */
         <div class="text-center py-6">
           {errorMsg && (
             <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans">
@@ -77,223 +78,10 @@ if (code) {
           </p>
         </div>
       ) : (
-        /* State B: Invite Found -> Show RSVP Form */
-        <div>
-          <div id="rsvp-form-container">
-            <h2 class="font-serif text-3xl text-brand-title text-center mb-2">Velkommen, {invite.name}!</h2>
-            <p class="font-sans text-sm text-center text-brand-text/70 mb-10">
-              Vennligst kryss av for om du/dere kan komme og fyll ut eventuelle detaljer.
-            </p>
-
-            <form id="rsvp-form" class="space-y-8 font-sans">
-              <!-- Hidden Invite ID -->
-              <input type="hidden" id="invite-id" value={invite.id} />
-
-              <div class="space-y-6">
-                {invite.guests.map((guest: any, idx: number) => (
-                  <div class="bg-brand-bg/40 border border-brand-title/5 rounded-xl p-6 md:p-8 space-y-6 relative" data-guest-id={guest.id}>
-                    <!-- Guest Title -->
-                    <div class="flex items-center justify-between border-b border-brand-title/10 pb-4">
-                      <span class="font-serif text-xl text-brand-title font-medium">{guest.name}</span>
-                      <span class="text-xs tracking-wider uppercase px-2.5 py-1 rounded bg-brand-title/10 text-brand-title font-medium">Gjest {idx + 1}</span>
-                    </div>
-
-                    <!-- Attendance -->
-                    <div class="space-y-2">
-                      <label class="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95">Kommer du?</label>
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-title/10 bg-white hover:bg-brand-bg/30 cursor-pointer transition select-none">
-                          <input 
-                            type="radio" 
-                            name={`rsvp-${guest.id}`} 
-                            value="Kommer"
-                            required
-                            checked={guest.rsvp === "Kommer"}
-                            class="w-4 h-4 text-brand-title focus:ring-brand-title border-brand-title/20"
-                          />
-                          <span class="text-sm font-medium text-brand-title">Ja, jeg gleder meg!</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-title/10 bg-white hover:bg-brand-bg/30 cursor-pointer transition select-none">
-                          <input 
-                            type="radio" 
-                            name={`rsvp-${guest.id}`} 
-                            value="Kommer ikke"
-                            checked={guest.rsvp === "Kommer ikke"}
-                            class="w-4 h-4 text-brand-title focus:ring-brand-title border-brand-title/20"
-                          />
-                          <span class="text-sm font-medium text-brand-title">Nei, jeg kan dessverre ikke</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <!-- Allergies / Diet -->
-                    <div class="space-y-2">
-                      <label for={`allergies-${guest.id}`} class="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95">Allergier / Mathensyn</label>
-                      <input 
-                        type="text" 
-                        id={`allergies-${guest.id}`}
-                        name={`allergies-${guest.id}`}
-                        placeholder="F.eks. Gluten, vegetar, ingen" 
-                        class="w-full px-4 py-2.5 rounded-lg border border-brand-title/15 bg-white text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-sm"
-                        value={guest.allergies || ""}
-                      />
-                    </div>
-
-                    <!-- Personal Comment / Song Request -->
-                    <div class="space-y-2">
-                      <label for={`comment-${guest.id}`} class="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95">Hilsen til brudeparet / Sangønske</label>
-                      <textarea 
-                        id={`comment-${guest.id}`}
-                        name={`comment-${guest.id}`}
-                        rows="2"
-                        placeholder="Skriv gjerne en kommentar eller låt du vil høre!" 
-                        class="w-full px-4 py-2.5 rounded-lg border border-brand-title/15 bg-white text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-sm resize-none"
-                      ></textarea>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <!-- General Error container -->
-              <div id="form-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"></div>
-
-              <!-- Submit Button -->
-              <div class="text-center pt-4">
-                <button 
-                  type="submit" 
-                  id="submit-rsvp-btn"
-                  class="bg-brand-title text-brand-bg hover:bg-brand-title/95 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-title px-12 py-4 rounded-xl font-serif text-lg tracking-wider transition-all duration-300 transform hover:-translate-y-0.5 inline-flex items-center gap-2"
-                >
-                  <span>Send svar</span>
-                  <svg id="loading-spinner" class="hidden animate-spin h-5 w-5 text-brand-bg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- SUCCESS STATE -->
-          <div id="rsvp-success-container" class="hidden text-center py-10 space-y-6">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-title/10 text-brand-title mx-auto mb-4">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            
-            <h3 class="font-wedding text-4xl text-brand-title">Tusen takk for svar!</h3>
-            
-            <div class="font-serif italic text-lg max-w-md mx-auto leading-relaxed text-brand-text/90" id="success-message">
-              Svarene dine har blitt registrert i gjestelisten vår.
-            </div>
-
-            <div class="w-12 h-px bg-brand-title/20 mx-auto my-6"></div>
-
-            <div class="space-y-4">
-              <p class="font-sans text-sm text-brand-text/70">
-                Du kan når som helst endre svaret ditt ved å gå tilbake til denne siden med din kode.
-              </p>
-              <div class="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-                <a href="/" class="bg-brand-title text-brand-bg hover:bg-brand-title/90 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200">
-                  Til hovedsiden
-                </a>
-                <a href="/bordoppsett" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200">
-                  Se bordoppsett
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        /* State B: React island handles all the interactive form logic */
+        <RSVPForm invite={invite} client:load />
       )}
 
     </div>
   </main>
 </Layout>
-
-<!-- Client Side Handling -->
-<script>
-  const rsvpForm = document.getElementById('rsvp-form');
-  const rsvpFormContainer = document.getElementById('rsvp-form-container');
-  const rsvpSuccessContainer = document.getElementById('rsvp-success-container');
-  const submitBtn = document.getElementById('submit-rsvp-btn') as HTMLButtonElement;
-  const loadingSpinner = document.getElementById('loading-spinner');
-  const formError = document.getElementById('form-error');
-  const successMessage = document.getElementById('success-message');
-
-  if (rsvpForm) {
-    rsvpForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      // Hide error
-      formError.classList.add('hidden');
-      formError.innerText = '';
-      
-      // Show loading
-      submitBtn.disabled = true;
-      loadingSpinner.classList.remove('hidden');
-
-      // Collect data
-      const guestsData = [];
-      const guestDivs = document.querySelectorAll('[data-guest-id]');
-      let allDeclined = true;
-
-      for (const div of guestDivs) {
-        const guestId = div.getAttribute('data-guest-id');
-        const rsvpRadio = div.querySelector(`input[name="rsvp-${guestId}"]:checked`) as HTMLInputElement;
-        const rsvp = rsvpRadio ? rsvpRadio.value : '';
-        const allergiesInput = div.querySelector(`#allergies-${guestId}`) as HTMLInputElement;
-        const allergies = allergiesInput ? allergiesInput.value : '';
-        const commentTextarea = div.querySelector(`#comment-${guestId}`) as HTMLTextAreaElement;
-        const comment = commentTextarea ? commentTextarea.value : '';
-
-        if (rsvp === "Kommer") {
-          allDeclined = false;
-        }
-
-        guestsData.push({
-          id: guestId,
-          rsvp,
-          allergies,
-          comment
-        });
-      }
-
-      try {
-        const response = await fetch('/api/rsvp', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ guests: guestsData }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          // Update success message based on RSVPs
-          if (allDeclined) {
-            successMessage.innerText = "Det var veldig synd at dere ikke kan komme, men takk for at dere meldte ifra! Vi vil savne dere.";
-          } else {
-            successMessage.innerText = "Vi gleder oss utrolig mye til å feire denne store dagen sammen med dere på Tårnet Kulturarena!";
-          }
-          
-          // Switch view
-          rsvpFormContainer.classList.add('hidden');
-          rsvpSuccessContainer.classList.remove('hidden');
-          
-          // Scroll to top of container
-          rsvpSuccessContainer.scrollIntoView({ behavior: 'smooth' });
-        } else {
-          throw new Error(result.error || 'Noe gikk galt under lagring.');
-        }
-      } catch (err: any) {
-        console.error("Submit RSVP error:", err);
-        formError.innerText = err.message || 'Klarte ikke å sende svar. Vennligst prøv igjen senere eller ta kontakt med brudeparet.';
-        formError.classList.remove('hidden');
-        submitBtn.disabled = false;
-        loadingSpinner.classList.add('hidden');
-      }
-    });
-  }
-</script>
