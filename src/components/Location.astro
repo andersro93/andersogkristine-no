@@ -17,7 +17,7 @@ import { weddingConfig } from '../config';
       <div class="flex flex-col space-y-6 bg-brand-bg p-6 md:p-8 rounded-xl border border-brand-title/10 shadow-xs">
         <div class="space-y-3">
           <p class="text-xs uppercase tracking-widest text-brand-title/80 font-semibold">Selskapslokale</p>
-          <h3 class="font-wedding text-3xl text-brand-title font-semibold">{weddingConfig.venue.name}</h3>
+          <h3 class="font-serif text-2xl text-brand-title font-semibold">{weddingConfig.venue.name}</h3>
           <p class="font-sans text-sm text-brand-text/90 font-light leading-relaxed">
             {weddingConfig.venue.address}
           </p>
@@ -62,7 +62,7 @@ import { weddingConfig } from '../config';
             {weddingConfig.accommodations.map((hotel) => (
               <div class="p-5 rounded-lg bg-brand-bg/60 border border-brand-title/5 hover:border-brand-title/15 transition-all duration-300 space-y-3">
                 <div class="flex items-baseline justify-between flex-wrap gap-2">
-                  <h4 class="font-wedding text-2xl text-brand-title font-semibold">{hotel.name}</h4>
+                  <h4 class="font-serif text-xl text-brand-title font-semibold">{hotel.name}</h4>
                   <span class="text-xs font-semibold px-2 py-0.5 bg-brand-title/10 text-brand-title rounded-full font-sans">
                     {hotel.distance}
                   </span>
