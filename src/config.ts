@@ -137,7 +137,7 @@ export const weddingConfig = {
       time: "01:30",
       title: "Siste bestilling",
       description: "Last call i baren!",
-      icon: "glass"
+      icon: "bell"
     },
     {
       time: "02:00",
