@@ -116,6 +116,12 @@ export default function RSVPForm({ invite }: Props) {
           >
             Se bordoppsett
           </a>
+          <a
+            href="/musikk"
+            className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
+          >
+            Foreslå musikk
+          </a>
         </div>
       </div>
     );
