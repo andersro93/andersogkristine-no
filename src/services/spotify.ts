@@ -285,9 +285,9 @@ export async function addTrackToPlaylist(trackUri: string, env: any): Promise<vo
       const id = parts[parts.length - 1] || 'mock-added';
       const mockTrack: SpotifyTrack = {
         id,
-        name: 'Suggested Track',
-        artists: 'Unknown Artist',
-        albumName: 'Suggested Album',
+        name: 'Foreslått sang',
+        artists: 'Ukjent artist',
+        albumName: 'Foreslått album',
         albumImageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=150&h=150&q=80',
         uri: trackUri,
       };

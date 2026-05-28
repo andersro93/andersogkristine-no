@@ -96,7 +96,7 @@ describe('Spotify Playlist Integration (Mock Mode)', () => {
 
       const tracks = await getPlaylistTracks({});
       expect(tracks).toHaveLength(3);
-      expect(tracks[0].name).toBe('Suggested Track');
+      expect(tracks[0].name).toBe('Foreslått sang');
       expect(tracks[0].uri).toBe(customUri);
     });
   });
