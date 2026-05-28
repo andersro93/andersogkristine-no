@@ -1408,3 +1408,133 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
 
   return faqs;
 }
+
+const DEFAULT_FLAGS: Record<string, boolean> = {
+  rsvp: true,
+  seating: true,
+  music: true,
+  map: true,
+  egentid: true,
+  program: true,
+};
+
+/**
+ * Retrieves the feature flags from the Notion flags database,
+ * cached in Cloudflare KV with SWR logic.
+ */
+export async function fetchFeatureFlags(
+  localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
+): Promise<Record<string, boolean>> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_flags";
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(
+            `Flags cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+          );
+          const updatePromise = updateFlagsCache(currentEnv).catch((err) => {
+            console.error("Error in background flags sync:", err);
+          });
+
+          // Register background promise if context is available
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("KV read error for Notion feature flags:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("Flags cache miss, performing synchronous fetch...");
+  return await updateFlagsCache(currentEnv);
+}
+
+async function updateFlagsCache(localEnv?: Env): Promise<Record<string, boolean>> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_flags";
+
+  const flagsDbId =
+    getEnvVar("NOTION_FLAGS_DATABASE_ID", localEnv) ||
+    notionConfig.databases.flagsId;
+
+  if (!flagsDbId) {
+    throw new Error("NOTION_FLAGS_DATABASE_ID is not configured.");
+  }
+
+  const flags = { ...DEFAULT_FLAGS };
+
+  try {
+    const dsId = await getDataSourceId(notion, flagsDbId);
+    const response = await notion.dataSources.query({
+      data_source_id: dsId,
+    });
+
+    for (const page of response.results as PageObjectResponse[]) {
+      if (!("properties" in page)) continue;
+      const props = page.properties;
+
+      const flagIdProp =
+        props["Flagg Id"] ||
+        props["Flagg ID"] ||
+        props["flagg id"] ||
+        props["Flag id"] ||
+        props["Flag ID"] ||
+        props["flag id"] ||
+        props.Name;
+      const flagKey = getTitleProperty(flagIdProp, "").trim().toLowerCase();
+
+      if (!flagKey) continue;
+
+      const activeProp = props.Aktivert;
+      let isEnabled = false;
+      if (activeProp) {
+        if (activeProp.type === "select") {
+          isEnabled = activeProp.select?.name === "Ja";
+        } else if (activeProp.type === "status") {
+          isEnabled = activeProp.status?.name === "Ja";
+        } else if (activeProp.type === "rich_text") {
+          isEnabled = getRichTextFull(activeProp).trim() === "Ja";
+        }
+      }
+
+      flags[flagKey] = isEnabled;
+    }
+
+    // Save to KV cache
+    if (kv) {
+      try {
+        const cacheValue = JSON.stringify({
+          data: flags,
+          timestamp: Date.now(),
+        });
+        await kv.put(cacheKey, cacheValue);
+        console.log("Notion flags cache updated successfully.");
+      } catch (err) {
+        console.error("KV write error for Notion flags:", err);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to query Notion feature flags, falling back to defaults:", error);
+  }
+
+  return flags;
+}
+

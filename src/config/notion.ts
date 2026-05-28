@@ -25,6 +25,9 @@ export const notionConfig = {
     faqId:
       process.env.NOTION_FAQ_DATABASE_ID ||
       "36e8d3696e2d806c9430e41b435129c2",
+    flagsId:
+      process.env.NOTION_FLAGS_DATABASE_ID ||
+      "36e8d3696e2d80858115ef4a9810858c",
   },
 
   // Data Source IDs (used in modern 2026 Notion API query & retrieve endpoints)

@@ -10,6 +10,7 @@ interface Env {
   NOTION_EGENTID_DATABASE_ID?: string;
   NOTION_MEDVIRKENDE_DATABASE_ID?: string;
   NOTION_FAQ_DATABASE_ID?: string;
+  NOTION_FLAGS_DATABASE_ID?: string;
   SITE_PIN?: string;
   SESSION_SECRET?: string;
   SPOTIFY_CLIENT_ID?: string;

@@ -1,5 +1,11 @@
 ---
 import { weddingConfig } from '../config';
+
+interface Props {
+  flags: Record<string, boolean>;
+}
+
+const { flags } = Astro.props;
 ---
 
 <footer class="py-16 px-4 bg-brand-bg text-center space-y-4">
@@ -14,13 +20,21 @@ import { weddingConfig } from '../config';
   </p>
 
   <div class="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs uppercase tracking-wider text-brand-title font-medium pt-4 select-none">
-    <a href="/rsvp" class="hover:underline">Svar på invitasjon</a>
-    <span class="text-brand-title/20">|</span>
-    <a href="/bordoppsett" class="hover:underline">Bordplassering</a>
-    <span class="text-brand-title/20">|</span>
-    <a href="/kart" class="hover:underline">Kart</a>
-    <span class="text-brand-title/20">|</span>
-    <a href="/musikk" class="hover:underline">Musikkønsker</a>
+    {
+      [
+        flags.rsvp && <a href="/rsvp" class="hover:underline">Svar på invitasjon</a>,
+        flags.seating && <a href="/bordoppsett" class="hover:underline">Bordplassering</a>,
+        flags.map && <a href="/kart" class="hover:underline">Kart</a>,
+        flags.music && <a href="/musikk" class="hover:underline">Musikkønsker</a>
+      ]
+        .filter(Boolean)
+        .map((link, idx, arr) => (
+          <>
+            {link}
+            {idx < arr.length - 1 && <span class="text-brand-title/20">|</span>}
+          </>
+        ))
+    }
   </div>
 
   

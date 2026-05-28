@@ -4,6 +4,7 @@ import { env as rawEnv } from "cloudflare:workers";
 const env = rawEnv as Env;
 
 import { verifySessionCookie } from "./services/pin";
+import { fetchFeatureFlags } from "./services/notion";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
@@ -31,6 +32,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (!isAuthed) {
     return context.redirect("/pin");
+  }
+
+  // Retrieve feature flags
+  let flags: Record<string, boolean> = { rsvp: true, seating: true, music: true, map: true };
+  try {
+    const fetchedFlags = await fetchFeatureFlags(env, context.locals?.runtime?.context);
+    if (fetchedFlags) {
+      flags = fetchedFlags;
+    }
+  } catch (err) {
+    console.error("Failed to load feature flags in middleware:", err);
+  }
+
+  // Block direct route access if features are disabled
+  if (pathname === "/rsvp" && !flags.rsvp) {
+    return context.redirect("/");
+  }
+  if (pathname === "/bordoppsett" && !flags.seating) {
+    return context.redirect("/");
+  }
+  if (pathname === "/musikk" && !flags.music) {
+    return context.redirect("/");
+  }
+  if (pathname === "/kart" && !flags.map) {
+    return context.redirect("/");
   }
 
   return next();

@@ -64,6 +64,8 @@ bun x wrangler secret put NOTION_PROGRAM_DATABASE_ID
 bun x wrangler secret put NOTION_LOCATIONS_DATABASE_ID
 bun x wrangler secret put NOTION_EGENTID_DATABASE_ID
 bun x wrangler secret put NOTION_MEDVIRKENDE_DATABASE_ID
+bun x wrangler secret put NOTION_FAQ_DATABASE_ID
+bun x wrangler secret put NOTION_FLAGS_DATABASE_ID
 
 # Pin Protection Gate
 bun x wrangler secret put SITE_PIN
@@ -85,3 +87,31 @@ bun run build
 # Deploy
 bun x wrangler deploy
 ```
+
+---
+
+## 🚩 Feature Flags (Notion)
+
+You can toggle different components and subpages of your wedding website dynamically from a dedicated Notion database.
+
+### 1. Database Structure in Notion
+Create a database in your Notion workspace with the following columns:
+- **`Flagg Id`** (Title): The technical identifier of the feature (case-insensitive).
+- **`Aktivert`** (Select or Status): The state of the toggle, set to either **`Ja`** or **`Nei`**.
+
+### 2. Supported Feature Flags
+Add rows for each of the following flags in your database to control the respective components:
+
+| Flagg ID | Description | Behaviors when set to `Nei` |
+| :--- | :--- | :--- |
+| `rsvp` | Controls the RSVP registration. | Hides RSVP buttons on the homepage and blocks direct access to `/rsvp` (redirects to `/`). |
+| `seating` | Controls the seating arrangement display. | Hides Bordplassering buttons on the homepage and blocks direct access to `/bordoppsett` (redirects to `/`). |
+| `music` | Controls the Spotify suggestions tool. | Hides Musikk suggestions buttons on the homepage and blocks direct access to `/musikk` (redirects to `/`). |
+| `map` | Controls the interactive Google/Leaflet map. | Hides Map sections, buttons, timeline map links, and blocks direct access to `/kart` (redirects to `/`). |
+| `egentid` | Controls the Egentid recommendations. | Hides the entire polaroid/neighborhood recommendation section on the homepage. |
+| `program` | Controls the wedding timeline. | Hides the timeline/program schedule section on the homepage. |
+
+### 3. Caching & Fallbacks
+- **Caching:** The flags are cached in Cloudflare KV for performance (60-second Stale-While-Revalidate refresh window). To force-clear the cache locally during development, run `bun run dev:clean`.
+- **Default Fallbacks:** If the database cannot be queried, contains empty values, or is missing keys, the website defaults all flags to `true` (enabled) to ensure the site remains fully operational.
+

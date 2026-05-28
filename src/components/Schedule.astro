@@ -3,6 +3,11 @@ import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
 import { fetchScheduleFromNotion } from '../services/notion';
 
+interface Props {
+  flags: Record<string, boolean>;
+}
+
+const { flags } = Astro.props;
 let schedule = weddingConfig.schedule;
 
 // Retrieve Cloudflare runtime context
@@ -183,7 +188,7 @@ const getIconSvg = (iconName?: string) => {
             <p class="font-sans text-sm leading-relaxed text-brand-text/85 font-light">
               {event.description}
             </p>
-            {event.locationId && (
+            {flags.map && event.locationId && (
               <a
                 href={`/kart?loc=${event.locationId}`}
                 class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-title hover:text-brand-text hover:underline mt-3 select-none transition-colors"
