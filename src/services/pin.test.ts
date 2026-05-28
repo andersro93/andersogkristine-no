@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { Env } from "cloudflare:workers";
 import {
   checkRateLimit,
   clearMemoryCache,

@@ -6,7 +6,10 @@ export const GET: APIRoute = async (context) => {
   try {
     const cloudflareContext = context.locals.runtime?.context;
 
-    const locations = await fetchLocationsFromNotion(env, cloudflareContext);
+    const locations = await fetchLocationsFromNotion(
+      env as Env,
+      cloudflareContext,
+    );
 
     return new Response(JSON.stringify(locations), {
       status: 200,

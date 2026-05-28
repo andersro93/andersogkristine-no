@@ -6,7 +6,6 @@ import {
   expect,
   test,
 } from "bun:test";
-import type { Env } from "cloudflare:workers";
 import {
   addTrackToPlaylist,
   getPlaylistTracks,

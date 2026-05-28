@@ -1,4 +1,7 @@
-import { env } from "cloudflare:workers";
+import { env as rawEnv } from "cloudflare:workers";
+
+const env = rawEnv as Env;
+
 import type { APIRoute } from "astro";
 import {
   checkRateLimit,

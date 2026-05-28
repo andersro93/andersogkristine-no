@@ -1,8 +1,7 @@
-import type { Env } from "cloudflare:workers";
 import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
-import { getEnvVar } from "./env";
+import { cloudflareEnv, getEnvVar } from "./env";
 
 // Helper interfaces for Notion API JSON properties
 interface NotionRichTextItem {
@@ -14,56 +13,40 @@ interface NotionSelectItem {
 }
 
 // Property extraction helpers to eliminate inline null-coalescing and type assertions
-function getTitleProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
-  fallback = "",
-): string {
+function getTitleProperty(prop: any, fallback = ""): string {
   return prop?.type === "title"
     ? prop.title?.[0]?.plain_text || fallback
     : fallback;
 }
 
-function getRichTextProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
-  fallback = "",
-): string {
+function getRichTextProperty(prop: any, fallback = ""): string {
   return prop?.type === "rich_text"
     ? (prop.rich_text as NotionRichTextItem[])?.[0]?.plain_text || fallback
     : fallback;
 }
 
-function getRichTextFull(
-  prop: PageObjectResponse["properties"][string] | undefined,
-  fallback = "",
-): string {
+function getRichTextFull(prop: any, fallback = ""): string {
   return prop?.type === "rich_text"
     ? (prop.rich_text as NotionRichTextItem[]).map((t) => t.plain_text).join("")
     : fallback;
 }
 
-function getSelectProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
-  fallback = "",
-): string {
+function getSelectProperty(prop: any, fallback = ""): string {
   return prop?.type === "select" ? prop.select?.name || fallback : fallback;
 }
 
-function getMultiSelectProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
-): string[] {
+function getMultiSelectProperty(prop: any): string[] {
   return prop?.type === "multi_select"
     ? (prop.multi_select as NotionSelectItem[]).map((s) => s.name)
     : [];
 }
 
-function getDateProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
-): string | null {
+function getDateProperty(prop: any): string | null {
   return prop?.type === "date" ? prop.date?.start || null : null;
 }
 
 function getNumberProperty(
-  prop: PageObjectResponse["properties"][string] | undefined,
+  prop: any,
   fallback: number | null = 0,
 ): number | null {
   return prop?.type === "number" && typeof prop.number === "number"
@@ -168,8 +151,11 @@ export async function fetchInviteByCode(
     const guestsRelation =
       invitePage.properties[notionConfig.mappings.invites.guests];
     const guestIds: string[] = [];
-    if (guestsRelation?.type === "relation" && guestsRelation.relation) {
-      guestIds.push(...guestsRelation.relation.map((r) => r.id));
+    if (
+      guestsRelation?.type === "relation" &&
+      Array.isArray(guestsRelation.relation)
+    ) {
+      guestIds.push(...guestsRelation.relation.map((r: any) => r.id));
     }
 
     // Fetch each guest in parallel
@@ -244,7 +230,7 @@ export async function updateGuestRSVP(
   const notion = getNotionClient(localEnv);
 
   try {
-    const properties: Record<string, unknown> = {
+    const properties: Record<string, any> = {
       [notionConfig.mappings.guests.rsvp]: {
         status: {
           name: rsvp,
@@ -282,7 +268,7 @@ export async function updateGuestRSVP(
       error.message.includes("Kommentar")
     ) {
       console.log("Retrying update without 'Kommentar' column...");
-      const propertiesRetry: Record<string, unknown> = {
+      const propertiesRetry: Record<string, any> = {
         [notionConfig.mappings.guests.rsvp]: {
           status: {
             name: rsvp,
@@ -421,9 +407,9 @@ export interface ScheduleEvent {
  */
 export async function fetchScheduleFromNotion(
   localEnv?: Env,
-  context?: ExecutionContext,
+  context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<ScheduleEvent[]> {
-  const currentEnv = localEnv || env;
+  const currentEnv = localEnv || cloudflareEnv;
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_schedule";
 
@@ -470,7 +456,7 @@ interface RawScheduleEvent {
 }
 
 async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
-  const currentEnv = localEnv || env;
+  const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_schedule";
@@ -711,9 +697,9 @@ const fallbackLocations: WeddingLocation[] = [
 
 export async function fetchLocationsFromNotion(
   localEnv?: Env,
-  context?: ExecutionContext,
+  context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<WeddingLocation[]> {
-  const currentEnv = localEnv || env;
+  const currentEnv = localEnv || cloudflareEnv;
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_locations";
 
@@ -765,7 +751,7 @@ export async function fetchLocationsFromNotion(
 async function updateLocationsCache(
   localEnv?: Env,
 ): Promise<WeddingLocation[]> {
-  const currentEnv = localEnv || env;
+  const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_locations";
@@ -832,10 +818,7 @@ async function updateLocationsCache(
         ikon,
       };
     })
-    .filter(
-      (loc): loc is WeddingLocation & { lat: number; lng: number } =>
-        loc.lat !== null && loc.lng !== null,
-    );
+    .filter((loc) => loc.lat !== null && loc.lng !== null) as WeddingLocation[];
 
   // Save to KV cache with current timestamp
   if (kv) {
@@ -899,4 +882,30 @@ function getIconForLocation(name: string, ikon?: string): string {
     return "buss";
   }
   return "default";
+}
+
+/**
+ * Bulk updates location coordinates in the Notion database.
+ */
+export async function bulkUpdateLocations(
+  updates: Array<{ id: string; lat: number; lng: number }>,
+  localEnv?: Env,
+): Promise<void> {
+  const notion = getNotionClient(localEnv);
+  for (const update of updates) {
+    console.log(
+      `Updating location ${update.id} to (${update.lat}, ${update.lng})…`,
+    );
+    await notion.pages.update({
+      page_id: update.id,
+      properties: {
+        Lat: {
+          number: update.lat,
+        },
+        Long: {
+          number: update.lng,
+        },
+      } as any,
+    });
+  }
 }

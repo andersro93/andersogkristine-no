@@ -40,7 +40,10 @@ export default function SpotifyPlaylist() {
       try {
         const res = await fetch("/api/spotify/playlist");
         if (!res.ok) throw new Error("Kunne ikke hente spillelisten.");
-        const data = await res.json();
+        const data = (await res.json()) as {
+          tracks?: SpotifyTrack[];
+          playlistUrl?: string;
+        };
         setPlaylistTracks(data.tracks || []);
         setPlaylistUrl(data.playlistUrl || "https://open.spotify.com");
       } catch (err) {
@@ -75,7 +78,7 @@ export default function SpotifyPlaylist() {
           `/api/spotify/search?q=${encodeURIComponent(query)}`,
         );
         if (!res.ok) throw new Error("Søket feilet.");
-        const data = await res.json();
+        const data = (await res.json()) as SpotifyTrack[];
         setSearchResults(data);
       } catch (err) {
         console.error(err);
@@ -103,7 +106,11 @@ export default function SpotifyPlaylist() {
       });
 
       if (!res.ok) throw new Error("Feilet under lagring.");
-      const data = await res.json();
+      const data = (await res.json()) as {
+        success: boolean;
+        tracks?: SpotifyTrack[];
+        error?: string;
+      };
 
       if (data.success) {
         // Update playlist tracks state

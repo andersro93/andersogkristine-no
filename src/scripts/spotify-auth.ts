@@ -82,7 +82,7 @@ const server = http.createServer(async (req, res) => {
         throw new Error(`Token exchange failed: ${errorText}`);
       }
 
-      const data = await tokenRes.json();
+      const data = (await tokenRes.json()) as any;
       const refreshToken = data.refresh_token;
 
       console.log("\n🎉 Suksess! Ditt Spotify Refresh Token er generert:");

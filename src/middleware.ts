@@ -1,5 +1,8 @@
 import { defineMiddleware } from "astro:middleware";
-import { env } from "cloudflare:workers";
+import { env as rawEnv } from "cloudflare:workers";
+
+const env = rawEnv as Env;
+
 import { verifySessionCookie } from "./services/pin";
 
 export const onRequest = defineMiddleware(async (context, next) => {

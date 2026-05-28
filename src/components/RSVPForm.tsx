@@ -68,7 +68,7 @@ export default function RSVPForm({ invite }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guests }),
       });
-      const result = await res.json();
+      const result = (await res.json()) as { success: boolean; error?: string };
       if (res.ok && result.success) {
         setSubmitStatus("success");
       } else {

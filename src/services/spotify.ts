@@ -1,4 +1,3 @@
-import type { Env } from "cloudflare:workers";
 import { getEnvVar } from "./env";
 
 export interface SpotifyTrack {

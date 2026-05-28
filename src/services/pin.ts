@@ -1,4 +1,3 @@
-import type { Env } from "cloudflare:workers";
 import crypto from "node:crypto";
 import { getEnvVar } from "./env";
 

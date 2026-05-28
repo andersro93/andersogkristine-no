@@ -83,9 +83,9 @@ export default function InteractiveMap() {
     fetch("/api/locations")
       .then((res) => {
         if (!res.ok) throw new Error("Klarte ikke å hente lokasjoner");
-        return res.json();
+        return res.json() as Promise<WeddingLocation[]>;
       })
-      .then((data: WeddingLocation[]) => {
+      .then((data) => {
         setLocations(data);
         setIsLoading(false);
       })
@@ -165,6 +165,8 @@ export default function InteractiveMap() {
   useEffect(() => {
     const L = (window as unknown as { L?: LeafletStatic }).L;
     if (!mapRef.current || !markersGroupRef.current || !L) return;
+    const map = mapRef.current;
+    const markersGroup = markersGroupRef.current;
 
     // Filter locations based on search query
     const filtered = locations.filter((loc) =>
@@ -172,7 +174,7 @@ export default function InteractiveMap() {
     );
 
     // Clear old markers
-    markersGroupRef.current.clearLayers();
+    markersGroup.clearLayers();
     markerInstancesRef.current.clear();
 
     if (filtered.length === 0) return;
@@ -273,14 +275,14 @@ export default function InteractiveMap() {
         icon: createCustomMarker(loc.ikon || "default"),
       }).bindPopup(popupHtml, { minWidth: 180 });
 
-      markersGroupRef.current.addLayer(marker);
+      markersGroup.addLayer(marker);
       markerInstancesRef.current.set(loc.id, marker);
     });
 
     // Pan map to fit markers
     if (filtered.length > 0) {
       const bounds = L.latLngBounds(filtered.map((l) => [l.lat, l.lng]));
-      mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     }
   }, [locations, searchQuery]);
 
@@ -304,7 +306,8 @@ export default function InteractiveMap() {
     }
 
     const L = (window as unknown as { L?: LeafletStatic }).L;
-    if (!L || !mapRef.current) return;
+    const map = mapRef.current;
+    if (!L || !map) return;
 
     setUserLocationActive(true);
 
@@ -327,17 +330,17 @@ export default function InteractiveMap() {
 
         // Remove old marker if exists
         if (userMarkerRef.current) {
-          mapRef.current.removeLayer(userMarkerRef.current);
+          map.removeLayer(userMarkerRef.current);
         }
 
         const marker = L.marker([latitude, longitude], { icon: userIcon })
-          .addTo(mapRef.current)
+          .addTo(map)
           .bindPopup(
             '<div class="font-sans text-xs font-semibold p-1">Du er her</div>',
           );
 
         userMarkerRef.current = marker;
-        mapRef.current.setView([latitude, longitude], 15);
+        map.setView([latitude, longitude], 15);
         marker.openPopup();
         setUserLocationActive(false);
       },
