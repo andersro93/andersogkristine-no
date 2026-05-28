@@ -16,8 +16,8 @@ if (!clientId || !clientSecret) {
   process.exit(1);
 }
 
-// Scopes required to modify both public and private playlists
-const SCOPES = 'playlist-modify-public playlist-modify-private playlist-read-private';
+// Scopes required to modify both public/private/collaborative playlists and read user details
+const SCOPES = 'playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private';
 
 const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
   client_id: clientId,
