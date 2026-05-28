@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
 import {
   isSpotifyConfigured,
   searchTracks,
@@ -9,8 +9,29 @@ import {
 } from './spotify';
 
 describe('Spotify Playlist Integration (Mock Mode)', () => {
+  const keys = ['SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET', 'SPOTIFY_REFRESH_TOKEN', 'SPOTIFY_PLAYLIST_ID'];
+  const originalEnv: Record<string, string | undefined> = {};
+
+  beforeAll(() => {
+    // Back up real env variables
+    keys.forEach((key) => {
+      originalEnv[key] = process.env[key];
+    });
+  });
+
+  afterAll(() => {
+    // Restore real env variables after tests finish
+    keys.forEach((key) => {
+      process.env[key] = originalEnv[key];
+    });
+  });
+
   beforeEach(() => {
     resetMockPlaylist();
+    // Clear process.env to isolate tests in mock mode
+    keys.forEach((key) => {
+      delete process.env[key];
+    });
   });
 
   describe('isSpotifyConfigured', () => {

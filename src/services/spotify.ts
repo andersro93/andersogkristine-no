@@ -224,7 +224,7 @@ export async function getPlaylistTracks(env: any): Promise<SpotifyTrack[]> {
     const playlistId = env?.SPOTIFY_PLAYLIST_ID || process.env.SPOTIFY_PLAYLIST_ID;
     
     // We retrieve up to 100 tracks. Can support paging if needed, but 100 is usually plenty.
-    const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+    const url = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`;
 
     const res = await fetch(url, {
       headers: {
@@ -299,7 +299,7 @@ export async function addTrackToPlaylist(trackUri: string, env: any): Promise<vo
   try {
     const token = await getAccessToken(env);
     const playlistId = env?.SPOTIFY_PLAYLIST_ID || process.env.SPOTIFY_PLAYLIST_ID;
-    const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+    const url = `https://api.spotify.com/v1/playlists/${playlistId}/items`;
 
     const res = await fetch(url, {
       method: 'POST',
