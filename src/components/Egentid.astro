@@ -1,13 +1,13 @@
 ---
+import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
 import { fetchEgentidData, type Contributor } from '../services/notion';
 
-const localEnv = Astro.locals.runtime?.env;
-const context = Astro.locals.runtime?.context;
+const context = Astro.locals?.runtime?.context;
 
 let contributors: Contributor[] = [];
 try {
-  contributors = await fetchEgentidData(localEnv, context);
+  contributors = await fetchEgentidData(env, context);
 } catch (err) {
   console.error("Error loading egentid from Notion:", err);
   contributors = weddingConfig.egentid.contributors;
@@ -17,7 +17,7 @@ const { egentid } = weddingConfig;
 const initialContributor = contributors[0] || egentid.contributors[0];
 ---
 
-<section id="egentid" class="py-20 px-4 md:px-8 bg-brand-bg/40 border-b border-brand-title/5 scroll-mt-6">
+<section id="egentid" class="py-20 px-4 md:px-8 bg-brand-bg/40 border-b border-brand-title/5 scroll-mt-6" data-contributors={JSON.stringify(contributors)}>
   <div class="max-w-6xl mx-auto">
     
     <!-- Title & Subtitle -->
@@ -102,7 +102,9 @@ const initialContributor = contributors[0] || egentid.contributors[0];
   </div>
 </section>
 
-<script define:vars={{ contributors }}>
+<script>
+  const section = document.getElementById('egentid');
+  const contributors = JSON.parse(section?.getAttribute('data-contributors') || '[]');
   const cards = document.querySelectorAll('[data-contributor-id]');
   const titleEl = document.getElementById('egentid-role');
   const descEl = document.getElementById('egentid-desc');

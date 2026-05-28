@@ -150,12 +150,11 @@ const getIconSvg = (iconName?: string) => {
         </div>
 
         <!-- Timeline Node (Icon container) -->
-        <div class="absolute left-0 md:left-[84px] top-4 md:top-1 w-12 h-12 rounded-full bg-brand-bg border border-brand-title/30 flex items-center justify-center text-brand-title z-10 shadow-xs group-hover:bg-brand-title group-hover:text-brand-bg transition-all duration-500 group-hover:scale-105">
-          <Fragment set:html={getIconSvg(event.icon)} />
+        <div class="absolute left-0 md:left-[84px] top-4 md:top-1 w-12 h-12 rounded-full bg-brand-bg border border-brand-title/30 flex items-center justify-center text-brand-title z-10 shadow-xs group-hover:bg-brand-title group-hover:text-brand-bg transition-all duration-500 group-hover:scale-105" set:html={getIconSvg(event.icon)}>
         </div>
 
         <!-- Content Card -->
-        {event.title === 'Egentid' ? (
+        {event.title && event.title.trim() === 'Egentid' ? (
           <a href="#egentid" class="ml-14 md:ml-12 flex-1 bg-brand-bg/50 p-5 rounded-lg border border-brand-title/5 hover:border-brand-title/30 hover:bg-brand-bg/90 transition-all duration-300 block group/card cursor-pointer">
             <!-- Mobile time display -->
             <div class="md:hidden font-serif text-lg text-brand-title font-semibold mb-1 select-none">
