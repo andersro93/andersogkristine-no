@@ -1,4 +1,5 @@
 import type { Env } from "cloudflare:workers";
+import { getEnvVar } from "./env";
 
 export interface SpotifyTrack {
   id: string;
@@ -133,13 +134,10 @@ let tokenExpiresAt = 0;
  * Check if the Spotify environment credentials are set.
  */
 export function isSpotifyConfigured(env?: Env): boolean {
-  const clientId = env?.SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret =
-    env?.SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
-  const refreshToken =
-    env?.SPOTIFY_REFRESH_TOKEN || process.env.SPOTIFY_REFRESH_TOKEN;
-  const playlistId =
-    env?.SPOTIFY_PLAYLIST_ID || process.env.SPOTIFY_PLAYLIST_ID;
+  const clientId = getEnvVar("SPOTIFY_CLIENT_ID", env);
+  const clientSecret = getEnvVar("SPOTIFY_CLIENT_SECRET", env);
+  const refreshToken = getEnvVar("SPOTIFY_REFRESH_TOKEN", env);
+  const playlistId = getEnvVar("SPOTIFY_PLAYLIST_ID", env);
 
   return !!(clientId && clientSecret && refreshToken && playlistId);
 }
@@ -152,11 +150,9 @@ async function getAccessToken(env?: Env): Promise<string> {
     return cachedToken;
   }
 
-  const clientId = env?.SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret =
-    env?.SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
-  const refreshToken =
-    env?.SPOTIFY_REFRESH_TOKEN || process.env.SPOTIFY_REFRESH_TOKEN;
+  const clientId = getEnvVar("SPOTIFY_CLIENT_ID", env);
+  const clientSecret = getEnvVar("SPOTIFY_CLIENT_SECRET", env);
+  const refreshToken = getEnvVar("SPOTIFY_REFRESH_TOKEN", env);
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error("Spotify configuration is incomplete.");
@@ -278,8 +274,7 @@ export async function getPlaylistTracks(env?: Env): Promise<SpotifyTrack[]> {
   // 2. Fetch from Spotify API
   try {
     const token = await getAccessToken(env);
-    const playlistId =
-      env?.SPOTIFY_PLAYLIST_ID || process.env.SPOTIFY_PLAYLIST_ID;
+    const playlistId = getEnvVar("SPOTIFY_PLAYLIST_ID", env);
 
     // We retrieve up to 100 tracks. Can support paging if needed, but 100 is usually plenty.
     const url = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`;
@@ -369,8 +364,7 @@ export async function addTrackToPlaylist(
 
   try {
     const token = await getAccessToken(env);
-    const playlistId =
-      env?.SPOTIFY_PLAYLIST_ID || process.env.SPOTIFY_PLAYLIST_ID;
+    const playlistId = getEnvVar("SPOTIFY_PLAYLIST_ID", env);
     const url = `https://api.spotify.com/v1/playlists/${playlistId}/items`;
 
     const res = await fetch(url, {
@@ -410,9 +404,7 @@ export async function addTrackToPlaylist(
  */
 export function getSpotifyPlaylistUrl(env?: Env): string {
   const playlistId =
-    env?.SPOTIFY_PLAYLIST_ID ||
-    process.env.SPOTIFY_PLAYLIST_ID ||
-    "37i9dQZF1DXcBWIGmq7BmE";
+    getEnvVar("SPOTIFY_PLAYLIST_ID", env) || "37i9dQZF1DXcBWIGmq7BmE";
   return `https://open.spotify.com/playlist/${playlistId}`;
 }
 

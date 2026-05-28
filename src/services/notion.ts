@@ -1,8 +1,8 @@
 import type { Env } from "cloudflare:workers";
-import { env } from "cloudflare:workers";
 import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
+import { getEnvVar } from "./env";
 
 // Helper interfaces for Notion API JSON properties
 interface NotionRichTextItem {
@@ -11,6 +11,64 @@ interface NotionRichTextItem {
 
 interface NotionSelectItem {
   name: string;
+}
+
+// Property extraction helpers to eliminate inline null-coalescing and type assertions
+function getTitleProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+  fallback = "",
+): string {
+  return prop?.type === "title"
+    ? prop.title?.[0]?.plain_text || fallback
+    : fallback;
+}
+
+function getRichTextProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+  fallback = "",
+): string {
+  return prop?.type === "rich_text"
+    ? (prop.rich_text as NotionRichTextItem[])?.[0]?.plain_text || fallback
+    : fallback;
+}
+
+function getRichTextFull(
+  prop: PageObjectResponse["properties"][string] | undefined,
+  fallback = "",
+): string {
+  return prop?.type === "rich_text"
+    ? (prop.rich_text as NotionRichTextItem[]).map((t) => t.plain_text).join("")
+    : fallback;
+}
+
+function getSelectProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+  fallback = "",
+): string {
+  return prop?.type === "select" ? prop.select?.name || fallback : fallback;
+}
+
+function getMultiSelectProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+): string[] {
+  return prop?.type === "multi_select"
+    ? (prop.multi_select as NotionSelectItem[]).map((s) => s.name)
+    : [];
+}
+
+function getDateProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+): string | null {
+  return prop?.type === "date" ? prop.date?.start || null : null;
+}
+
+function getNumberProperty(
+  prop: PageObjectResponse["properties"][string] | undefined,
+  fallback: number | null = 0,
+): number | null {
+  return prop?.type === "number" && typeof prop.number === "number"
+    ? prop.number
+    : fallback;
 }
 
 // Cache for Data Source IDs in memory to avoid repeated metadata queries
@@ -36,11 +94,7 @@ async function getDataSourceId(
 
 // Helper to get Notion client based on environment
 export function getNotionClient(localEnv?: Env) {
-  // Use the passed env, or fallback to the imported cloudflare workers env, or fallback to process.env in local CLI environments
-  const apiKey =
-    localEnv?.NOTION_API_KEY ||
-    env?.NOTION_API_KEY ||
-    process.env.NOTION_API_KEY;
+  const apiKey = getEnvVar("NOTION_API_KEY", localEnv);
   if (!apiKey) {
     throw new Error(
       "NOTION_API_KEY is not defined. Please add it to your .env file or Cloudflare environment variables.",
@@ -102,17 +156,13 @@ export async function fetchInviteByCode(
     }
 
     // Get basic invite details
-    const nameProp = invitePage.properties[notionConfig.mappings.invites.name];
-    const inviteName =
-      nameProp?.type === "title"
-        ? nameProp.title?.[0]?.plain_text || "Invitasjon"
-        : "Invitasjon";
-
-    const codeProp = invitePage.properties[notionConfig.mappings.invites.code];
-    const inviteCode =
-      codeProp?.type === "rich_text"
-        ? codeProp.rich_text?.[0]?.plain_text || ""
-        : "";
+    const inviteName = getTitleProperty(
+      invitePage.properties[notionConfig.mappings.invites.name],
+      "Invitasjon",
+    );
+    const inviteCode = getRichTextProperty(
+      invitePage.properties[notionConfig.mappings.invites.code],
+    );
 
     // Fetch related guests
     const guestsRelation =
@@ -127,14 +177,13 @@ export async function fetchInviteByCode(
     if (guestIds.length > 0) {
       const guestPromises = guestIds.map(async (id) => {
         try {
-          const guestPage = await notion.pages.retrieve({ page_id: id });
+          const guestPage = (await notion.pages.retrieve({
+            page_id: id,
+          })) as PageObjectResponse;
           if ("properties" in guestPage) {
-            const guestNameProp =
-              guestPage.properties[notionConfig.mappings.guests.name];
-            const guestName =
-              guestNameProp?.type === "title"
-                ? guestNameProp.title?.[0]?.plain_text || ""
-                : "";
+            const guestName = getTitleProperty(
+              guestPage.properties[notionConfig.mappings.guests.name],
+            );
 
             const guestRsvpProp =
               guestPage.properties[notionConfig.mappings.guests.rsvp];
@@ -143,12 +192,9 @@ export async function fetchInviteByCode(
                 ? guestRsvpProp.status?.name || notionConfig.rsvpStatus.pending
                 : notionConfig.rsvpStatus.pending;
 
-            const guestAllergiesProp =
-              guestPage.properties[notionConfig.mappings.guests.allergies];
-            const guestAllergies =
-              guestAllergiesProp?.type === "select"
-                ? guestAllergiesProp.select?.name || ""
-                : "";
+            const guestAllergies = getSelectProperty(
+              guestPage.properties[notionConfig.mappings.guests.allergies],
+            );
 
             const guestTableProp =
               guestPage.properties[notionConfig.mappings.guests.table];
@@ -284,13 +330,12 @@ export async function fetchAllSeatingData(
 
     const tablesMap = new Map<string, TableWithGuests>();
 
-    for (const page of tablesResponse.results) {
+    for (const page of tablesResponse.results as PageObjectResponse[]) {
       if ("properties" in page) {
-        const nameProp = page.properties[notionConfig.mappings.tables.name];
-        const tableName =
-          nameProp?.type === "title"
-            ? nameProp.title?.[0]?.plain_text || "Bord"
-            : "Bord";
+        const tableName = getTitleProperty(
+          page.properties[notionConfig.mappings.tables.name],
+          "Bord",
+        );
 
         tablesMap.set(page.id, {
           id: page.id,
@@ -318,13 +363,11 @@ export async function fetchAllSeatingData(
     });
 
     // C. Map guests to their respective tables
-    for (const page of guestsResponse.results) {
+    for (const page of guestsResponse.results as PageObjectResponse[]) {
       if ("properties" in page) {
-        const nameProp = page.properties[notionConfig.mappings.guests.name];
-        const guestName =
-          nameProp?.type === "title"
-            ? nameProp.title?.[0]?.plain_text || ""
-            : "";
+        const guestName = getTitleProperty(
+          page.properties[notionConfig.mappings.guests.name],
+        );
 
         const tableProp = page.properties[notionConfig.mappings.guests.table];
         if (
@@ -433,8 +476,7 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
   const cacheKey = "notion_schedule";
 
   const programDbId =
-    currentEnv?.NOTION_PROGRAM_DATABASE_ID ||
-    process.env.NOTION_PROGRAM_DATABASE_ID ||
+    getEnvVar("NOTION_PROGRAM_DATABASE_ID", localEnv) ||
     notionConfig.databases.programId;
   if (!programDbId) {
     throw new Error("NOTION_PROGRAM_DATABASE_ID is not configured.");
@@ -469,17 +511,10 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
       const props = page.properties;
 
       // Title
-      const title =
-        props.Tittel?.type === "title"
-          ? props.Tittel.title?.[0]?.plain_text || "Uten tittel"
-          : "Uten tittel";
+      const title = getTitleProperty(props.Tittel, "Uten tittel");
 
       // Time ISO (for sorting)
-      const dateProp = props.Tidspunkt;
-      const timeIso =
-        dateProp?.type === "date" && dateProp.date?.start
-          ? dateProp.date.start
-          : null;
+      const timeIso = getDateProperty(props.Tidspunkt);
 
       // Description (safe fallback to multiple possible names)
       const descProp =
@@ -488,19 +523,10 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
         props.description ||
         props.Info ||
         props.Detaljer;
-      let description = "";
-      if (descProp?.type === "rich_text" && descProp.rich_text) {
-        description = (descProp.rich_text as NotionRichTextItem[])
-          .map((t) => t.plain_text)
-          .join("");
-      }
+      const description = getRichTextFull(descProp);
 
       // Categories
-      const catProp = props.Kategori;
-      const categories: string[] =
-        catProp?.type === "multi_select"
-          ? (catProp.multi_select as NotionSelectItem[]).map((s) => s.name)
-          : [];
+      const categories = getMultiSelectProperty(props.Kategori);
 
       return {
         title,
@@ -745,8 +771,7 @@ async function updateLocationsCache(
   const cacheKey = "notion_locations";
 
   const locationsDbId =
-    currentEnv?.NOTION_LOCATIONS_DATABASE_ID ||
-    process.env.NOTION_LOCATIONS_DATABASE_ID ||
+    getEnvVar("NOTION_LOCATIONS_DATABASE_ID", localEnv) ||
     notionConfig.databases.locationsId;
   if (!locationsDbId) {
     throw new Error("NOTION_LOCATIONS_DATABASE_ID is not configured.");
@@ -766,24 +791,15 @@ async function updateLocationsCache(
       const props = page.properties;
 
       // Name (title)
-      const name =
-        props.Name?.type === "title"
-          ? props.Name.title?.[0]?.plain_text || "Ukjent sted"
-          : "Ukjent sted";
+      const name = getTitleProperty(props.Name, "Ukjent sted");
 
       // Lat (number)
-      const lat =
-        props.Lat?.type === "number" && typeof props.Lat.number === "number"
-          ? props.Lat.number
-          : null;
+      const lat = getNumberProperty(props.Lat, null);
 
       // Long / Lng (number)
       const lng =
-        props.Long?.type === "number" && typeof props.Long.number === "number"
-          ? props.Long.number
-          : props.Lng?.type === "number" && typeof props.Lng.number === "number"
-            ? props.Lng.number
-            : null;
+        getNumberProperty(props.Long, null) ??
+        getNumberProperty(props.Lng, null);
 
       // Google Maps (url)
       const googleMapsUrl =
@@ -794,17 +810,14 @@ async function updateLocationsCache(
       // Ikon (text or select)
       let ikon = "default";
       const ikonProp = props.Ikon || props.ikon;
-      if (ikonProp?.type === "rich_text" && ikonProp.rich_text) {
-        ikon =
-          (ikonProp.rich_text as NotionRichTextItem[])
-            .map((t) => t.plain_text)
-            .join("")
-            .trim()
-            .toLowerCase() || "default";
-      } else if (ikonProp?.type === "select" && ikonProp.select) {
-        ikon =
-          (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
-          "default";
+      if (ikonProp) {
+        if (ikonProp.type === "rich_text") {
+          ikon = getRichTextFull(ikonProp).trim().toLowerCase() || "default";
+        } else if (ikonProp.type === "select" && ikonProp.select) {
+          ikon =
+            (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
+            "default";
+        }
       }
 
       // Map categories to dynamic fallback icons

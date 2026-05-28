@@ -1,5 +1,6 @@
 import type { Env } from "cloudflare:workers";
 import crypto from "node:crypto";
+import { getEnvVar } from "./env";
 
 // In-memory fallback rate-limiting cache for local development
 const memoryCache = new Map<string, string>();
@@ -30,12 +31,9 @@ export function secureCompare(a: string, b: string): boolean {
  * Retrieve the secret key used for session signing.
  */
 function getSessionSecret(env?: Env): string {
-  // Use wrangler env or fallback to process.env or a secure default for dev
   return (
-    env?.SESSION_SECRET ||
-    env?.NOTION_API_KEY ||
-    process.env.SESSION_SECRET ||
-    process.env.NOTION_API_KEY ||
+    getEnvVar("SESSION_SECRET", env) ||
+    getEnvVar("NOTION_API_KEY", env) ||
     "fallback-wedding-session-secret-key-development"
   );
 }
