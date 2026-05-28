@@ -1,4 +1,22 @@
-import crypto from 'node:crypto';
+import crypto from "node:crypto";
+
+interface EnvConfig {
+  SESSION_SECRET?: string;
+  NOTION_API_KEY?: string;
+  WEDDING_CACHE?: KVNamespace;
+  SITE_PIN?: string;
+  [key: string]: unknown;
+}
+
+interface KVNamespace {
+  get(key: string): Promise<string | null>;
+  put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<void>;
+  delete(key: string): Promise<void>;
+}
 
 // In-memory fallback rate-limiting cache for local development
 const memoryCache = new Map<string, string>();
@@ -20,22 +38,22 @@ export interface RateLimitResult {
  * It hashes both strings to SHA-256 (resulting in equal length buffers) and compares them.
  */
 export function secureCompare(a: string, b: string): boolean {
-  const hashA = crypto.createHash('sha256').update(a).digest();
-  const hashB = crypto.createHash('sha256').update(b).digest();
+  const hashA = crypto.createHash("sha256").update(a).digest();
+  const hashB = crypto.createHash("sha256").update(b).digest();
   return crypto.timingSafeEqual(hashA, hashB);
 }
 
 /**
  * Retrieve the secret key used for session signing.
  */
-function getSessionSecret(env: any): string {
+function getSessionSecret(env?: EnvConfig): string {
   // Use wrangler env or fallback to process.env or a secure default for dev
   return (
     env?.SESSION_SECRET ||
     env?.NOTION_API_KEY ||
     process.env.SESSION_SECRET ||
     process.env.NOTION_API_KEY ||
-    'fallback-wedding-session-secret-key-development'
+    "fallback-wedding-session-secret-key-development"
   );
 }
 
@@ -43,11 +61,14 @@ function getSessionSecret(env: any): string {
  * Generate a secure, cryptographically signed session cookie value.
  * The cookie is valid for 30 days and includes an expiration date.
  */
-export function generateSessionCookie(env: any): string {
+export function generateSessionCookie(env?: EnvConfig): string {
   const secret = getSessionSecret(env);
   const expiration = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
   const message = `session:${expiration}`;
-  const signature = crypto.createHmac('sha256', secret).update(message).digest('hex');
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(message)
+    .digest("hex");
   return `${expiration}.${signature}`;
 }
 
@@ -55,25 +76,31 @@ export function generateSessionCookie(env: any): string {
  * Verify a signed session cookie value.
  * Returns true if the cookie signature is valid and it has not expired.
  */
-export function verifySessionCookie(cookieValue: string, env: any): boolean {
+export function verifySessionCookie(
+  cookieValue: string,
+  env?: EnvConfig,
+): boolean {
   try {
-    const parts = cookieValue.split('.');
+    const parts = cookieValue.split(".");
     if (parts.length !== 2) return false;
 
     const [expirationStr, signature] = parts;
     const expiration = parseInt(expirationStr, 10);
 
     // Check if expired
-    if (isNaN(expiration) || expiration < Date.now()) {
+    if (Number.isNaN(expiration) || expiration < Date.now()) {
       return false;
     }
 
     const secret = getSessionSecret(env);
     const message = `session:${expiration}`;
-    const expectedSignature = crypto.createHmac('sha256', secret).update(message).digest('hex');
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(message)
+      .digest("hex");
 
-    const buf1 = Buffer.from(signature, 'hex');
-    const buf2 = Buffer.from(expectedSignature, 'hex');
+    const buf1 = Buffer.from(signature, "hex");
+    const buf2 = Buffer.from(expectedSignature, "hex");
 
     if (buf1.length !== buf2.length) {
       return false;
@@ -88,7 +115,10 @@ export function verifySessionCookie(cookieValue: string, env: any): boolean {
 /**
  * Retrieves the rate limit data for a given IP.
  */
-async function getRateLimitData(ip: string, kv?: any): Promise<RateLimitData> {
+async function getRateLimitData(
+  ip: string,
+  kv?: KVNamespace,
+): Promise<RateLimitData> {
   const key = `pin_limit:${ip}`;
   let dataStr: string | null = null;
 
@@ -116,7 +146,11 @@ async function getRateLimitData(ip: string, kv?: any): Promise<RateLimitData> {
 /**
  * Saves rate limit data for a given IP.
  */
-async function saveRateLimitData(ip: string, data: RateLimitData, kv?: any): Promise<void> {
+async function saveRateLimitData(
+  ip: string,
+  data: RateLimitData,
+  kv?: KVNamespace,
+): Promise<void> {
   const key = `pin_limit:${ip}`;
   const dataStr = JSON.stringify(data);
 
@@ -135,7 +169,10 @@ async function saveRateLimitData(ip: string, data: RateLimitData, kv?: any): Pro
 /**
  * Check if the IP is allowed to attempt a PIN validation.
  */
-export async function checkRateLimit(ip: string, kv?: any): Promise<RateLimitResult> {
+export async function checkRateLimit(
+  ip: string,
+  kv?: KVNamespace,
+): Promise<RateLimitResult> {
   const data = await getRateLimitData(ip, kv);
   const now = Date.now();
 
@@ -165,7 +202,10 @@ export async function checkRateLimit(ip: string, kv?: any): Promise<RateLimitRes
  * Record a failed attempt. Locks the IP for 15 minutes on the 5th failure.
  * Returns the lockout status.
  */
-export async function recordFailedAttempt(ip: string, kv?: any): Promise<RateLimitResult> {
+export async function recordFailedAttempt(
+  ip: string,
+  kv?: KVNamespace,
+): Promise<RateLimitResult> {
   const data = await getRateLimitData(ip, kv);
   const now = Date.now();
 
@@ -188,7 +228,10 @@ export async function recordFailedAttempt(ip: string, kv?: any): Promise<RateLim
 /**
  * Reset the rate limiter upon successful authentication.
  */
-export async function resetRateLimit(ip: string, kv?: any): Promise<void> {
+export async function resetRateLimit(
+  ip: string,
+  kv?: KVNamespace,
+): Promise<void> {
   const key = `pin_limit:${ip}`;
   if (kv) {
     try {

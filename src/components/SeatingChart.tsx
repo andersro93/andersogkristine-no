@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 
 interface Guest {
   id: string;
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function SeatingChart({ tables }: Props) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   // Compute matched guest IDs
   const matchedGuestIds = useMemo(() => {
@@ -55,6 +55,7 @@ export default function SeatingChart({ tables }: Props) {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <title>Search Icon</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -72,12 +73,24 @@ export default function SeatingChart({ tables }: Props) {
             />
             {query && (
               <button
-                onClick={() => setQuery('')}
+                type="button"
+                onClick={() => setQuery("")}
                 className="text-brand-title/40 hover:text-brand-title absolute right-4 focus:outline-none"
                 aria-label="Tøm søk"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Tøm søk</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -89,7 +102,7 @@ export default function SeatingChart({ tables }: Props) {
           <div className="mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md animate-fade-in">
             {matchCount > 0
               ? `Fant ${matchCount} treff!`
-              : 'Ingen gjester funnet med det navnet.'}
+              : "Ingen gjester funnet med det navnet."}
           </div>
         )}
       </div>
@@ -98,22 +111,23 @@ export default function SeatingChart({ tables }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {tables.map((table) => {
           const isHighlighted = isSearching && matchedTableIds.has(table.id);
-          const isDimmed = isSearching && !matchedTableIds.has(table.id) && matchCount > 0;
+          const isDimmed =
+            isSearching && !matchedTableIds.has(table.id) && matchCount > 0;
 
           return (
             <div
               key={table.id}
               className={`bg-[#fcfbf9]/85 backdrop-blur-sm border rounded-2xl p-6 shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
                 isHighlighted
-                  ? 'border-brand-text/50 shadow-lg shadow-brand-text/10 scale-[1.02] bg-[#fffdfa]'
+                  ? "border-brand-text/50 shadow-lg shadow-brand-text/10 scale-[1.02] bg-[#fffdfa]"
                   : isDimmed
-                  ? 'border-brand-title/5 opacity-40'
-                  : 'border-brand-title/10 hover:shadow-lg'
+                    ? "border-brand-title/5 opacity-40"
+                    : "border-brand-title/10 hover:shadow-lg"
               }`}
             >
               <h3
                 className={`font-serif text-2xl text-center mb-8 transition-colors duration-300 ${
-                  isHighlighted ? 'text-brand-text' : 'text-brand-title'
+                  isHighlighted ? "text-brand-text" : "text-brand-title"
                 }`}
               >
                 {table.name}
@@ -134,8 +148,8 @@ export default function SeatingChart({ tables }: Props) {
                         key={guest.id}
                         className={`text-sm px-2 py-1 rounded transition duration-150 flex items-center justify-between ${
                           isMatch
-                            ? 'bg-brand-text/8 text-brand-text font-bold border-l-2 border-brand-text pl-1.5'
-                            : 'text-brand-title/80 hover:text-brand-text hover:bg-brand-title/5'
+                            ? "bg-brand-text/8 text-brand-text font-bold border-l-2 border-brand-text pl-1.5"
+                            : "text-brand-title/80 hover:text-brand-text hover:bg-brand-title/5"
                         }`}
                       >
                         <span className="font-medium">{guest.name}</span>

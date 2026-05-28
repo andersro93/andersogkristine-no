@@ -1,6 +1,9 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { getPlaylistTracks, getSpotifyPlaylistUrl } from '../../../services/spotify';
+import { env } from "cloudflare:workers";
+import type { APIRoute } from "astro";
+import {
+  getPlaylistTracks,
+  getSpotifyPlaylistUrl,
+} from "../../../services/spotify";
 
 export const GET: APIRoute = async () => {
   try {
@@ -14,17 +17,17 @@ export const GET: APIRoute = async () => {
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   } catch (error) {
-    console.error('Error in Spotify Playlist API:', error);
+    console.error("Error in Spotify Playlist API:", error);
     return new Response(
-      JSON.stringify({ error: 'Kunne ikke hente spilleliste.' }),
+      JSON.stringify({ error: "Kunne ikke hente spilleliste." }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 };

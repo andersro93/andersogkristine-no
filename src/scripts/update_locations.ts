@@ -5,16 +5,17 @@
  * The JSON should be an array of objects with the shape:
  * [{ "id": "<Notion page ID>", "lat": <number>, "lng": <number> }, ...]
  */
+
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { bulkUpdateLocations } from "../services/notion";
-import * as fs from "fs";
-import * as path from "path";
 
 async function main() {
   const updatesPath = path.resolve(process.cwd(), "locations_updates.json");
   if (!fs.existsSync(updatesPath)) {
     console.error(`❌ Missing file: ${updatesPath}`);
     console.error(
-      "Create a JSON file named 'locations_updates.json' with an array of {id, lat, lng} objects."
+      "Create a JSON file named 'locations_updates.json' with an array of {id, lat, lng} objects.",
     );
     process.exit(1);
   }

@@ -1,6 +1,6 @@
 /// <reference types="astro/client" />
 
-declare module 'cloudflare:workers' {
+declare module "cloudflare:workers" {
   interface Env {
     NOTION_API_KEY: string;
     NOTION_INVITES_DATABASE_ID: string;

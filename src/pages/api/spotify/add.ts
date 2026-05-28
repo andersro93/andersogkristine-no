@@ -1,20 +1,20 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { addTrackToPlaylist, getPlaylistTracks } from '../../../services/spotify';
+import { env } from "cloudflare:workers";
+import type { APIRoute } from "astro";
+import {
+  addTrackToPlaylist,
+  getPlaylistTracks,
+} from "../../../services/spotify";
 
 export const POST: APIRoute = async (context) => {
   try {
     const body = await context.request.json();
     const { uri } = body;
 
-    if (!uri || typeof uri !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Spor-URI mangler.' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+    if (!uri || typeof uri !== "string") {
+      return new Response(JSON.stringify({ error: "Spor-URI mangler." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // 1. Add track to Spotify
@@ -30,17 +30,17 @@ export const POST: APIRoute = async (context) => {
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   } catch (error) {
-    console.error('Error in Spotify Add API:', error);
+    console.error("Error in Spotify Add API:", error);
     return new Response(
-      JSON.stringify({ error: 'Kunne ikke legge til sangen i spillelisten.' }),
+      JSON.stringify({ error: "Kunne ikke legge til sangen i spillelisten." }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 };

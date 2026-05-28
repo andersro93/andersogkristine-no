@@ -1,15 +1,15 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { searchTracks, getPlaylistTracks } from '../../../services/spotify';
+import { env } from "cloudflare:workers";
+import type { APIRoute } from "astro";
+import { getPlaylistTracks, searchTracks } from "../../../services/spotify";
 
 export const GET: APIRoute = async (context) => {
   const url = new URL(context.request.url);
-  const query = url.searchParams.get('q');
+  const query = url.searchParams.get("q");
 
-  if (!query || !query.trim()) {
+  if (!query?.trim()) {
     return new Response(JSON.stringify([]), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -29,16 +29,16 @@ export const GET: APIRoute = async (context) => {
 
     return new Response(JSON.stringify(mappedResults), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error('Error in Spotify Search API:', error);
+    console.error("Error in Spotify Search API:", error);
     return new Response(
-      JSON.stringify({ error: 'Kunne ikke søke etter sanger.' }),
+      JSON.stringify({ error: "Kunne ikke søke etter sanger." }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 };

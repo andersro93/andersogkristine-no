@@ -1,22 +1,21 @@
-import { defineConfig } from 'astro/config';
-import tailwindcss from '@tailwindcss/vite';
-import cloudflare from '@astrojs/cloudflare';
-import react from '@astrojs/react';
+import cloudflare from "@astrojs/cloudflare";
+import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'server',
+  output: "server",
   adapter: cloudflare({
-    imageService: 'passthrough'
+    imageService: "passthrough",
   }),
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
     server: {
       watch: {
-        ignored: ['**/.wrangler/**']
-      }
-    }
+        ignored: ["**/.wrangler/**"],
+      },
+    },
   },
 });
-

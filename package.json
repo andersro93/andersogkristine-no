@@ -9,6 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "lint": "biome lint .",
+    "format": "biome format .",
     "astro": "astro",
     "dev:clean": "rm -rf .wrangler/state/v3 .astro"
   },
@@ -23,6 +25,7 @@
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
     "@cloudflare/workers-types": "^4.20260527.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3"
