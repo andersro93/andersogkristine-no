@@ -626,6 +626,15 @@ function getIconForEvent(title: string, categories: string[]): string {
   return "default";
 }
 
+export interface LocationActivity {
+  type: "program" | "egentid";
+  title: string;
+  time?: string;
+  description?: string;
+  suggestedBy?: string;
+  suggestedByEmoji?: string;
+}
+
 export interface WeddingLocation {
   id: string;
   name: string;
@@ -633,6 +642,7 @@ export interface WeddingLocation {
   lng: number;
   googleMapsUrl?: string;
   ikon?: string;
+  activities?: LocationActivity[];
 }
 
 const fallbackLocations: WeddingLocation[] = [
@@ -772,9 +782,14 @@ async function updateLocationsCache(
 
   const locationsDsId = await getDataSourceId(notion, locationsDbId);
 
-  const response = await notion.dataSources.query({
-    data_source_id: locationsDsId,
-  });
+  // Fetch locations, schedule, contributors, and egentid items in parallel
+  const [response, scheduleEvents, rawContributors, rawEgentidItems] =
+    await Promise.all([
+      notion.dataSources.query({ data_source_id: locationsDsId }),
+      fetchScheduleFromNotion(localEnv),
+      fetchRawContributors(localEnv),
+      fetchRawEgentidItems(localEnv),
+    ]);
 
   const locations: WeddingLocation[] = (
     response.results as PageObjectResponse[]
@@ -816,6 +831,39 @@ async function updateLocationsCache(
       // Map categories to dynamic fallback icons
       ikon = getIconForLocation(name, ikon);
 
+      // Map program schedule events for this location
+      const locationSchedule = scheduleEvents.filter(
+        (e) => e.locationId === page.id,
+      );
+
+      // Map Egentid recommendations for this location
+      const locationEgentids = rawEgentidItems.filter((item) =>
+        item.locationIds.includes(page.id),
+      );
+
+      const activities: LocationActivity[] = [];
+
+      for (const e of locationSchedule) {
+        activities.push({
+          type: "program",
+          title: e.title,
+          time: e.time,
+        });
+      }
+
+      for (const item of locationEgentids) {
+        const contributor = rawContributors.find(
+          (c) => c.id === item.contributorId,
+        );
+        activities.push({
+          type: "egentid",
+          title: item.title,
+          description: item.description,
+          suggestedBy: contributor?.name || "Ukjent",
+          suggestedByEmoji: contributor?.emoji || "📍",
+        });
+      }
+
       return {
         id: page.id,
         name,
@@ -823,6 +871,7 @@ async function updateLocationsCache(
         lng,
         googleMapsUrl,
         ikon,
+        activities,
       };
     })
     .filter((loc) => loc.lat !== null && loc.lng !== null) as WeddingLocation[];
@@ -915,4 +964,263 @@ export async function bulkUpdateLocations(
       } as any,
     });
   }
+}
+
+interface RawContributor {
+  id: string;
+  name: string;
+  photo: string;
+  role: string;
+  emoji: string;
+}
+
+interface RawEgentidItem {
+  id: string;
+  title: string;
+  description: string;
+  contributorId: string;
+  locationIds: string[];
+}
+
+export interface Contributor {
+  id: string;
+  name: string;
+  photo: string;
+  role: string;
+  description: string;
+  emoji?: string;
+  suggestions: string[];
+}
+
+// Helper to fetch raw contributors from Notion
+async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const medvirkendeDbId =
+    getEnvVar("NOTION_MEDVIRKENDE_DATABASE_ID", localEnv) ||
+    notionConfig.databases.medvirkendeId;
+
+  if (!medvirkendeDbId) {
+    throw new Error("NOTION_MEDVIRKENDE_DATABASE_ID is not configured.");
+  }
+
+  const dsId = await getDataSourceId(notion, medvirkendeDbId);
+  const response = await notion.dataSources.query({
+    data_source_id: dsId,
+  });
+
+  return (response.results as PageObjectResponse[])
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page) => {
+      const props = page.properties;
+      const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
+      const role = getRichTextFull(props.Role || props.Rolle, "");
+      const emoji = getRichTextFull(props.Emoji, "");
+
+      // Handle photo (Bilde files property)
+      let photo = "";
+      const bildeProp =
+        props.Bilde || props.bilde || props.Photo || props.photo;
+      if (
+        bildeProp?.type === "files" &&
+        Array.isArray(bildeProp.files) &&
+        bildeProp.files.length > 0
+      ) {
+        const fileObj = bildeProp.files[0];
+        if (fileObj.type === "file") {
+          photo = fileObj.file?.url || "";
+        } else if (fileObj.type === "external") {
+          photo = fileObj.external?.url || "";
+        }
+      }
+
+      // Fallback photo
+      if (!photo) {
+        photo = `/images/egentid/${name.toLowerCase()}.webp`;
+      }
+
+      return {
+        id: page.id,
+        name,
+        photo,
+        role,
+        emoji,
+      };
+    });
+}
+
+// Helper to fetch raw Egentid suggestions from Notion
+async function fetchRawEgentidItems(localEnv?: Env): Promise<RawEgentidItem[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const egentidDbId =
+    getEnvVar("NOTION_EGENTID_DATABASE_ID", localEnv) ||
+    notionConfig.databases.egentidId;
+
+  if (!egentidDbId) {
+    throw new Error("NOTION_EGENTID_DATABASE_ID is not configured.");
+  }
+
+  const dsId = await getDataSourceId(notion, egentidDbId);
+  const response = await notion.dataSources.query({
+    data_source_id: dsId,
+  });
+
+  return (response.results as PageObjectResponse[])
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page) => {
+      const props = page.properties;
+      const title = getTitleProperty(
+        props.Name || props.Tittel || props.tittel,
+        "",
+      );
+      const description = getRichTextFull(
+        props.Beskrivelse || props.Info || props.Details,
+        "",
+      );
+
+      // Medvirkende (relation)
+      const medvirkendeProp =
+        props.Medvirkende ||
+        props.medvirkende ||
+        props.Contributor ||
+        props.contributor;
+      const contributorId =
+        medvirkendeProp?.type === "relation" &&
+        Array.isArray(medvirkendeProp.relation) &&
+        medvirkendeProp.relation.length > 0
+          ? medvirkendeProp.relation[0].id
+          : "";
+
+      // Sted (relation)
+      const stedProp =
+        props["📍 Sted"] ||
+        props.Sted ||
+        props.sted ||
+        props.Location ||
+        props.location;
+      const locationIds: string[] = [];
+      if (stedProp?.type === "relation" && Array.isArray(stedProp.relation)) {
+        locationIds.push(...stedProp.relation.map((r: any) => r.id));
+      }
+
+      return {
+        id: page.id,
+        title,
+        description,
+        contributorId,
+        locationIds,
+      };
+    });
+}
+
+/**
+ * Retrieves the Egentid contributors and suggestions from Notion,
+ * cached in Cloudflare KV with SWR logic. Only returns contributors
+ * who have at least one active suggestion.
+ */
+export async function fetchEgentidData(
+  localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
+): Promise<Contributor[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_egentid_contributors";
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(
+            `Egentid cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+          );
+          const updatePromise = updateEgentidCache(currentEnv).catch((err) => {
+            console.error("Error in background Egentid sync:", err);
+          });
+
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("KV read error for Egentid contributors:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("Egentid cache miss, performing synchronous fetch...");
+  return await updateEgentidCache(currentEnv);
+}
+
+async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_egentid_contributors";
+
+  console.log("Updating Egentid KV cache...");
+  const [rawContributors, rawEgentidItems] = await Promise.all([
+    fetchRawContributors(localEnv),
+    fetchRawEgentidItems(localEnv),
+  ]);
+
+  const contributorsList: Contributor[] = rawContributors
+    .map((c) => {
+      // Find suggestions for this contributor
+      const contributorItems = rawEgentidItems.filter(
+        (item) => item.contributorId === c.id,
+      );
+
+      const suggestions = contributorItems.map((item) => {
+        return `<strong>${item.title}</strong> &mdash; ${item.description}`;
+      });
+
+      // Maintain static copy fallback for description if none exists in DB
+      let description = `Anbefalinger fra ${c.name}.`;
+      if (c.name.toLowerCase() === "kristine") {
+        description = "Koselige kafeer og rolige, grønne lunger.";
+      } else if (c.name.toLowerCase() === "anders") {
+        description = "Beste ølserveringer, rask mat og utsiktspunkter.";
+      } else if (c.name.toLowerCase() === "nora") {
+        description = "Lekeplasser, vaffel og byens beste isbarer.";
+      } else if (c.name.toLowerCase() === "lilo") {
+        description = "Hundeparker, turområder og de beste snusestoppene.";
+      }
+
+      return {
+        id: c.id,
+        name: c.name,
+        photo: c.photo,
+        role: c.role || `${c.name}s favoritter`,
+        description,
+        emoji: c.emoji,
+        suggestions,
+      };
+    })
+    // Only keep contributors who actually have Egentid suggestions
+    .filter((c) => c.suggestions.length > 0);
+
+  // Save to KV cache
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: contributorsList,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log("Egentid KV cache updated successfully.");
+    } catch (err) {
+      console.error("KV write error for Egentid:", err);
+    }
+  }
+
+  return contributorsList;
 }

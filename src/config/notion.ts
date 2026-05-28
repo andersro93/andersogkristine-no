@@ -16,6 +16,12 @@ export const notionConfig = {
     locationsId:
       process.env.NOTION_LOCATIONS_DATABASE_ID ||
       "36e8d3696e2d80999344e01768cb51d3",
+    egentidId:
+      process.env.NOTION_EGENTID_DATABASE_ID ||
+      "36e8d3696e2d802b9123c611a0cdac1c",
+    medvirkendeId:
+      process.env.NOTION_MEDVIRKENDE_DATABASE_ID ||
+      "36e8d3696e2d80ccb490ff3e45af3cdc",
   },
 
   // Data Source IDs (used in modern 2026 Notion API query & retrieve endpoints)

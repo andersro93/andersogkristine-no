@@ -56,6 +56,15 @@ interface LeafletStatic {
   latLngBounds(bounds: [number, number][]): LeafletLatLngBounds;
 }
 
+export interface LocationActivity {
+  type: "program" | "egentid";
+  title: string;
+  time?: string;
+  description?: string;
+  suggestedBy?: string;
+  suggestedByEmoji?: string;
+}
+
 export interface WeddingLocation {
   id: string;
   name: string;
@@ -63,6 +72,7 @@ export interface WeddingLocation {
   lng: number;
   googleMapsUrl?: string;
   ikon?: string;
+  activities?: LocationActivity[];
 }
 
 export default function InteractiveMap() {
@@ -262,10 +272,73 @@ export default function InteractiveMap() {
 
     // Plot each marker
     filtered.forEach((loc) => {
+      const programActs = (loc.activities || []).filter(
+        (a) => a.type === "program",
+      );
+      const eigentidActs = (loc.activities || []).filter(
+        (a) => a.type === "egentid",
+      );
+
+      let activitiesHtml = "";
+
+      if (programActs.length > 0) {
+        activitiesHtml += `
+          <div class="mt-2">
+            <h5 class="text-[10px] font-bold uppercase tracking-wider text-brand-title/60 mb-1">Program</h5>
+            <ul class="space-y-1 text-xs list-none pl-0 my-0">
+              ${programActs
+                .map(
+                  (a) => `
+                <li class="flex items-start gap-1.5 my-0.5">
+                  <span class="font-bold text-brand-title">${a.time}</span>
+                  <span class="text-brand-text/90">${a.title}</span>
+                </li>
+              `,
+                )
+                .join("")}
+            </ul>
+          </div>
+        `;
+      }
+
+      if (eigentidActs.length > 0) {
+        activitiesHtml += `
+          <div class="mt-2 pt-2 border-t border-brand-title/10">
+            <h5 class="text-[10px] font-bold uppercase tracking-wider text-brand-title/60 mb-1">Anbefalinger / Egentid</h5>
+            <ul class="space-y-2 text-xs list-none pl-0 my-0">
+              ${eigentidActs
+                .map(
+                  (a) => `
+                <li class="space-y-0.5 my-1">
+                  <div class="font-medium text-brand-title flex items-center gap-1">
+                    <span>${a.suggestedByEmoji || "📍"}</span>
+                    <span>${a.suggestedBy}</span>
+                  </div>
+                  <p class="text-[11px] text-brand-text/80 leading-snug my-0">${a.title}</p>
+                </li>
+              `,
+                )
+                .join("")}
+            </ul>
+          </div>
+        `;
+      }
+
+      let typeLabel = "Lokasjon";
+      if (loc.ikon === "ring") typeLabel = "Bryllupsfest";
+      else if (loc.ikon === "church") typeLabel = "Kirke";
+      else if (loc.ikon === "hotel") typeLabel = "Hotell";
+      else if (loc.ikon === "park") typeLabel = "Park";
+      else if (loc.ikon === "food") typeLabel = "Mat & Drikke";
+      else if (loc.ikon === "buss") typeLabel = "Transport";
+
       const popupHtml = `
         <div class="font-sans p-1 text-brand-title max-w-xs space-y-1">
-          <h4 class="font-serif font-semibold text-lg border-b border-brand-title/15 pb-1">${loc.name}</h4>
-          <p class="text-xs text-brand-text/75 uppercase tracking-wider font-medium">Type: ${loc.ikon}</p>
+          <div class="flex items-center justify-between border-b border-brand-title/15 pb-1 gap-4">
+            <h4 class="font-serif font-semibold text-base leading-tight my-0">${loc.name}</h4>
+            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-brand-title/10 text-brand-title rounded shrink-0">${typeLabel}</span>
+          </div>
+          ${activitiesHtml}
           ${
             loc.googleMapsUrl
               ? `<a href="${loc.googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-title hover:underline mt-2 pt-1 block">Veibeskrivelse i Google Maps &rarr;</a>`
