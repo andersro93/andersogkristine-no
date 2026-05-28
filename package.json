@@ -6,8 +6,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "bun run src/scripts/prebuild.ts && astro dev",
+    "build": "bun run src/scripts/prebuild.ts && astro build",
     "preview": "astro preview",
     "lint": "biome lint .",
     "format": "biome format .",
