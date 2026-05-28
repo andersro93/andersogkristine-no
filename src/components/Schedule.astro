@@ -184,6 +184,33 @@ const getIconSvg = (iconName?: string) => {
             <p class="font-sans text-sm leading-relaxed text-brand-text/85 font-light">
               {event.description}
             </p>
+            {event.locationId && (
+              <a
+                href={`/kart?loc=${event.locationId}`}
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-title hover:text-brand-text hover:underline mt-3 select-none transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.75"
+                  stroke="currentColor"
+                  class="w-3.5 h-3.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M19.5 10.5c0 7.14-7.5 11.25-7.5 11.25S4.5 17.64 4.5 10.5a7.5 7.5 0 1 1 15 0z"
+                  />
+                </svg>
+                <span>Se kart</span>
+              </a>
+            )}
           </div>
         )}
 

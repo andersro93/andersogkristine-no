@@ -68,12 +68,14 @@ export const weddingConfig = {
       description:
         "Vi anbefaler å beregne litt god tid til oppmøte da det er gateparkering for de som kommer med bil og kirken er i et populært område.",
       icon: "church",
+      locationId: "36e8d369-6e2d-80d0-aa80-ed997494bad7",
     },
     {
       time: "13:00",
       title: "Vielse",
       description: "Vielsen starter klokka 13:00",
       icon: "ring",
+      locationId: "36e8d369-6e2d-80d0-aa80-ed997494bad7",
     },
     {
       time: "14:40",
@@ -81,6 +83,7 @@ export const weddingConfig = {
       description:
         "Etter vielsen så blir det fotografering med gjester, forlovede og brudepar i Birkelunden, like ved kirken.",
       icon: "camera",
+      locationId: "36e8d369-6e2d-808d-a2cd-fff18e7bc24f",
     },
     {
       time: "15:00",
@@ -95,31 +98,36 @@ export const weddingConfig = {
       description:
         "Tårnet åpner klokka 16:00 og det serveres aperitiff og snacks i nest øverste etasje",
       icon: "glass",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "17:00",
       title: "Til bords",
       description:
-        "Vi trekker oss opp til øverste etasje og finner plassene ved bordene",
+        "Vi trekker oss opp to toppetasjen og finner plassene ved bordene",
       icon: "food",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "17:25",
       title: "Forrett",
       description: "Til forrett serveres XXX",
       icon: "food",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "18:40",
       title: "Hovedrett",
       description: "Til hovedrett serveres YYY",
       icon: "food",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "19:50",
       title: "Dessert",
       description: "Til dessert serveres ZZZ",
       icon: "food",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
 
     {
@@ -128,12 +136,14 @@ export const weddingConfig = {
       description:
         "Etter maten blir det kaker og i etasjen under mens det ryddes i toppetasjen",
       icon: "cake",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "21:10",
       title: "Fest (DJ / bar åpen)",
       description: "Baren åpner og festen fortsetter med musikk og dans",
       icon: "music",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "00:00",
@@ -141,12 +151,14 @@ export const weddingConfig = {
       description:
         "Det serveres enkel nattmat for de blir sultne utover kvelden",
       icon: "food",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "01:30",
       title: "Siste bestilling",
       description: "Last call i baren!",
       icon: "bell",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
     {
       time: "02:00",
@@ -154,6 +166,7 @@ export const weddingConfig = {
       description:
         "Festen avsluttes på Tårnet og vi takker for en fantastisk dag!",
       icon: "sleep",
+      locationId: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
     },
   ],
   accommodations: [

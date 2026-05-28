@@ -399,6 +399,7 @@ export interface ScheduleEvent {
   title: string;
   description: string;
   icon: string;
+  locationId?: string;
 }
 
 /**
@@ -453,6 +454,7 @@ interface RawScheduleEvent {
   timeIso: string | null;
   description: string;
   categories: string[];
+  locationId?: string;
 }
 
 async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
@@ -514,11 +516,21 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
       // Categories
       const categories = getMultiSelectProperty(props.Kategori);
 
+      // Sted (relation)
+      const stedProp = props.Sted;
+      const locationId =
+        stedProp?.type === "relation" &&
+        Array.isArray(stedProp.relation) &&
+        stedProp.relation.length > 0
+          ? stedProp.relation[0].id
+          : undefined;
+
       return {
         title,
         timeIso,
         description,
         categories,
+        locationId,
       };
     })
     // Filter out items with no start time
@@ -549,6 +561,7 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
       title: e.title,
       description: e.description,
       icon,
+      locationId: e.locationId,
     };
   });
 

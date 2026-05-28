@@ -71,6 +71,9 @@ export default function InteractiveMap() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocationActive, setUserLocationActive] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    null,
+  );
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -287,7 +290,8 @@ export default function InteractiveMap() {
   }, [locations, searchQuery]);
 
   // 4. Focus map on location clicked in sidebar
-  const handleLocationClick = (loc: WeddingLocation) => {
+  const handleLocationClick = useCallback((loc: WeddingLocation) => {
+    setSelectedLocationId(loc.id);
     if (!mapRef.current) return;
 
     mapRef.current.setView([loc.lat, loc.lng], 16);
@@ -296,7 +300,25 @@ export default function InteractiveMap() {
     if (marker) {
       marker.openPopup();
     }
-  };
+  }, []);
+
+  // 4b. Focus location from URL query parameter (loc) on mount/load
+  useEffect(() => {
+    if (isLoading || locations.length === 0 || !mapRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const targetLocId = params.get("loc");
+    if (targetLocId) {
+      const targetLoc = locations.find((l) => l.id === targetLocId);
+      if (targetLoc) {
+        // Subtle delay to ensure markers have finished rendering on map container
+        const timer = setTimeout(() => {
+          handleLocationClick(targetLoc);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoading, locations, handleLocationClick]);
 
   // 5. Geolocation handler
   const handleLocateUser = () => {
@@ -450,12 +472,17 @@ export default function InteractiveMap() {
               if (loc.ikon === "park") iconSymbol = "🌳";
               if (loc.ikon === "food") iconSymbol = "🍻";
 
+              const isSelected = loc.id === selectedLocationId;
+              const activeBgClass = isSelected
+                ? "bg-brand-title/10 border-l-4 border-l-brand-title pl-2"
+                : "hover:bg-brand-title/5 active:bg-brand-title/10 border-l-4 border-l-transparent";
+
               return (
                 <button
                   type="button"
                   key={loc.id}
                   onClick={() => handleLocationClick(loc)}
-                  className="w-full text-left p-3 pt-4 rounded-lg flex items-center gap-3 hover:bg-brand-title/5 active:bg-brand-title/10 transition group border-0 bg-transparent cursor-pointer"
+                  className={`w-full text-left p-3 pt-4 rounded-lg flex items-center gap-3 transition group border-0 bg-transparent cursor-pointer ${activeBgClass}`}
                 >
                   <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">
                     {iconSymbol}
