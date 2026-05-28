@@ -20,7 +20,7 @@ export default function SpotifyPlaylist() {
   const [addingUri, setAddingUri] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const debounceTimeoutRef = useRef<Timer | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Load initial playlist tracks
   useEffect(() => {
