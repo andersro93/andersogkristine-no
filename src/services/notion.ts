@@ -288,3 +288,426 @@ export async function fetchAllSeatingData(): Promise<TableWithGuests[]> {
     throw error;
   }
 }
+
+export interface ScheduleEvent {
+  time: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+/**
+ * Retrieves the wedding schedule timeline from the Notion program database,
+ * cached in Cloudflare KV with Stale-While-Revalidate (SWR) logic.
+ */
+export async function fetchScheduleFromNotion(cloudflareEnv?: any, context?: any): Promise<ScheduleEvent[]> {
+  const kv = env?.WEDDING_CACHE;
+  const cacheKey = 'notion_schedule';
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(`Schedule cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`);
+          const updatePromise = updateScheduleCache().catch(err => {
+            console.error('Error in background schedule sync:', err);
+          });
+
+          // If running under Cloudflare Workers, register the background promise
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error('KV read error for Notion schedule:', err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log('Schedule cache miss, performing synchronous fetch...');
+  return await updateScheduleCache();
+}
+
+async function updateScheduleCache(): Promise<ScheduleEvent[]> {
+  const notion = getNotionClient();
+  const kv = env?.WEDDING_CACHE;
+  const cacheKey = 'notion_schedule';
+
+  const programDbId = env?.NOTION_PROGRAM_DATABASE_ID || process.env.NOTION_PROGRAM_DATABASE_ID || notionConfig.databases.programId;
+  if (!programDbId) {
+    throw new Error('NOTION_PROGRAM_DATABASE_ID is not configured.');
+  }
+
+  const programDsId = await getDataSourceId(notion, programDbId);
+
+  // Query database: Webside = Ja AND Hvem contains Gjester
+  const response = await notion.dataSources.query({
+    data_source_id: programDsId,
+    filter: {
+      and: [
+        {
+          property: "Webside",
+          select: {
+            equals: "Ja",
+          },
+        },
+        {
+          property: "Hvem",
+          multi_select: {
+            contains: "Gjester",
+          },
+        },
+      ],
+    },
+  });
+
+  const rawEvents = response.results
+    .filter((page: any) => 'properties' in page)
+    .map((page: any) => {
+      const props = page.properties;
+
+      // Title
+      const title = props.Tittel?.type === 'title'
+        ? props.Tittel.title?.[0]?.plain_text || 'Uten tittel'
+        : 'Uten tittel';
+
+      // Time ISO (for sorting)
+      const dateProp = props.Tidspunkt;
+      const timeIso = dateProp?.type === 'date' && dateProp.date?.start ? dateProp.date.start : null;
+
+      // Description (safe fallback to multiple possible names)
+      const descProp = props.Beskrivelse || props.beskrivelse || props.description || props.Info || props.Detaljer;
+      let description = '';
+      if (descProp?.type === 'rich_text' && descProp.rich_text) {
+        description = descProp.rich_text.map((t: any) => t.plain_text).join('');
+      }
+
+      // Categories
+      const catProp = props.Kategori;
+      const categories: string[] = catProp?.type === 'multi_select'
+        ? catProp.multi_select.map((s: any) => s.name)
+        : [];
+
+      return {
+        title,
+        timeIso,
+        description,
+        categories,
+      };
+    })
+    // Filter out items with no start time
+    .filter((e: any) => e.timeIso !== null);
+
+  // Sort rawEvents ascending by raw ISO time first
+  rawEvents.sort((a: any, b: any) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime());
+
+  // Map to formattedEvents
+  const formattedEvents: ScheduleEvent[] = rawEvents.map((e: any) => {
+    // Format start time to HH:MM in Europe/Oslo timezone
+    const date = new Date(e.timeIso);
+    const time = new Intl.DateTimeFormat('no-NB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Oslo',
+    }).format(date);
+
+    // Map categories/titles to icons
+    const icon = getIconForEvent(e.title, e.categories);
+
+    return {
+      time,
+      title: e.title,
+      description: e.description,
+      icon,
+    };
+  });
+
+  // Save to KV cache with current timestamp
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: formattedEvents,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log('Notion schedule cache updated successfully.');
+    } catch (err) {
+      console.error('KV write error for Notion schedule:', err);
+    }
+  }
+
+  return formattedEvents;
+}
+
+function getIconForEvent(title: string, categories: string[]): string {
+  const lowerTitle = title.toLowerCase();
+
+  if (lowerTitle.includes('vielse') || lowerTitle.includes('paulus kirke')) {
+    return 'ring';
+  }
+  if (lowerTitle.includes('kirke') || lowerTitle.includes('oppmøte')) {
+    return 'church';
+  }
+  if (lowerTitle.includes('foto') || lowerTitle.includes('bilde')) {
+    return 'camera';
+  }
+  if (lowerTitle.includes('egentid') || lowerTitle.includes('fritid')) {
+    return 'social';
+  }
+  if (lowerTitle.includes('kake') || lowerTitle.includes('dessert') || lowerTitle.includes('kaffe')) {
+    return 'cake';
+  }
+  if (lowerTitle.includes('senga') || lowerTitle.includes('avslutt') || lowerTitle.includes('hjem')) {
+    return 'sleep';
+  }
+  if (lowerTitle.includes('siste bestilling') || lowerTitle.includes('stenge')) {
+    return 'bell';
+  }
+
+  // Map based on categories
+  if (categories.includes('Mat')) {
+    return 'food';
+  }
+  if (categories.includes('Drikke')) {
+    return 'glass';
+  }
+  if (categories.includes('Stemning') || categories.includes('Fest')) {
+    return 'music';
+  }
+
+}
+
+export interface WeddingLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  googleMapsUrl?: string;
+  ikon?: string;
+}
+
+const fallbackLocations: WeddingLocation[] = [
+  {
+    "id": "36e8d369-6e2d-80ea-a58b-c8ec89631674",
+    "name": "Grünerløkka Brygghus",
+    "lat": 59.9247286,
+    "lng": 10.7584671,
+    "googleMapsUrl": "https://maps.app.goo.gl/sZgdXD9jp9rcmrHM9",
+    "ikon": "food"
+  },
+  {
+    "id": "36e8d369-6e2d-8014-ba64-ffe2a573905e",
+    "name": "Olaf Ryes Plass",
+    "lat": 59.9229316,
+    "lng": 10.7562115,
+    "googleMapsUrl": "https://maps.app.goo.gl/vw3p4JifncSofxzu8",
+    "ikon": "park"
+  },
+  {
+    "id": "36e8d369-6e2d-80e8-a5aa-f89b6a981a22",
+    "name": "Hotell 33",
+    "lat": 59.9291749,
+    "lng": 10.817278,
+    "googleMapsUrl": "https://maps.app.goo.gl/TWDf2sCnDdsE6F7e7",
+    "ikon": "hotel"
+  },
+  {
+    "id": "36e8d369-6e2d-8001-8b91-ef8da8a27448",
+    "name": "Sofienbergparken",
+    "lat": 59.9231031,
+    "lng": 10.7609634,
+    "googleMapsUrl": "https://maps.app.goo.gl/b2xU7SC8NjyD6i8L9",
+    "ikon": "park"
+  },
+  {
+    "id": "36e8d369-6e2d-8076-a00f-ca4867992ce0",
+    "name": "Botanisk Hage",
+    "lat": 59.9178158,
+    "lng": 10.7579778,
+    "googleMapsUrl": "https://maps.app.goo.gl/SysAjV5yeECwq4QG7",
+    "ikon": "park"
+  },
+  {
+    "id": "36e8d369-6e2d-808d-a2cd-fff18e7bc24f",
+    "name": "Birkelunden",
+    "lat": 59.9263636,
+    "lng": 10.7560554,
+    "googleMapsUrl": "https://maps.app.goo.gl/w8VTAFnS1H9qELJDA",
+    "ikon": "park"
+  },
+  {
+    "id": "36e8d369-6e2d-80d0-aa80-ed997494bad7",
+    "name": "Paulus Kirke",
+    "lat": 59.9263636,
+    "lng": 10.7560554,
+    "googleMapsUrl": "https://maps.app.goo.gl/cxfVnnrqevvXK6i66",
+    "ikon": "church"
+  },
+  {
+    "id": "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
+    "name": "Tårnet",
+    "lat": 59.9269905,
+    "lng": 10.816382,
+    "googleMapsUrl": "https://maps.app.goo.gl/dJVb6CioPS4FEVQ1A",
+    "ikon": "ring"
+  }
+];
+
+export async function fetchLocationsFromNotion(cloudflareEnv?: any, context?: any): Promise<WeddingLocation[]> {
+  const localEnv = cloudflareEnv || env;
+  const kv = localEnv?.WEDDING_CACHE;
+  const cacheKey = 'notion_locations';
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(`Locations cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`);
+          const updatePromise = updateLocationsCache(localEnv).catch(err => {
+            console.error('Error in background locations sync:', err);
+          });
+
+          // If running under Cloudflare Workers, register the background promise
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error('KV read error for Notion locations:', err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log('Locations cache miss, performing synchronous fetch...');
+  try {
+    return await updateLocationsCache(localEnv);
+  } catch (err) {
+    console.error('Error fetching locations from Notion, falling back to static list:', err);
+    return fallbackLocations;
+  }
+}
+
+async function updateLocationsCache(localEnv?: any): Promise<WeddingLocation[]> {
+  const notion = getNotionClient(localEnv);
+  const kv = localEnv?.WEDDING_CACHE;
+  const cacheKey = 'notion_locations';
+
+  const locationsDbId = localEnv?.NOTION_LOCATIONS_DATABASE_ID || process.env.NOTION_LOCATIONS_DATABASE_ID || notionConfig.databases.locationsId;
+  if (!locationsDbId) {
+    throw new Error('NOTION_LOCATIONS_DATABASE_ID is not configured.');
+  }
+
+  const locationsDsId = await getDataSourceId(notion, locationsDbId);
+
+  const response = await notion.dataSources.query({
+    data_source_id: locationsDsId,
+  });
+
+  const locations: WeddingLocation[] = response.results
+    .filter((page: any) => 'properties' in page)
+    .map((page: any) => {
+      const props = page.properties;
+
+      // Name (title)
+      const name = props.Name?.type === 'title'
+        ? props.Name.title?.[0]?.plain_text || 'Ukjent sted'
+        : 'Ukjent sted';
+
+      // Lat (number)
+      const lat = props.Lat?.type === 'number' && typeof props.Lat.number === 'number'
+        ? props.Lat.number
+        : null;
+
+      // Long / Lng (number)
+      const lng = props.Long?.type === 'number' && typeof props.Long.number === 'number'
+        ? props.Long.number
+        : (props.Lng?.type === 'number' && typeof props.Lng.number === 'number' ? props.Lng.number : null);
+
+      // Google Maps (url)
+      const googleMapsUrl = props['Google Maps']?.type === 'url' ? props['Google Maps'].url : undefined;
+
+      // Ikon (text or select)
+      let ikon = 'default';
+      const ikonProp = props.Ikon || props.ikon;
+      if (ikonProp?.type === 'rich_text' && ikonProp.rich_text) {
+        ikon = ikonProp.rich_text.map((t: any) => t.plain_text).join('').trim().toLowerCase() || 'default';
+      } else if (ikonProp?.type === 'select' && ikonProp.select) {
+        ikon = ikonProp.select.name.trim().toLowerCase() || 'default';
+      }
+
+      // Map categories to dynamic fallback icons
+      ikon = getIconForLocation(name, ikon);
+
+      return {
+        id: page.id,
+        name,
+        lat,
+        lng,
+        googleMapsUrl,
+        ikon,
+      };
+    })
+    .filter((loc: any) => loc.lat !== null && loc.lng !== null);
+
+  // Save to KV cache with current timestamp
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: locations,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log('Notion locations cache updated successfully.');
+    } catch (err) {
+      console.error('KV write error for Notion locations:', err);
+    }
+  }
+
+  return locations;
+}
+
+function getIconForLocation(name: string, ikon?: string): string {
+  const customIkon = (ikon || 'default').trim().toLowerCase();
+  if (customIkon !== 'default' && customIkon !== '') {
+    return customIkon;
+  }
+  
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('kirke')) {
+    return 'church';
+  }
+  if (lowerName.includes('tårnet') || lowerName.includes('fest') || lowerName.includes('kulturarena') || lowerName.includes('selskapslokale')) {
+    return 'ring';
+  }
+  if (lowerName.includes('hotell') || lowerName.includes('hotel') || lowerName.includes('overnatting')) {
+    return 'hotel';
+  }
+  if (lowerName.includes('park') || lowerName.includes('hage') || lowerName.includes('plass') || lowerName.includes('birkelunden')) {
+    return 'park';
+  }
+  if (lowerName.includes('brygghus') || lowerName.includes('bar') || lowerName.includes('restaurant') || lowerName.includes('mat')) {
+    return 'food';
+  }
+  if (lowerName.includes('buss')) {
+    return 'buss';
+  }
+  return 'default';
+}
