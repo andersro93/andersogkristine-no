@@ -91,7 +91,17 @@ const initialContributor = contributors[0] || egentid.contributors[0];
           {initialContributor.suggestions.map((s) => (
             <li class="flex items-start gap-3 text-brand-text/90 text-sm leading-relaxed font-light">
               <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
-              <span set:html={s}></span>
+              <div class="flex-1">
+                <span set:html={s.text}></span>
+                {s.locationId && (
+                  <a
+                    href={`/kart?loc=${s.locationId}`}
+                    class="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-title hover:text-brand-text hover:underline ml-1.5 select-none transition-colors"
+                  >
+                    <span>📍 Se kart</span>
+                  </a>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -138,7 +148,17 @@ const initialContributor = contributors[0] || egentid.contributors[0];
               .map(s => `
                 <li class="flex items-start gap-3 text-brand-text/90 text-sm leading-relaxed font-light">
                   <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
-                  <span>${s}</span>
+                  <div class="flex-1">
+                    <span>${s.text}</span>
+                    ${s.locationId ? `
+                      <a
+                        href="/kart?loc=${s.locationId}"
+                        class="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-title hover:text-brand-text hover:underline ml-1.5 select-none transition-colors"
+                      >
+                        <span>📍 Se kart</span>
+                      </a>
+                    ` : ''}
+                  </div>
                 </li>
               `).join('');
           }

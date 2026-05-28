@@ -221,9 +221,17 @@ export const weddingConfig = {
         role: "Brudens favoritter",
         description: "Koselige kafeer og rolige, grønne lunger.",
         suggestions: [
-          "Liebling &mdash; Min favorittkafé øverst på Grünerløkka. Super atmosfære, kjempegod kaffe og deilige bakevarer.",
-          "Botanisk Hage &mdash; Ta en rolig spasertur blant vakre blomster og trær. Perfekt for å slappe av i solen.",
-          "Ryes Bar & Bistro &mdash; Flott sted på Olaf Ryes plass for en rask matbit eller en forfriskning.",
+          {
+            text: "Liebling &mdash; Min favorittkafé øverst på Grünerløkka. Super atmosfære, kjempegod kaffe og deilige bakevarer.",
+          },
+          {
+            text: "Botanisk Hage &mdash; Ta en rolig spasertur blant vakre blomster og trær. Perfekt for å slappe av i solen.",
+            locationId: "36e8d369-6e2d-8076-a00f-ca4867992ce0",
+          },
+          {
+            text: "Ryes Bar & Bistro &mdash; Flott sted på Olaf Ryes plass for en rask matbit eller en forfriskning.",
+            locationId: "36e8d369-6e2d-8014-ba64-ffe2a573905e",
+          },
         ],
       },
       {
@@ -233,9 +241,16 @@ export const weddingConfig = {
         role: "Brudgommens favoritter",
         description: "Beste ølserveringer, rask mat og utsiktspunkter.",
         suggestions: [
-          "Fyrhuset Kubaparken &mdash; Fantastisk uteservering og avslappet atmosfære midt i Kubaparken rett ved Akerselva.",
-          "Grünerløkka Brygghus &mdash; For de som er glad i godt øl. Stort utvalg av eget brygg og klassisk pubmat.",
-          "Utsikten fra Kampen Kirke &mdash; Gå opp Kampentrappene for en nydelig utsikt over Oslos koseligste trehusbebyggelse.",
+          {
+            text: "Fyrhuset Kubaparken &mdash; Fantastisk uteservering og avslappet atmosfære midt i Kubaparken rett ved Akerselva.",
+          },
+          {
+            text: "Grünerløkka Brygghus &mdash; For de som er glad i godt øl. Stort utvalg av eget brygg og klassisk pubmat.",
+            locationId: "36e8d369-6e2d-80ea-a58b-c8ec89631674",
+          },
+          {
+            text: "Utsikten fra Kampen Kirke &mdash; Gå opp Kampentrappene for nydelig utsikt over Oslos koseligste trehusbebyggelse.",
+          },
         ],
       },
       {
@@ -245,9 +260,17 @@ export const weddingConfig = {
         role: "Noras favoritter (Datter)",
         description: "Lekeplasser, vaffel og byens beste isbarer.",
         suggestions: [
-          "Haralds Vaffel &mdash; Ligger rett ved Olaf Ryes Plass. Kjempegode norske vafler med masse spennende toppinger!",
-          "Sofienbergparken Lekeplass &mdash; Min favorittlekeplass med husker, sklier og masse plass til å løpe rundt på.",
-          "Gioia Isbar &mdash; Hjemmelaget italiensk gelato i særklasse øverst i Markveien.",
+          {
+            text: "Haralds Vaffel &mdash; Ligger rett ved Olaf Ryes Plass. Kjempegode norske vafler med masse spennende toppinger!",
+            locationId: "36e8d369-6e2d-8014-ba64-ffe2a573905e",
+          },
+          {
+            text: "Sofienbergparken Lekeplass &mdash; Min favorittlekeplass med husker, sklier og masse plass til å løpe rundt på.",
+            locationId: "36e8d369-6e2d-8001-8b91-ef8da8a27448",
+          },
+          {
+            text: "Gioia Isbar &mdash; Hjemmelaget italiensk gelato i særklasse øverst i Markveien.",
+          },
         ],
       },
       {
@@ -257,9 +280,17 @@ export const weddingConfig = {
         role: "Lilos favoritter (Hunden)",
         description: "Hundeparker, turområder og de beste snusestoppene.",
         suggestions: [
-          "Sofienbergparken Hundeluftegård &mdash; Her kan man løpe fritt og hilse på lokale hunder i et inngjerdet område.",
-          "Stien langs Akerselva &mdash; Det aller beste stedet å snuse. Spesielt gøy fra Kuba og oppover mot Sagene.",
-          "Vennlige kafeer &mdash; Flere steder rundt Birkelunden (som Territoriet og Liebling) er veldig hundevennlige og har ofte vannskål klar!",
+          {
+            text: "Sofienbergparken Hundeluftegård &mdash; Her kan man løpe fritt og hilse på lokale hunder i et inngjerdet område.",
+            locationId: "36e8d369-6e2d-8001-8b91-ef8da8a27448",
+          },
+          {
+            text: "Stien langs Akerselva &mdash; Det aller beste stedet å snuse. Spesielt gøy fra Kuba og oppover mot Sagene.",
+          },
+          {
+            text: "Vennlige kafeer &mdash; Flere steder rundt Birkelunden (som Territoriet og Liebling) er veldig hundevennlige og har ofte vannskål klar!",
+            locationId: "36e8d369-6e2d-808d-a2cd-fff18e7bc24f",
+          },
         ],
       },
     ],

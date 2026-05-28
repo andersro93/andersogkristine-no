@@ -982,6 +982,11 @@ interface RawEgentidItem {
   locationIds: string[];
 }
 
+export interface EgentidSuggestion {
+  text: string;
+  locationId?: string;
+}
+
 export interface Contributor {
   id: string;
   name: string;
@@ -989,7 +994,7 @@ export interface Contributor {
   role: string;
   description: string;
   emoji?: string;
-  suggestions: string[];
+  suggestions: EgentidSuggestion[];
 }
 
 // Helper to fetch raw contributors from Notion
@@ -1179,8 +1184,11 @@ async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
         (item) => item.contributorId === c.id,
       );
 
-      const suggestions = contributorItems.map((item) => {
-        return `<strong>${item.title}</strong> &mdash; ${item.description}`;
+      const suggestions: EgentidSuggestion[] = contributorItems.map((item) => {
+        return {
+          text: `<strong>${item.title}</strong> &mdash; ${item.description}`,
+          locationId: item.locationIds?.[0] || undefined,
+        };
       });
 
       // Maintain static copy fallback for description if none exists in DB
