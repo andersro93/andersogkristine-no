@@ -31,6 +31,79 @@ function getRichTextFull(prop: any, fallback = ""): string {
     : fallback;
 }
 
+function notionRichTextToHtml(prop: any, fallback = ""): string {
+  if (prop?.type !== "rich_text" || !Array.isArray(prop.rich_text)) {
+    return fallback;
+  }
+
+  // 1. Convert each rich text item into HTML with annotations, keeping \n intact
+  const htmlParts = prop.rich_text.map((item: any) => {
+    let text = item.plain_text || "";
+    
+    // Escape HTML entities to prevent XSS
+    text = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+    const ann = item.annotations || {};
+    if (ann.bold) text = `<strong>${text}</strong>`;
+    if (ann.italic) text = `<em>${text}</em>`;
+    if (ann.strikethrough) text = `<del>${text}</del>`;
+    if (ann.underline) text = `<u>${text}</u>`;
+    if (ann.code) text = `<code>${text}</code>`;
+    
+    if (item.href) {
+      const url = item.href;
+      if (/^https?:\/\/|^mailto:/i.test(url)) {
+        text = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline hover:text-brand-title/80 transition-colors">${text}</a>`;
+      }
+    }
+    
+    return text;
+  });
+
+  const fullHtml = htmlParts.join("");
+
+  // 2. Process line by line to support basic list syntax and line breaks
+  const lines = fullHtml.split("\n");
+  let inList = false;
+  const resultLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Check if the line is a bullet point (starts with -, *, or •)
+    const match = trimmed.match(/^(?:&bull;|-|•|\*)\s*(.*)/);
+    if (match) {
+      if (!inList) {
+        inList = true;
+        resultLines.push('<ul class="list-disc pl-5 space-y-1 my-2">');
+      }
+      resultLines.push(`<li>${match[1]}</li>`);
+    } else {
+      if (inList) {
+        inList = false;
+        resultLines.push("</ul>");
+      }
+      if (trimmed === "") {
+        // Empty line becomes a paragraph break/spacing
+        resultLines.push('<div class="h-2"></div>');
+      } else {
+        resultLines.push(`<p>${line}</p>`);
+      }
+    }
+  }
+
+  if (inList) {
+    resultLines.push("</ul>");
+  }
+
+  return resultLines.join("");
+}
+
 function getSelectProperty(prop: any, fallback = ""): string {
   return prop?.type === "select" ? prop.select?.name || fallback : fallback;
 }
@@ -1231,4 +1304,107 @@ async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
   }
 
   return contributorsList;
+}
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+/**
+ * Retrieves the FAQs from the Notion FAQ database,
+ * cached in Cloudflare KV with SWR logic.
+ */
+export async function fetchFaqFromNotion(
+  localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
+): Promise<FaqItem[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_faq";
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(
+            `FAQ cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+          );
+          const updatePromise = updateFaqCache(currentEnv).catch((err) => {
+            console.error("Error in background FAQ sync:", err);
+          });
+
+          // Register background promise if context is available
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("KV read error for Notion FAQs:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("FAQ cache miss, performing synchronous fetch...");
+  return await updateFaqCache(currentEnv);
+}
+
+async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_faq";
+
+  const faqDbId =
+    getEnvVar("NOTION_FAQ_DATABASE_ID", localEnv) ||
+    notionConfig.databases.faqId;
+
+  if (!faqDbId) {
+    throw new Error("NOTION_FAQ_DATABASE_ID is not configured.");
+  }
+
+  const dsId = await getDataSourceId(notion, faqDbId);
+  const response = await notion.dataSources.query({
+    data_source_id: dsId,
+  });
+
+  const faqs: FaqItem[] = (response.results as PageObjectResponse[])
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page) => {
+      const props = page.properties;
+      const question = getTitleProperty(props["Spørsmål"] || props.Sporsmal || props.Question || props.Name, "Uten spørsmål");
+      const answer = notionRichTextToHtml(props["Svar"] || props.Svar || props.Answer || props.Description, "");
+
+      return {
+        question,
+        answer,
+      };
+    })
+    // Filter out items that have no question
+    .filter((faq) => faq.question && faq.question.trim() !== "Uten spørsmål");
+
+  // Save to KV cache
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: faqs,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log("Notion FAQ cache updated successfully.");
+    } catch (err) {
+      console.error("KV write error for Notion FAQs:", err);
+    }
+  }
+
+  return faqs;
 }

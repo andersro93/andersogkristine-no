@@ -1,5 +1,19 @@
 ---
+import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
+import { fetchFaqFromNotion } from '../services/notion';
+
+const context = Astro.locals?.runtime?.context;
+
+let faqs = weddingConfig.faqs;
+try {
+  const notionFaqs = await fetchFaqFromNotion(env, context);
+  if (notionFaqs && notionFaqs.length > 0) {
+    faqs = notionFaqs;
+  }
+} catch (err) {
+  console.error("Error loading FAQs from Notion:", err);
+}
 ---
 
 <section id="practical" class="py-20 px-4 md:px-8 bg-brand-bg max-w-6xl mx-auto border-b border-brand-title/5">
@@ -22,7 +36,7 @@ import { weddingConfig } from '../config';
       </h3>
 
       <div class="divide-y divide-brand-title/15">
-        {weddingConfig.faqs.map((faq) => (
+        {faqs.map((faq) => (
           <details class="group py-5 first:pt-0 last:pb-0 cursor-pointer">
             <summary class="flex justify-between items-center font-serif text-lg md:text-xl text-brand-title font-semibold list-none select-none outline-hidden">
               <span>{faq.question}</span>
@@ -32,8 +46,7 @@ import { weddingConfig } from '../config';
                 </svg>
               </span>
             </summary>
-            <div class="mt-4 font-sans text-sm text-brand-text/90 font-light leading-relaxed max-w-2xl transition-all duration-300">
-              {faq.answer}
+            <div class="mt-4 font-sans text-sm text-brand-text/90 font-light leading-relaxed max-w-2xl transition-all duration-300" set:html={faq.answer}>
             </div>
           </details>
         ))}

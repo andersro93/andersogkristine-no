@@ -22,6 +22,9 @@ export const notionConfig = {
     medvirkendeId:
       process.env.NOTION_MEDVIRKENDE_DATABASE_ID ||
       "36e8d3696e2d80ccb490ff3e45af3cdc",
+    faqId:
+      process.env.NOTION_FAQ_DATABASE_ID ||
+      "36e8d3696e2d806c9430e41b435129c2",
   },
 
   // Data Source IDs (used in modern 2026 Notion API query & retrieve endpoints)
