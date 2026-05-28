@@ -2,13 +2,13 @@
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
-import { fetchInviteByCode } from '../services/notion';
+import { fetchInviteByCode, type Invite } from '../services/notion';
 import { weddingConfig } from '../config';
 
 // Server-side invite lookup
 const code = Astro.url.searchParams.get('code');
-let invite = null;
-let errorMsg = null;
+let invite: Invite | null = null;
+let errorMsg: string | null = null;
 
 if (code) {
   try {

@@ -1,10 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import SeatingChart from '../components/SeatingChart';
-import { fetchAllSeatingData } from '../services/notion';
+import { fetchAllSeatingData, type TableWithGuests } from '../services/notion';
 
-let tables = [];
-let errorMsg = null;
+let tables: TableWithGuests[] = [];
+let errorMsg: string | null = null;
 
 try {
   tables = await fetchAllSeatingData();
