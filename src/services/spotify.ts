@@ -1,3 +1,5 @@
+import type { Env } from "cloudflare:workers";
+
 export interface SpotifyTrack {
   id: string;
   name: string;
@@ -6,23 +8,6 @@ export interface SpotifyTrack {
   albumImageUrl: string;
   uri: string;
   alreadyAdded?: boolean;
-}
-
-interface SpotifyEnv {
-  SPOTIFY_CLIENT_ID?: string;
-  SPOTIFY_CLIENT_SECRET?: string;
-  SPOTIFY_REFRESH_TOKEN?: string;
-  SPOTIFY_PLAYLIST_ID?: string;
-  WEDDING_CACHE?: {
-    get(key: string): Promise<string | null>;
-    put(
-      key: string,
-      value: string,
-      options?: { expirationTtl?: number },
-    ): Promise<void>;
-    delete(key: string): Promise<void>;
-  };
-  [key: string]: unknown;
 }
 
 interface SpotifyArtist {
@@ -147,7 +132,7 @@ let tokenExpiresAt = 0;
 /**
  * Check if the Spotify environment credentials are set.
  */
-export function isSpotifyConfigured(env?: SpotifyEnv): boolean {
+export function isSpotifyConfigured(env?: Env): boolean {
   const clientId = env?.SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID;
   const clientSecret =
     env?.SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
@@ -162,7 +147,7 @@ export function isSpotifyConfigured(env?: SpotifyEnv): boolean {
 /**
  * Retrieves a Spotify API Access Token using the stored Refresh Token.
  */
-async function getAccessToken(env?: SpotifyEnv): Promise<string> {
+async function getAccessToken(env?: Env): Promise<string> {
   if (cachedToken && Date.now() < tokenExpiresAt) {
     return cachedToken;
   }
@@ -214,7 +199,7 @@ async function getAccessToken(env?: SpotifyEnv): Promise<string> {
  */
 export async function searchTracks(
   query: string,
-  env?: SpotifyEnv,
+  env?: Env,
 ): Promise<SpotifyTrack[]> {
   if (!query.trim()) return [];
 
@@ -268,9 +253,7 @@ export async function searchTracks(
 /**
  * Get all tracks currently in the playlist (cached in Cloudflare KV).
  */
-export async function getPlaylistTracks(
-  env?: SpotifyEnv,
-): Promise<SpotifyTrack[]> {
+export async function getPlaylistTracks(env?: Env): Promise<SpotifyTrack[]> {
   const kv = env?.WEDDING_CACHE;
 
   // Mock Mode fallback
@@ -356,7 +339,7 @@ export async function getPlaylistTracks(
  */
 export async function addTrackToPlaylist(
   trackUri: string,
-  env?: SpotifyEnv,
+  env?: Env,
 ): Promise<void> {
   // Mock Mode fallback
   if (!isSpotifyConfigured(env)) {
@@ -425,7 +408,7 @@ export async function addTrackToPlaylist(
 /**
  * Get Spotify Playlist URL for public link.
  */
-export function getSpotifyPlaylistUrl(env?: SpotifyEnv): string {
+export function getSpotifyPlaylistUrl(env?: Env): string {
   const playlistId =
     env?.SPOTIFY_PLAYLIST_ID ||
     process.env.SPOTIFY_PLAYLIST_ID ||

@@ -6,6 +6,7 @@ import {
   expect,
   test,
 } from "bun:test";
+import type { Env } from "cloudflare:workers";
 import {
   addTrackToPlaylist,
   getPlaylistTracks,
@@ -48,7 +49,7 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
 
   describe("isSpotifyConfigured", () => {
     test("should return false for empty/undefined environment", () => {
-      const mockEnv = {};
+      const mockEnv = {} as unknown as Env;
       expect(isSpotifyConfigured(mockEnv)).toBe(false);
     });
 
@@ -58,21 +59,23 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
         SPOTIFY_CLIENT_SECRET: "secret",
         SPOTIFY_REFRESH_TOKEN: "refresh",
         SPOTIFY_PLAYLIST_ID: "playlist",
-      };
+      } as unknown as Env;
       expect(isSpotifyConfigured(mockEnv)).toBe(true);
     });
   });
 
   describe("getSpotifyPlaylistUrl", () => {
     test("should return standard playlist URL", () => {
-      const mockEnv = { SPOTIFY_PLAYLIST_ID: "test_playlist_123" };
+      const mockEnv = {
+        SPOTIFY_PLAYLIST_ID: "test_playlist_123",
+      } as unknown as Env;
       expect(getSpotifyPlaylistUrl(mockEnv)).toBe(
         "https://open.spotify.com/playlist/test_playlist_123",
       );
     });
 
     test("should fall back if not configured", () => {
-      expect(getSpotifyPlaylistUrl({})).toContain(
+      expect(getSpotifyPlaylistUrl({} as unknown as Env)).toContain(
         "https://open.spotify.com/playlist/",
       );
     });
@@ -80,19 +83,22 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
 
   describe("Mock Catalog Queries", () => {
     test("should search mock catalog tracks", async () => {
-      const results = await searchTracks("abba", {});
+      const results = await searchTracks("abba", {} as unknown as Env);
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe("Dancing Queen");
       expect(results[0].artists).toBe("ABBA");
     });
 
     test("should return empty array for mismatch query", async () => {
-      const results = await searchTracks("nonexistentartistsongtext", {});
+      const results = await searchTracks(
+        "nonexistentartistsongtext",
+        {} as unknown as Env,
+      );
       expect(results).toHaveLength(0);
     });
 
     test("should handle case insensitivity", async () => {
-      const results = await searchTracks("SEPTEMBER", {});
+      const results = await searchTracks("SEPTEMBER", {} as unknown as Env);
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe("September");
     });
@@ -100,7 +106,7 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
 
   describe("Mock Playlist Operations", () => {
     test("should retrieve initial mock playlist tracks", async () => {
-      const tracks = await getPlaylistTracks({});
+      const tracks = await getPlaylistTracks({} as unknown as Env);
       expect(tracks).toHaveLength(2);
       expect(tracks[0].name).toBe("Dancing Queen");
       expect(tracks[1].name).toBe("Valerie");
@@ -110,9 +116,9 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
       const trackUriToAdd = "spotify:track:3vG4r5d6qf4E9f5p5L6X6X"; // September
 
       // Add track
-      await addTrackToPlaylist(trackUriToAdd, {});
+      await addTrackToPlaylist(trackUriToAdd, {} as unknown as Env);
 
-      const tracksAfter = await getPlaylistTracks({});
+      const tracksAfter = await getPlaylistTracks({} as unknown as Env);
       expect(tracksAfter).toHaveLength(3);
       expect(tracksAfter[0].name).toBe("September");
       expect(tracksAfter[1].name).toBe("Dancing Queen");
@@ -121,17 +127,17 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
     test("should prevent duplicate additions in mock playlist", async () => {
       const trackUriToAdd = "spotify:track:0vG1r2d4qf2E7f3p3L3X3X"; // ABBA (already in list)
 
-      await addTrackToPlaylist(trackUriToAdd, {});
+      await addTrackToPlaylist(trackUriToAdd, {} as unknown as Env);
 
-      const tracksAfter = await getPlaylistTracks({});
+      const tracksAfter = await getPlaylistTracks({} as unknown as Env);
       expect(tracksAfter).toHaveLength(2); // Still 2, no duplicates
     });
 
     test("should support adding arbitrary fallback track if not in catalog", async () => {
       const customUri = "spotify:track:newcustomid";
-      await addTrackToPlaylist(customUri, {});
+      await addTrackToPlaylist(customUri, {} as unknown as Env);
 
-      const tracks = await getPlaylistTracks({});
+      const tracks = await getPlaylistTracks({} as unknown as Env);
       expect(tracks).toHaveLength(3);
       expect(tracks[0].name).toBe("Foreslått sang");
       expect(tracks[0].uri).toBe(customUri);

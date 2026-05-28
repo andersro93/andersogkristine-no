@@ -1,4 +1,5 @@
 ---
+import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
 import { fetchInviteByCode } from '../services/notion';
@@ -11,7 +12,7 @@ let errorMsg = null;
 
 if (code) {
   try {
-    invite = await fetchInviteByCode(code);
+    invite = await fetchInviteByCode(code, env);
     if (!invite) {
       errorMsg = "Ugyldig invitasjonskode. Vennligst sjekk at koden stemmer.";
     }

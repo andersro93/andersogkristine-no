@@ -1,22 +1,5 @@
+import type { Env } from "cloudflare:workers";
 import crypto from "node:crypto";
-
-interface EnvConfig {
-  SESSION_SECRET?: string;
-  NOTION_API_KEY?: string;
-  WEDDING_CACHE?: KVNamespace;
-  SITE_PIN?: string;
-  [key: string]: unknown;
-}
-
-interface KVNamespace {
-  get(key: string): Promise<string | null>;
-  put(
-    key: string,
-    value: string,
-    options?: { expirationTtl?: number },
-  ): Promise<void>;
-  delete(key: string): Promise<void>;
-}
 
 // In-memory fallback rate-limiting cache for local development
 const memoryCache = new Map<string, string>();
@@ -46,7 +29,7 @@ export function secureCompare(a: string, b: string): boolean {
 /**
  * Retrieve the secret key used for session signing.
  */
-function getSessionSecret(env?: EnvConfig): string {
+function getSessionSecret(env?: Env): string {
   // Use wrangler env or fallback to process.env or a secure default for dev
   return (
     env?.SESSION_SECRET ||
@@ -61,7 +44,7 @@ function getSessionSecret(env?: EnvConfig): string {
  * Generate a secure, cryptographically signed session cookie value.
  * The cookie is valid for 30 days and includes an expiration date.
  */
-export function generateSessionCookie(env?: EnvConfig): string {
+export function generateSessionCookie(env?: Env): string {
   const secret = getSessionSecret(env);
   const expiration = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
   const message = `session:${expiration}`;
@@ -76,10 +59,7 @@ export function generateSessionCookie(env?: EnvConfig): string {
  * Verify a signed session cookie value.
  * Returns true if the cookie signature is valid and it has not expired.
  */
-export function verifySessionCookie(
-  cookieValue: string,
-  env?: EnvConfig,
-): boolean {
+export function verifySessionCookie(cookieValue: string, env?: Env): boolean {
   try {
     const parts = cookieValue.split(".");
     if (parts.length !== 2) return false;

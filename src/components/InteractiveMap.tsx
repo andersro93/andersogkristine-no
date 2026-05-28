@@ -1,22 +1,59 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+interface LeafletLatLngBounds {
+  _northEast: { lat: number; lng: number };
+  _southWest: { lat: number; lng: number };
+}
+
+interface LeafletLayer {
+  _layerType?: string;
+}
+
+interface LeafletIcon {
+  _iconType?: string;
+}
+
 interface LeafletMap {
   remove(): void;
   setView(latlng: [number, number], zoom: number): LeafletMap;
-  fitBounds(bounds: unknown, options?: Record<string, unknown>): LeafletMap;
-  removeLayer(layer: unknown): LeafletMap;
+  fitBounds(
+    bounds: LeafletLatLngBounds,
+    options?: Record<string, unknown>,
+  ): LeafletMap;
+  removeLayer(layer: LeafletLayer): LeafletMap;
 }
 
-interface LeafletMarker {
+interface LeafletMarker extends LeafletLayer {
   addTo(map: LeafletMap): LeafletMarker;
   bindPopup(content: string, options?: Record<string, unknown>): LeafletMarker;
   openPopup(): LeafletMarker;
 }
 
-interface LeafletLayerGroup {
+interface LeafletLayerGroup extends LeafletLayer {
   addTo(map: LeafletMap): LeafletLayerGroup;
-  addLayer(layer: unknown): LeafletLayerGroup;
+  addLayer(layer: LeafletLayer): LeafletLayerGroup;
   clearLayers(): LeafletLayerGroup;
+}
+
+interface LeafletStatic {
+  map(
+    element: HTMLDivElement | string,
+    options?: Record<string, unknown>,
+  ): LeafletMap;
+  control: {
+    zoom(options?: Record<string, unknown>): { addTo(map: LeafletMap): void };
+  };
+  tileLayer(
+    url: string,
+    options?: Record<string, unknown>,
+  ): { addTo(map: LeafletMap): void };
+  layerGroup(): LeafletLayerGroup;
+  divIcon(options?: Record<string, unknown>): LeafletIcon;
+  marker(
+    latlng: [number, number],
+    options?: Record<string, unknown>,
+  ): LeafletMarker;
+  latLngBounds(bounds: [number, number][]): LeafletLatLngBounds;
 }
 
 export interface WeddingLocation {
@@ -74,9 +111,7 @@ export default function InteractiveMap() {
     if (isLoading || error || !mapContainerRef.current || mapRef.current)
       return;
 
-    const L = (window as unknown as Record<string, unknown>).L as
-      | Record<string, (...args: unknown[]) => unknown>
-      | undefined;
+    const L = (window as unknown as { L?: LeafletStatic }).L;
     if (!L) {
       setError(
         "Leaflet.js ble ikke lastet inn. Vennligst prøv å oppdatere siden.",
@@ -128,9 +163,7 @@ export default function InteractiveMap() {
 
   // 3. Update markers when locations or search query changes
   useEffect(() => {
-    const L = (window as unknown as Record<string, unknown>).L as
-      | Record<string, (...args: unknown[]) => unknown>
-      | undefined;
+    const L = (window as unknown as { L?: LeafletStatic }).L;
     if (!mapRef.current || !markersGroupRef.current || !L) return;
 
     // Filter locations based on search query
@@ -270,9 +303,7 @@ export default function InteractiveMap() {
       return;
     }
 
-    const L = (window as unknown as Record<string, unknown>).L as
-      | Record<string, (...args: unknown[]) => unknown>
-      | undefined;
+    const L = (window as unknown as { L?: LeafletStatic }).L;
     if (!L || !mapRef.current) return;
 
     setUserLocationActive(true);
@@ -382,19 +413,19 @@ export default function InteractiveMap() {
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke-width="2"
+                  strokeWidth={2}
                   stroke="currentColor"
-                  class="w-4 h-4"
+                  className="w-4 h-4"
                 >
                   <title>Vis posisjon</title>
                   <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
                   />
                   <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0z"
                   />
                 </svg>

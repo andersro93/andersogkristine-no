@@ -1,6 +1,17 @@
+import type { Env } from "cloudflare:workers";
 import { env } from "cloudflare:workers";
+import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
+
+// Helper interfaces for Notion API JSON properties
+interface NotionRichTextItem {
+  plain_text: string;
+}
+
+interface NotionSelectItem {
+  name: string;
+}
 
 // Cache for Data Source IDs in memory to avoid repeated metadata queries
 const dataSourceIdCache = new Map<string, string>();
@@ -24,9 +35,12 @@ async function getDataSourceId(
 }
 
 // Helper to get Notion client based on environment
-export function getNotionClient() {
-  // Use the imported cloudflare workers env, or fallback to process.env in local CLI environments
-  const apiKey = env?.NOTION_API_KEY || process.env.NOTION_API_KEY;
+export function getNotionClient(localEnv?: Env) {
+  // Use the passed env, or fallback to the imported cloudflare workers env, or fallback to process.env in local CLI environments
+  const apiKey =
+    localEnv?.NOTION_API_KEY ||
+    env?.NOTION_API_KEY ||
+    process.env.NOTION_API_KEY;
   if (!apiKey) {
     throw new Error(
       "NOTION_API_KEY is not defined. Please add it to your .env file or Cloudflare environment variables.",
@@ -55,8 +69,11 @@ export interface Invite {
 }
 
 // 1. Fetch Invite by Code
-export async function fetchInviteByCode(code: string): Promise<Invite | null> {
-  const notion = getNotionClient();
+export async function fetchInviteByCode(
+  code: string,
+  localEnv?: Env,
+): Promise<Invite | null> {
+  const notion = getNotionClient(localEnv);
 
   try {
     const invitesDsId = await getDataSourceId(
@@ -176,8 +193,9 @@ export async function updateGuestRSVP(
   rsvp: string,
   allergies: string,
   comment?: string,
+  localEnv?: Env,
 ): Promise<void> {
-  const notion = getNotionClient();
+  const notion = getNotionClient(localEnv);
 
   try {
     const properties: Record<string, unknown> = {
@@ -248,8 +266,10 @@ export interface TableWithGuests {
   }[];
 }
 
-export async function fetchAllSeatingData(): Promise<TableWithGuests[]> {
-  const notion = getNotionClient();
+export async function fetchAllSeatingData(
+  localEnv?: Env,
+): Promise<TableWithGuests[]> {
+  const notion = getNotionClient(localEnv);
 
   try {
     const tablesDsId = await getDataSourceId(
@@ -357,10 +377,11 @@ export interface ScheduleEvent {
  * cached in Cloudflare KV with Stale-While-Revalidate (SWR) logic.
  */
 export async function fetchScheduleFromNotion(
-  _cloudflareEnv?: Record<string, unknown>,
-  context?: Record<string, unknown>,
+  localEnv?: Env,
+  context?: ExecutionContext,
 ): Promise<ScheduleEvent[]> {
-  const kv = env?.WEDDING_CACHE;
+  const currentEnv = localEnv || env;
+  const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_schedule";
 
   // 1. Try to read from KV cache
@@ -376,7 +397,7 @@ export async function fetchScheduleFromNotion(
           console.log(
             `Schedule cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
           );
-          const updatePromise = updateScheduleCache().catch((err) => {
+          const updatePromise = updateScheduleCache(currentEnv).catch((err) => {
             console.error("Error in background schedule sync:", err);
           });
 
@@ -395,16 +416,24 @@ export async function fetchScheduleFromNotion(
 
   // 2. Cache miss: Fetch and update synchronously
   console.log("Schedule cache miss, performing synchronous fetch...");
-  return await updateScheduleCache();
+  return await updateScheduleCache(currentEnv);
 }
 
-async function updateScheduleCache(): Promise<ScheduleEvent[]> {
-  const notion = getNotionClient();
-  const kv = env?.WEDDING_CACHE;
+interface RawScheduleEvent {
+  title: string;
+  timeIso: string | null;
+  description: string;
+  categories: string[];
+}
+
+async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
+  const currentEnv = localEnv || env;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_schedule";
 
   const programDbId =
-    env?.NOTION_PROGRAM_DATABASE_ID ||
+    currentEnv?.NOTION_PROGRAM_DATABASE_ID ||
     process.env.NOTION_PROGRAM_DATABASE_ID ||
     notionConfig.databases.programId;
   if (!programDbId) {
@@ -434,12 +463,10 @@ async function updateScheduleCache(): Promise<ScheduleEvent[]> {
     },
   });
 
-  const rawEvents = response.results
-    .filter((page: Record<string, unknown>) => "properties" in page)
-    .map((page: Record<string, unknown>) => {
-      const props = (
-        page as { properties: Record<string, Record<string, unknown>> }
-      ).properties;
+  const rawEvents = (response.results as PageObjectResponse[])
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page): RawScheduleEvent => {
+      const props = page.properties;
 
       // Title
       const title =
@@ -463,8 +490,8 @@ async function updateScheduleCache(): Promise<ScheduleEvent[]> {
         props.Detaljer;
       let description = "";
       if (descProp?.type === "rich_text" && descProp.rich_text) {
-        description = descProp.rich_text
-          .map((t: Record<string, unknown>) => t.plain_text)
+        description = (descProp.rich_text as NotionRichTextItem[])
+          .map((t) => t.plain_text)
           .join("");
       }
 
@@ -472,7 +499,7 @@ async function updateScheduleCache(): Promise<ScheduleEvent[]> {
       const catProp = props.Kategori;
       const categories: string[] =
         catProp?.type === "multi_select"
-          ? catProp.multi_select.map((s: Record<string, unknown>) => s.name)
+          ? (catProp.multi_select as NotionSelectItem[]).map((s) => s.name)
           : [];
 
       return {
@@ -484,48 +511,34 @@ async function updateScheduleCache(): Promise<ScheduleEvent[]> {
     })
     // Filter out items with no start time
     .filter(
-      (e: {
-        title: string;
-        timeIso: string | null;
-        description: string;
-        categories: string[];
-      }) => e.timeIso !== null,
+      (e): e is RawScheduleEvent & { timeIso: string } => e.timeIso !== null,
     );
 
   // Sort rawEvents ascending by raw ISO time first
   rawEvents.sort(
-    (a: { timeIso: string | null }, b: { timeIso: string | null }) =>
-      new Date(a.timeIso as string).getTime() -
-      new Date(b.timeIso as string).getTime(),
+    (a, b) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime(),
   );
 
   // Map to formattedEvents
-  const formattedEvents: ScheduleEvent[] = rawEvents.map(
-    (e: {
-      title: string;
-      timeIso: string | null;
-      description: string;
-      categories: string[];
-    }) => {
-      // Format start time to HH:MM in Europe/Oslo timezone
-      const date = new Date(e.timeIso as string);
-      const time = new Intl.DateTimeFormat("no-NB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Europe/Oslo",
-      }).format(date);
+  const formattedEvents: ScheduleEvent[] = rawEvents.map((e) => {
+    // Format start time to HH:MM in Europe/Oslo timezone
+    const date = new Date(e.timeIso);
+    const time = new Intl.DateTimeFormat("no-NB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Oslo",
+    }).format(date);
 
-      // Map categories/titles to icons
-      const icon = getIconForEvent(e.title, e.categories);
+    // Map categories/titles to icons
+    const icon = getIconForEvent(e.title, e.categories);
 
-      return {
-        time,
-        title: e.title,
-        description: e.description,
-        icon,
-      };
-    },
-  );
+    return {
+      time,
+      title: e.title,
+      description: e.description,
+      icon,
+    };
+  });
 
   // Save to KV cache with current timestamp
   if (kv) {
@@ -590,6 +603,8 @@ function getIconForEvent(title: string, categories: string[]): string {
   if (categories.includes("Stemning") || categories.includes("Fest")) {
     return "music";
   }
+
+  return "default";
 }
 
 export interface WeddingLocation {
@@ -669,11 +684,11 @@ const fallbackLocations: WeddingLocation[] = [
 ];
 
 export async function fetchLocationsFromNotion(
-  cloudflareEnv?: Record<string, unknown>,
-  context?: Record<string, unknown>,
+  localEnv?: Env,
+  context?: ExecutionContext,
 ): Promise<WeddingLocation[]> {
-  const localEnv = cloudflareEnv || env;
-  const kv = localEnv?.WEDDING_CACHE;
+  const currentEnv = localEnv || env;
+  const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_locations";
 
   // 1. Try to read from KV cache
@@ -689,9 +704,11 @@ export async function fetchLocationsFromNotion(
           console.log(
             `Locations cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
           );
-          const updatePromise = updateLocationsCache(localEnv).catch((err) => {
-            console.error("Error in background locations sync:", err);
-          });
+          const updatePromise = updateLocationsCache(currentEnv).catch(
+            (err) => {
+              console.error("Error in background locations sync:", err);
+            },
+          );
 
           // If running under Cloudflare Workers, register the background promise
           if (context?.waitUntil) {
@@ -709,7 +726,7 @@ export async function fetchLocationsFromNotion(
   // 2. Cache miss: Fetch and update synchronously
   console.log("Locations cache miss, performing synchronous fetch...");
   try {
-    return await updateLocationsCache(localEnv);
+    return await updateLocationsCache(currentEnv);
   } catch (err) {
     console.error(
       "Error fetching locations from Notion, falling back to static list:",
@@ -720,14 +737,15 @@ export async function fetchLocationsFromNotion(
 }
 
 async function updateLocationsCache(
-  localEnv?: Record<string, unknown>,
+  localEnv?: Env,
 ): Promise<WeddingLocation[]> {
-  const notion = getNotionClient(localEnv);
-  const kv = localEnv?.WEDDING_CACHE;
+  const currentEnv = localEnv || env;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_locations";
 
   const locationsDbId =
-    localEnv?.NOTION_LOCATIONS_DATABASE_ID ||
+    currentEnv?.NOTION_LOCATIONS_DATABASE_ID ||
     process.env.NOTION_LOCATIONS_DATABASE_ID ||
     notionConfig.databases.locationsId;
   if (!locationsDbId) {
@@ -740,12 +758,12 @@ async function updateLocationsCache(
     data_source_id: locationsDsId,
   });
 
-  const locations: WeddingLocation[] = response.results
-    .filter((page: Record<string, unknown>) => "properties" in page)
-    .map((page: Record<string, unknown>) => {
-      const props = (
-        page as { properties: Record<string, Record<string, unknown>> }
-      ).properties;
+  const locations: WeddingLocation[] = (
+    response.results as PageObjectResponse[]
+  )
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page) => {
+      const props = page.properties;
 
       // Name (title)
       const name =
@@ -769,7 +787,7 @@ async function updateLocationsCache(
 
       // Google Maps (url)
       const googleMapsUrl =
-        props["Google Maps"]?.type === "url"
+        props["Google Maps"]?.type === "url" && props["Google Maps"].url
           ? props["Google Maps"].url
           : undefined;
 
@@ -778,13 +796,15 @@ async function updateLocationsCache(
       const ikonProp = props.Ikon || props.ikon;
       if (ikonProp?.type === "rich_text" && ikonProp.rich_text) {
         ikon =
-          ikonProp.rich_text
-            .map((t: Record<string, unknown>) => t.plain_text)
+          (ikonProp.rich_text as NotionRichTextItem[])
+            .map((t) => t.plain_text)
             .join("")
             .trim()
             .toLowerCase() || "default";
       } else if (ikonProp?.type === "select" && ikonProp.select) {
-        ikon = ikonProp.select.name.trim().toLowerCase() || "default";
+        ikon =
+          (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
+          "default";
       }
 
       // Map categories to dynamic fallback icons
@@ -800,7 +820,7 @@ async function updateLocationsCache(
       };
     })
     .filter(
-      (loc: { lat: number | null; lng: number | null }) =>
+      (loc): loc is WeddingLocation & { lat: number; lng: number } =>
         loc.lat !== null && loc.lng !== null,
     );
 

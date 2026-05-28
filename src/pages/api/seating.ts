@@ -1,11 +1,12 @@
 import { env } from "cloudflare:workers";
 import type { APIRoute } from "astro";
+import type { TableWithGuests } from "../../services/notion";
 import { fetchAllSeatingData } from "../../services/notion";
 
 export const GET: APIRoute = async (_context) => {
   try {
     const kv = env?.WEDDING_CACHE;
-    let seatingData = null;
+    let seatingData: TableWithGuests[] | null = null;
     let cacheHit = false;
 
     // 1. Try to fetch from Cloudflare KV
@@ -25,7 +26,7 @@ export const GET: APIRoute = async (_context) => {
     // 2. Fetch fresh from Notion on cache miss
     if (!seatingData) {
       console.log("Seating chart cache miss, fetching from Notion...");
-      seatingData = await fetchAllSeatingData();
+      seatingData = await fetchAllSeatingData(env);
 
       // Save to KV cache with a 60-second expiration (TTL)
       if (kv) {

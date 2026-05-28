@@ -5,10 +5,14 @@ import {
   getPlaylistTracks,
 } from "../../../services/spotify";
 
+interface AddTrackRequestBody {
+  uri?: string;
+}
+
 export const POST: APIRoute = async (context) => {
   try {
-    const body = await context.request.json();
-    const { uri } = body;
+    const body = (await context.request.json()) as AddTrackRequestBody;
+    const uri = body?.uri;
 
     if (!uri || typeof uri !== "string") {
       return new Response(JSON.stringify({ error: "Spor-URI mangler." }), {

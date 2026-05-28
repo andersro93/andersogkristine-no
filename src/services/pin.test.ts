@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { Env } from "cloudflare:workers";
 import {
   checkRateLimit,
   clearMemoryCache,
@@ -28,7 +29,9 @@ describe("Security Gate - PIN & Session Controls", () => {
   });
 
   describe("Signed Cookie Sessions", () => {
-    const mockEnv = { SESSION_SECRET: "test-secret-key-12345" };
+    const mockEnv = {
+      SESSION_SECRET: "test-secret-key-12345",
+    } as unknown as Env;
 
     test("should generate and verify a valid session cookie", () => {
       const cookieVal = generateSessionCookie(mockEnv);
@@ -53,7 +56,9 @@ describe("Security Gate - PIN & Session Controls", () => {
 
     test("should reject cookies signed with a different secret", () => {
       const cookieVal = generateSessionCookie(mockEnv);
-      const otherEnv = { SESSION_SECRET: "a-different-secret-key" };
+      const otherEnv = {
+        SESSION_SECRET: "a-different-secret-key",
+      } as unknown as Env;
 
       expect(verifySessionCookie(cookieVal, otherEnv)).toBe(false);
     });

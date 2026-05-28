@@ -2,10 +2,19 @@ import { env } from "cloudflare:workers";
 import type { APIRoute } from "astro";
 import { updateGuestRSVP } from "../../services/notion";
 
+interface RSVPRequestBody {
+  guests?: {
+    id: string;
+    rsvp: string;
+    allergies?: string;
+    comment?: string;
+  }[];
+}
+
 export const POST: APIRoute = async (context) => {
   try {
-    const body = await context.request.json();
-    const { guests } = body;
+    const body = (await context.request.json()) as RSVPRequestBody;
+    const guests = body?.guests;
 
     if (!guests || !Array.isArray(guests)) {
       return new Response(
@@ -18,19 +27,14 @@ export const POST: APIRoute = async (context) => {
     }
 
     // Update each guest in Notion
-    const updatePromises = guests.map(
-      (guest: {
-        id: string;
-        rsvp: string;
-        allergies?: string;
-        comment?: string;
-      }) =>
-        updateGuestRSVP(
-          guest.id,
-          guest.rsvp,
-          guest.allergies || "",
-          guest.comment || "",
-        ),
+    const updatePromises = guests.map((guest) =>
+      updateGuestRSVP(
+        guest.id,
+        guest.rsvp,
+        guest.allergies || "",
+        guest.comment || "",
+        env,
+      ),
     );
     await Promise.all(updatePromises);
 

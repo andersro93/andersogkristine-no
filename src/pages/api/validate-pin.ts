@@ -8,6 +8,10 @@ import {
   secureCompare,
 } from "../../services/pin";
 
+interface ValidatePinRequestBody {
+  pin?: string;
+}
+
 export const POST: APIRoute = async (context) => {
   const ip = context.clientAddress || "unknown-ip";
   const kv = env?.WEDDING_CACHE;
@@ -33,8 +37,8 @@ export const POST: APIRoute = async (context) => {
     }
 
     // 2. Parse request body
-    const body = await context.request.json();
-    const { pin } = body;
+    const body = (await context.request.json()) as ValidatePinRequestBody;
+    const pin = body?.pin;
 
     if (!pin || typeof pin !== "string") {
       return new Response(JSON.stringify({ error: "PIN-kode mangler." }), {
