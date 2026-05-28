@@ -336,15 +336,9 @@ export async function fetchAllSeatingData(
       notionConfig.databases.guestsId,
     );
 
-    // B. Query all attending guests
+    // B. Query all guests
     const guestsResponse = await notion.dataSources.query({
       data_source_id: guestsDsId,
-      filter: {
-        property: notionConfig.mappings.guests.rsvp,
-        status: {
-          equals: notionConfig.rsvpStatus.attending, // Only pull guests who are attending
-        },
-      },
       page_size: 100, // Adjust as necessary
     });
 
