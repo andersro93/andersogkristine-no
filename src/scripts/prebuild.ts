@@ -34,7 +34,7 @@ async function downloadImage(url: string, id: string): Promise<string> {
       }
     }
     
-    const dir = path.join(process.cwd(), 'public/images/egentid');
+    const dir = path.join(process.cwd(), 'public/images/egentid/downloads');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -44,9 +44,9 @@ async function downloadImage(url: string, id: string): Promise<string> {
     
     const arrayBuffer = await res.arrayBuffer();
     await Bun.write(filePath, arrayBuffer);
-    console.log(`Downloaded image for contributor ${id} to public/images/egentid/${filename}`);
+    console.log(`Downloaded image for contributor ${id} to public/images/egentid/downloads/${filename}`);
     
-    return `/images/egentid/${filename}`;
+    return `/images/egentid/downloads/${filename}`;
   } catch (err: any) {
     console.warn(`⚠️ Warning: Failed to download contributor image for ${id}:`, err.message || err);
     return url;

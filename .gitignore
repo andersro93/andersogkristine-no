@@ -26,3 +26,7 @@ pnpm-debug.log*
 # wrangler
 .wrangler/
 wrangler-debug.log*
+
+# notion dynamic fallbacks
+src/config/notion-fallback.json
+public/images/egentid/downloads/
