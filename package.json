@@ -9,7 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "dev:clean": "rm -rf .wrangler/state/v3 .astro"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.5.4",

@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InteractiveMap from '../components/InteractiveMap';
+---
+
+<Layout title="Kart over bryllupet - Kristine og Anders">
+  <!-- Load Leaflet via CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" is:inline></script>
+
+  <main class="min-h-screen py-16 px-4 md:px-8 max-w-6xl mx-auto flex flex-col justify-center">
+    
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80 select-none">&larr; Tilbake til forsiden</a>
+      <h1 class="font-wedding text-5xl md:text-6xl text-brand-title mb-2">Bryllupskart</h1>
+      <p class="font-serif italic text-lg opacity-90 text-brand-text/80">Oversikt over viktige steder for bryllupshelgen</p>
+      <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
+    </div>
+
+    <!-- MAIN CARD -->
+    <div class="bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl p-4 md:p-8 shadow-xl shadow-brand-title/5 relative overflow-hidden">
+      
+      <!-- Corner ornaments -->
+      <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
+      <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
+      <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
+      <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
+
+      <!-- React Map Island -->
+      <InteractiveMap client:only="react" />
+
+    </div>
+  </main>
+</Layout>

@@ -238,16 +238,16 @@ export async function getPlaylistTracks(env: any): Promise<SpotifyTrack[]> {
 
     const data = await res.json();
     const tracks: SpotifyTrack[] = (data.items || [])
-      .filter((item: any) => item.track) // Filter out null/deleted tracks
-      .map((item: any) => {
-        const t = item.track;
+      .map((item: any) => item.track || item.item) // Support both old 'track' and new 'item' shapes (from Feb 2026 API changes)
+      .filter((t: any) => t && (t.type === 'track' || t.name)) // Filter out null/deleted tracks/episodes
+      .map((t: any) => {
         return {
-          id: t.id,
-          name: t.name,
-          artists: t.artists.map((a: any) => a.name).join(', '),
-          albumName: t.album.name,
-          albumImageUrl: t.album.images?.[2]?.url || t.album.images?.[1]?.url || t.album.images?.[0]?.url || '',
-          uri: t.uri,
+          id: t.id || '',
+          name: t.name || '',
+          artists: (t.artists || []).map((a: any) => a.name).join(', '),
+          albumName: t.album?.name || '',
+          albumImageUrl: t.album?.images?.[2]?.url || t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
+          uri: t.uri || '',
         };
       });
 

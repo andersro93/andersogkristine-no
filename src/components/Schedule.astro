@@ -1,5 +1,21 @@
 ---
+import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
+import { fetchScheduleFromNotion } from '../services/notion';
+
+let schedule = weddingConfig.schedule;
+
+// Retrieve Cloudflare runtime context
+const cloudflareContext = Astro.locals?.runtime?.context;
+
+try {
+  const notionSchedule = await fetchScheduleFromNotion(env, cloudflareContext);
+  if (notionSchedule && notionSchedule.length > 0) {
+    schedule = notionSchedule;
+  }
+} catch (err) {
+  console.error("Failed to load program from Notion, falling back to static config:", err);
+}
 
 // Helper to return custom SVG paths based on icon identifier
 const getIconSvg = (iconName?: string) => {
@@ -125,7 +141,7 @@ const getIconSvg = (iconName?: string) => {
     <!-- Vertical line connecting timeline events (for md+ centered, for mobile left aligned) -->
     <div class="absolute left-6 md:left-24 top-2 bottom-2 w-[1px] bg-brand-title/15"></div>
 
-    {weddingConfig.schedule.map((event) => (
+    {schedule.map((event) => (
       <div class="relative flex flex-col md:flex-row md:items-start group py-4">
         
         <!-- Time marker (Desktop: Left, Mobile: Absolute next to icon) -->

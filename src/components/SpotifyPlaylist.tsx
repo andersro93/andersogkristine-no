@@ -194,20 +194,41 @@ export default function SpotifyPlaylist() {
             {searchResults.map((track) => (
               <div key={track.id} className="flex items-center justify-between p-4 gap-4 hover:bg-brand-title/2 transition duration-200">
                 <div className="flex items-center gap-4 min-w-0">
-                  {track.albumImageUrl ? (
-                    <img
-                      src={track.albumImageUrl}
-                      alt={track.albumName}
-                      className="w-12 h-12 rounded object-cover shadow-xs"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-brand-title/5 rounded flex items-center justify-center text-brand-title/30">
-                      🎵
+                  <a
+                    href={`https://open.spotify.com/track/${track.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 group relative cursor-pointer"
+                    title="Åpne i Spotify"
+                  >
+                    {track.albumImageUrl ? (
+                      <img
+                        src={track.albumImageUrl}
+                        alt={track.albumName}
+                        className="w-12 h-12 rounded object-cover shadow-xs transition duration-300 group-hover:scale-105 group-hover:opacity-85"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-brand-title/5 rounded flex items-center justify-center text-brand-title/30 transition duration-300 group-hover:scale-105">
+                        🎵
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/45 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white fill-current" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
                     </div>
-                  )}
+                  </a>
                   <div className="min-w-0">
-                    <p className="font-serif font-semibold text-base text-brand-title truncate">{track.name}</p>
+                    <a
+                      href={`https://open.spotify.com/track/${track.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-serif font-semibold text-base text-brand-title hover:underline truncate block"
+                      title="Åpne i Spotify"
+                    >
+                      {track.name}
+                    </a>
                     <p className="text-xs text-brand-text/75 truncate">{track.artists}</p>
                   </div>
                 </div>
@@ -298,20 +319,41 @@ export default function SpotifyPlaylist() {
                       {/* Cover & Title */}
                       <td className="py-3.5 px-4 font-sans">
                         <div className="flex items-center gap-4">
-                          {track.albumImageUrl ? (
-                            <img
-                              src={track.albumImageUrl}
-                              alt={track.albumName}
-                              className="w-10 h-10 rounded object-cover shadow-xs shrink-0"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-brand-title/5 rounded flex items-center justify-center shrink-0 text-brand-title/30">
-                              🎵
+                          <a
+                            href={`https://open.spotify.com/track/${track.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 group relative cursor-pointer"
+                            title="Åpne i Spotify"
+                          >
+                            {track.albumImageUrl ? (
+                              <img
+                                src={track.albumImageUrl}
+                                alt={track.albumName}
+                                className="w-10 h-10 rounded object-cover shadow-xs transition duration-300 group-hover:scale-105 group-hover:opacity-85"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-brand-title/5 rounded flex items-center justify-center shrink-0 text-brand-title/30 transition duration-300 group-hover:scale-105">
+                                🎵
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/45 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white fill-current" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
                             </div>
-                          )}
+                          </a>
                           <div className="min-w-0">
-                            <p className="font-serif font-semibold text-brand-title truncate">{track.name}</p>
+                            <a
+                              href={`https://open.spotify.com/track/${track.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-serif font-semibold text-brand-title hover:underline truncate block"
+                              title="Åpne i Spotify"
+                            >
+                              {track.name}
+                            </a>
                             <p className="text-xs text-brand-text/75 truncate">{track.artists}</p>
                           </div>
                         </div>

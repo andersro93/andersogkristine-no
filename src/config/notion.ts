@@ -4,6 +4,8 @@ export const notionConfig = {
     invitesId: process.env.NOTION_INVITES_DATABASE_ID || "36c8d3696e2d801493eefe611eb2f646",
     guestsId: process.env.NOTION_GUESTS_DATABASE_ID || "2e68d3696e2d8086a009ea4e06c26cdc",
     tablesId: process.env.NOTION_TABLES_DATABASE_ID || "36c8d3696e2d80698c3ddea712dda88f",
+    programId: process.env.NOTION_PROGRAM_DATABASE_ID || "2e68d3696e2d80cca2cafe8e90fedd96",
+    locationsId: process.env.NOTION_LOCATIONS_DATABASE_ID || "36e8d3696e2d80999344e01768cb51d3",
   },
   
   // Data Source IDs (used in modern 2026 Notion API query & retrieve endpoints)
