@@ -1213,21 +1213,28 @@ export async function fetchEgentidData(
         const { data, timestamp } = JSON.parse(cached);
         const age = Date.now() - timestamp;
 
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `Egentid cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateEgentidCache(currentEnv).catch((err) => {
-            console.error("Error in background Egentid sync:", err);
-          });
+        // Notion S3 URLs expire after 1 hour.
+        // If the cache is older than 45 minutes, force a synchronous fetch
+        // to avoid serving expired image links to the user.
+        if (age > 45 * 60 * 1000) {
+          console.log("Egentid cache is too old (S3 URLs may be expired), forcing synchronous fetch...");
+        } else {
+          // If cache is stale (> 1 minute), trigger background update (SWR)
+          if (age > 60 * 1000) {
+            console.log(
+              `Egentid cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+            );
+            const updatePromise = updateEgentidCache(currentEnv).catch((err) => {
+              console.error("Error in background Egentid sync:", err);
+            });
 
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
+            if (context?.waitUntil) {
+              context.waitUntil(updatePromise);
+            }
           }
-        }
 
-        return data;
+          return data;
+        }
       }
     } catch (err) {
       console.error("KV read error for Egentid contributors:", err);

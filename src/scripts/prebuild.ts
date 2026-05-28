@@ -5,6 +5,54 @@ import type { ScheduleEvent, Contributor, FaqItem } from '../services/notion';
 
 const FALLBACK_FILE = path.join(process.cwd(), 'src/config/notion-fallback.json');
 
+async function downloadImage(url: string, id: string): Promise<string> {
+  // If it's already a local path, return as is
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return url;
+  }
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Fetch failed with status ${res.status}`);
+    }
+    
+    // Determine extension from content-type or url
+    const contentType = res.headers.get('content-type') || '';
+    let ext = 'webp';
+    if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+      ext = 'jpg';
+    } else if (contentType.includes('png')) {
+      ext = 'png';
+    } else if (contentType.includes('gif')) {
+      ext = 'gif';
+    } else {
+      const pathname = new URL(url).pathname;
+      const match = pathname.match(/\.([a-z0-9]+)$/i);
+      if (match) {
+        ext = match[1];
+      }
+    }
+    
+    const dir = path.join(process.cwd(), 'public/images/egentid');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    const filename = `${id}.${ext}`;
+    const filePath = path.join(dir, filename);
+    
+    const arrayBuffer = await res.arrayBuffer();
+    await Bun.write(filePath, arrayBuffer);
+    console.log(`Downloaded image for contributor ${id} to public/images/egentid/${filename}`);
+    
+    return `/images/egentid/${filename}`;
+  } catch (err: any) {
+    console.warn(`⚠️ Warning: Failed to download contributor image for ${id}:`, err.message || err);
+    return url;
+  }
+}
+
 async function run() {
   console.log('--- Notion Pre-build: Syncing Static Fallbacks ---');
   
@@ -46,8 +94,16 @@ async function run() {
     console.log('Syncing Egentid recommendations...');
     const contributors = await fetchEgentidData();
     if (contributors && contributors.length > 0) {
-      existingData.egentid.contributors = contributors;
-      console.log(`Fetched ${contributors.length} Egentid contributors.`);
+      const localizedContributors = [];
+      for (const contributor of contributors) {
+        const localPhoto = await downloadImage(contributor.photo, contributor.id);
+        localizedContributors.push({
+          ...contributor,
+          photo: localPhoto,
+        });
+      }
+      existingData.egentid.contributors = localizedContributors;
+      console.log(`Fetched ${contributors.length} Egentid contributors and localized images.`);
     }
   } catch (err: any) {
     console.warn('⚠️ Warning: Failed to pre-fetch Egentid contributors:', err.message || err);
