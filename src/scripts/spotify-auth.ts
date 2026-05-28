@@ -2,7 +2,7 @@ import http from 'node:http';
 import { exec } from 'node:child_process';
 
 const PORT = 3000;
-const REDIRECT_URI = `http://localhost:${PORT}/callback`;
+const REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 
 // Load environment variables from .env
 const clientId = process.env.SPOTIFY_CLIENT_ID;
@@ -96,7 +96,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n🔑 Spotify OAuth Server kjører på http://localhost:${PORT}`);
+  console.log(`\n🔑 Spotify OAuth Server kjører på http://127.0.0.1:${PORT}`);
   console.log('Åpner nettleseren din for å logge inn på Spotify...');
   console.log(`Hvis den ikke åpnes automatisk, klikk på denne lenken:\n`);
   console.log(`\x1b[36m${authUrl}\x1b[0m\n`);
