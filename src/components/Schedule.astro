@@ -14,7 +14,7 @@ let schedule = weddingConfig.schedule;
 const cloudflareContext = Astro.locals?.runtime?.context;
 
 try {
-  const notionSchedule = await fetchScheduleFromNotion(env, cloudflareContext);
+  const notionSchedule = await fetchScheduleFromNotion(env as Env, cloudflareContext);
   if (notionSchedule && notionSchedule.length > 0) {
     schedule = notionSchedule;
   }

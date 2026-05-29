@@ -13,7 +13,7 @@ import { fetchFeatureFlags } from '../services/notion';
 const context = Astro.locals?.runtime?.context;
 let flags = { rsvp: true, seating: true, music: true, map: true, egentid: true, program: true };
 try {
-  const fetchedFlags = await fetchFeatureFlags(env, context);
+  const fetchedFlags = await fetchFeatureFlags(env as Env, context);
   if (fetchedFlags) {
     flags = fetchedFlags;
   }

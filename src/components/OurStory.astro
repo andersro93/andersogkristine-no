@@ -7,7 +7,7 @@ const context = Astro.locals?.runtime?.context;
 let story = weddingConfig.story;
 
 try {
-  const notionStory = await fetchStoryFromNotion(env, context);
+  const notionStory = await fetchStoryFromNotion(env as Env, context);
   if (notionStory && notionStory.length > 0) {
     story = notionStory;
   }

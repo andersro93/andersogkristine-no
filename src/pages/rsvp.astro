@@ -12,7 +12,7 @@ let errorMsg: string | null = null;
 
 if (code) {
   try {
-    invite = await fetchInviteByCode(code, env);
+    invite = await fetchInviteByCode(code, env as Env);
     if (!invite) {
       errorMsg = "Ugyldig invitasjonskode. Vennligst sjekk at koden stemmer.";
     }

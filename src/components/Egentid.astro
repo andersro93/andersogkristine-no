@@ -7,7 +7,7 @@ const context = Astro.locals?.runtime?.context;
 
 let contributors: Contributor[] = [];
 try {
-  contributors = await fetchEgentidData(env, context);
+  contributors = await fetchEgentidData(env as Env, context);
 } catch (err) {
   console.error("Error loading egentid from Notion:", err);
   contributors = weddingConfig.egentid.contributors;

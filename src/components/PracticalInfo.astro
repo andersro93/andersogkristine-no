@@ -15,8 +15,8 @@ let toastmaster = weddingConfig.toastmaster;
 
 try {
   const [notionFaqs, notionToastmaster] = await Promise.all([
-    fetchFaqFromNotion(env, context),
-    fetchToastmasterFromNotion(env, context),
+    fetchFaqFromNotion(env as Env, context),
+    fetchToastmasterFromNotion(env as Env, context),
   ]);
   if (notionFaqs && notionFaqs.length > 0) {
     faqs = notionFaqs;
