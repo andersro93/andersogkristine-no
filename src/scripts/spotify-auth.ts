@@ -4,6 +4,14 @@ import http from "node:http";
 const PORT = 3000;
 const REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 
+const escapeHtml = (unsafe: string): string =>
+  unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
 // Load environment variables from .env
 const clientId = process.env.SPOTIFY_CLIENT_ID;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -39,7 +47,7 @@ const server = http.createServer(async (req, res) => {
     if (error) {
       res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
-        `<h1>Kunne ikke autorisere</h1><p>Spotify returnerte en feil: ${error}</p>`,
+        `<h1>Kunne ikke autorisere</h1><p>Spotify returnerte en feil: ${escapeHtml(error || "")}</p>`,
       );
       console.error(`❌ Spotify autorisasjonsfeil: ${error}`);
       cleanupAndExit(1);
