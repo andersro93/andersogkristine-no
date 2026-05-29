@@ -5,6 +5,7 @@ const env = rawEnv as Env;
 import type { APIRoute } from "astro";
 import type { TableWithGuests } from "../../services/notion";
 import { fetchAllSeatingData } from "../../services/notion";
+import notionFallback from "../../config/notion-fallback.json";
 
 export const GET: APIRoute = async (_context) => {
   try {
@@ -29,10 +30,15 @@ export const GET: APIRoute = async (_context) => {
     // 2. Fetch fresh from Notion on cache miss
     if (!seatingData) {
       console.log("Seating chart cache miss, fetching from Notion...");
-      seatingData = await fetchAllSeatingData(env);
+      try {
+        seatingData = await fetchAllSeatingData(env);
+      } catch (err) {
+        console.error("Error fetching seating from Notion, falling back to prebuild data:", err);
+        seatingData = (notionFallback as any).seating || [];
+      }
 
       // Save to KV cache with a 60-second expiration (TTL)
-      if (kv) {
+      if (kv && seatingData && seatingData.length > 0) {
         try {
           await kv.put("seating_data", JSON.stringify(seatingData), {
             expirationTtl: 60,

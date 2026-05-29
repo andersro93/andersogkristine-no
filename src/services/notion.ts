@@ -1,7 +1,8 @@
 import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
-import { cloudflareEnv, getEnvVar } from "./env";
+import { cloudflareEnv, getEnvVar, requireEnvVar } from "./env";
+import notionFallback from "../config/notion-fallback.json";
 
 // Helper interfaces for Notion API JSON properties
 interface NotionRichTextItem {
@@ -186,10 +187,8 @@ export async function fetchInviteByCode(
   const notion = getNotionClient(localEnv);
 
   try {
-    const invitesDsId = await getDataSourceId(
-      notion,
-      notionConfig.databases.invitesId,
-    );
+    const invitesDbId = requireEnvVar("NOTION_INVITES_DATABASE_ID", localEnv);
+    const invitesDsId = await getDataSourceId(notion, invitesDbId);
 
     // Query Invites database for matching code
     const invitesResponse = await notion.dataSources.query({
@@ -377,10 +376,8 @@ export async function fetchAllSeatingData(
   const notion = getNotionClient(localEnv);
 
   try {
-    const tablesDsId = await getDataSourceId(
-      notion,
-      notionConfig.databases.tablesId,
-    );
+    const tablesDbId = requireEnvVar("NOTION_TABLES_DATABASE_ID", localEnv);
+    const tablesDsId = await getDataSourceId(notion, tablesDbId);
 
     // A. Query all tables
     const tablesResponse = await notion.dataSources.query({
@@ -404,10 +401,8 @@ export async function fetchAllSeatingData(
       }
     }
 
-    const guestsDsId = await getDataSourceId(
-      notion,
-      notionConfig.databases.guestsId,
-    );
+    const guestsDbId = requireEnvVar("NOTION_GUESTS_DATABASE_ID", localEnv);
+    const guestsDsId = await getDataSourceId(notion, guestsDbId);
 
     // B. Query all guests
     const guestsResponse = await notion.dataSources.query({
@@ -530,33 +525,21 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_schedule";
 
-  const programDbId =
-    getEnvVar("NOTION_PROGRAM_DATABASE_ID", localEnv) ||
-    notionConfig.databases.programId;
+  const programDbId = getEnvVar("NOTION_PROGRAM_DATABASE_ID", localEnv);
   if (!programDbId) {
     throw new Error("NOTION_PROGRAM_DATABASE_ID is not configured.");
   }
 
   const programDsId = await getDataSourceId(notion, programDbId);
 
-  // Query database: Webside = Ja AND Hvem contains Gjester
+  // Query database: Webside = Ja
   const response = await notion.dataSources.query({
     data_source_id: programDsId,
     filter: {
-      and: [
-        {
-          property: "Webside",
-          select: {
-            equals: "Ja",
-          },
-        },
-        {
-          property: "Hvem",
-          multi_select: {
-            contains: "Gjester",
-          },
-        },
-      ],
+      property: "Webside",
+      select: {
+        equals: "Ja",
+      },
     },
   });
 
@@ -718,72 +701,8 @@ export interface WeddingLocation {
   activities?: LocationActivity[];
 }
 
-const fallbackLocations: WeddingLocation[] = [
-  {
-    id: "36e8d369-6e2d-80ea-a58b-c8ec89631674",
-    name: "Grünerløkka Brygghus",
-    lat: 59.9247286,
-    lng: 10.7584671,
-    googleMapsUrl: "https://maps.app.goo.gl/sZgdXD9jp9rcmrHM9",
-    ikon: "food",
-  },
-  {
-    id: "36e8d369-6e2d-8014-ba64-ffe2a573905e",
-    name: "Olaf Ryes Plass",
-    lat: 59.9229316,
-    lng: 10.7562115,
-    googleMapsUrl: "https://maps.app.goo.gl/vw3p4JifncSofxzu8",
-    ikon: "park",
-  },
-  {
-    id: "36e8d369-6e2d-80e8-a5aa-f89b6a981a22",
-    name: "Hotell 33",
-    lat: 59.9291749,
-    lng: 10.817278,
-    googleMapsUrl: "https://maps.app.goo.gl/TWDf2sCnDdsE6F7e7",
-    ikon: "hotel",
-  },
-  {
-    id: "36e8d369-6e2d-8001-8b91-ef8da8a27448",
-    name: "Sofienbergparken",
-    lat: 59.9231031,
-    lng: 10.7609634,
-    googleMapsUrl: "https://maps.app.goo.gl/b2xU7SC8NjyD6i8L9",
-    ikon: "park",
-  },
-  {
-    id: "36e8d369-6e2d-8076-a00f-ca4867992ce0",
-    name: "Botanisk Hage",
-    lat: 59.9178158,
-    lng: 10.7579778,
-    googleMapsUrl: "https://maps.app.goo.gl/SysAjV5yeECwq4QG7",
-    ikon: "park",
-  },
-  {
-    id: "36e8d369-6e2d-808d-a2cd-fff18e7bc24f",
-    name: "Birkelunden",
-    lat: 59.9263636,
-    lng: 10.7560554,
-    googleMapsUrl: "https://maps.app.goo.gl/w8VTAFnS1H9qELJDA",
-    ikon: "park",
-  },
-  {
-    id: "36e8d369-6e2d-80d0-aa80-ed997494bad7",
-    name: "Paulus Kirke",
-    lat: 59.9263636,
-    lng: 10.7560554,
-    googleMapsUrl: "https://maps.app.goo.gl/cxfVnnrqevvXK6i66",
-    ikon: "church",
-  },
-  {
-    id: "36e8d369-6e2d-80cf-a2f9-ff8fa9e808f3",
-    name: "Tårnet",
-    lat: 59.9269905,
-    lng: 10.816382,
-    googleMapsUrl: "https://maps.app.goo.gl/dJVb6CioPS4FEVQ1A",
-    ikon: "ring",
-  },
-];
+// Locations fallback: sourced from prebuild-generated notion-fallback.json
+const fallbackLocations: WeddingLocation[] = (notionFallback as any).locations || [];
 
 export async function fetchLocationsFromNotion(
   localEnv?: Env,
@@ -846,9 +765,7 @@ async function updateLocationsCache(
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_locations";
 
-  const locationsDbId =
-    getEnvVar("NOTION_LOCATIONS_DATABASE_ID", localEnv) ||
-    notionConfig.databases.locationsId;
+  const locationsDbId = getEnvVar("NOTION_LOCATIONS_DATABASE_ID", localEnv);
   if (!locationsDbId) {
     throw new Error("NOTION_LOCATIONS_DATABASE_ID is not configured.");
   }
@@ -1074,10 +991,7 @@ export interface Contributor {
 async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const medvirkendeDbId =
-    getEnvVar("NOTION_MEDVIRKENDE_DATABASE_ID", localEnv) ||
-    notionConfig.databases.medvirkendeId;
-
+  const medvirkendeDbId = getEnvVar("NOTION_MEDVIRKENDE_DATABASE_ID", localEnv);
   if (!medvirkendeDbId) {
     throw new Error("NOTION_MEDVIRKENDE_DATABASE_ID is not configured.");
   }
@@ -1131,10 +1045,7 @@ async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
 async function fetchRawEgentidItems(localEnv?: Env): Promise<RawEgentidItem[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const egentidDbId =
-    getEnvVar("NOTION_EGENTID_DATABASE_ID", localEnv) ||
-    notionConfig.databases.egentidId;
-
+  const egentidDbId = getEnvVar("NOTION_EGENTID_DATABASE_ID", localEnv);
   if (!egentidDbId) {
     throw new Error("NOTION_EGENTID_DATABASE_ID is not configured.");
   }
@@ -1371,10 +1282,7 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_faq";
 
-  const faqDbId =
-    getEnvVar("NOTION_FAQ_DATABASE_ID", localEnv) ||
-    notionConfig.databases.faqId;
-
+  const faqDbId = getEnvVar("NOTION_FAQ_DATABASE_ID", localEnv);
   if (!faqDbId) {
     throw new Error("NOTION_FAQ_DATABASE_ID is not configured.");
   }
@@ -1416,14 +1324,262 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
   return faqs;
 }
 
-const DEFAULT_FLAGS: Record<string, boolean> = {
-  rsvp: true,
-  seating: true,
-  music: true,
-  map: true,
-  egentid: true,
-  program: true,
-};
+export interface ToastmasterData {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+/**
+ * Retrieves the toastmaster details from the "Medvirkende" table,
+ * cached in Cloudflare KV with SWR logic.
+ */
+export async function fetchToastmasterFromNotion(
+  localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
+): Promise<ToastmasterData> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_toastmaster";
+  const fallback = (notionFallback as any).toastmaster || {
+    name: "",
+    email: "",
+    phone: "",
+  };
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(
+            `Toastmaster cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+          );
+          const updatePromise = updateToastmasterCache(currentEnv).catch((err) => {
+            console.error("Error in background toastmaster sync:", err);
+          });
+
+          // Register background promise if context is available
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("KV read error for Notion toastmaster:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("Toastmaster cache miss, performing synchronous fetch...");
+  try {
+    return await updateToastmasterCache(currentEnv);
+  } catch (err) {
+    console.error("Error fetching toastmaster from Notion, using fallback:", err);
+    return fallback;
+  }
+}
+
+async function updateToastmasterCache(localEnv?: Env): Promise<ToastmasterData> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_toastmaster";
+  const fallback = (notionFallback as any).toastmaster || {
+    name: "",
+    email: "",
+    phone: "",
+  };
+
+  const medvirkendeDbId = getEnvVar("NOTION_MEDVIRKENDE_DATABASE_ID", localEnv);
+  if (!medvirkendeDbId) {
+    throw new Error("NOTION_MEDVIRKENDE_DATABASE_ID is not configured.");
+  }
+
+  const dsId = await getDataSourceId(notion, medvirkendeDbId);
+  const response = await notion.dataSources.query({
+    data_source_id: dsId,
+  });
+
+  // Find the page where Role/Rolle equals "Toastmaster"
+  let toastmasterPage: PageObjectResponse | null = null;
+  for (const page of response.results as PageObjectResponse[]) {
+    if ("properties" in page) {
+      const role = getRichTextFull(page.properties.Role || page.properties.Rolle, "");
+      if (role.trim().toLowerCase() === "toastmaster") {
+        toastmasterPage = page;
+        break;
+      }
+    }
+  }
+
+  if (!toastmasterPage) {
+    console.warn("No Toastmaster found in Medvirkende database.");
+    return fallback;
+  }
+
+  const props = toastmasterPage.properties;
+  const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
+  
+  // Get email
+  let email = "";
+  const emailProp = props.Email || props.email || props.Epost || props.epost;
+  if (emailProp?.type === "email") {
+    email = emailProp.email || "";
+  }
+
+  // Get phone
+  let phone = "";
+  const phoneProp = props.Telefon || props.telefon || props.Phone || props.phone;
+  if (phoneProp?.type === "phone_number") {
+    phone = phoneProp.phone_number || "";
+  }
+
+  const data: ToastmasterData = {
+    name,
+    email,
+    phone,
+  };
+
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log("Notion Toastmaster cache updated successfully.");
+    } catch (err) {
+      console.error("KV write error for Notion Toastmaster:", err);
+    }
+  }
+
+  return data;
+}
+
+export interface StoryItem {
+  year: string;
+  title: string;
+  content: string;
+}
+
+/**
+ * Retrieves the story timeline items from the Notion story database,
+ * cached in Cloudflare KV with SWR logic.
+ */
+export async function fetchStoryFromNotion(
+  localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
+): Promise<StoryItem[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_story";
+  const fallback = (notionFallback as any).story || [];
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // If cache is stale (> 1 minute), trigger background update (SWR)
+        if (age > 60 * 1000) {
+          console.log(
+            `Story cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+          );
+          const updatePromise = updateStoryCache(currentEnv).catch((err) => {
+            console.error("Error in background story sync:", err);
+          });
+
+          // Register background promise if context is available
+          if (context?.waitUntil) {
+            context.waitUntil(updatePromise);
+          }
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("KV read error for Notion story:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("Story cache miss, performing synchronous fetch...");
+  try {
+    return await updateStoryCache(currentEnv);
+  } catch (err) {
+    console.error("Error fetching story from Notion, using fallback:", err);
+    return fallback;
+  }
+}
+
+async function updateStoryCache(localEnv?: Env): Promise<StoryItem[]> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const notion = getNotionClient(currentEnv);
+  const kv = currentEnv?.WEDDING_CACHE;
+  const cacheKey = "notion_story";
+
+  const storyDbId = getEnvVar("NOTION_STORY_DATABASE_ID", localEnv);
+  if (!storyDbId) {
+    throw new Error("NOTION_STORY_DATABASE_ID is not configured.");
+  }
+
+  const dsId = await getDataSourceId(notion, storyDbId);
+  const response = await notion.dataSources.query({
+    data_source_id: dsId,
+  });
+
+  const storyItems: StoryItem[] = (response.results as PageObjectResponse[])
+    .filter((page): page is PageObjectResponse => "properties" in page)
+    .map((page) => {
+      const props = page.properties;
+      const title = getTitleProperty(props.Tittel || props.Title || props.Name, "Uten tittel");
+      const content = getRichTextFull(props.Beskrivelse || props.Content || props.Description, "");
+      
+      const dateStr = getDateProperty(props.Dato || props.Date);
+      const year = dateStr ? dateStr.split("-")[0] : "";
+
+      return {
+        year,
+        title,
+        content,
+        dateStr: dateStr || "",
+      };
+    })
+    .filter((item) => item.year)
+    .sort((a, b) => a.dateStr.localeCompare(b.dateStr))
+    .map(({ year, title, content }) => ({ year, title, content }));
+
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: storyItems,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log("Notion Story cache updated successfully.");
+    } catch (err) {
+      console.error("KV write error for Notion Story:", err);
+    }
+  }
+
+  return storyItems;
+}
+
+
+
+// Feature flags fallback: sourced from prebuild-generated notion-fallback.json
+const DEFAULT_FLAGS: Record<string, boolean> = (notionFallback as any).flags || {};
 
 /**
  * Retrieves the feature flags from the Notion flags database,
@@ -1478,10 +1634,7 @@ async function updateFlagsCache(localEnv?: Env): Promise<Record<string, boolean>
   const kv = currentEnv?.WEDDING_CACHE;
   const cacheKey = "notion_flags";
 
-  const flagsDbId =
-    getEnvVar("NOTION_FLAGS_DATABASE_ID", localEnv) ||
-    notionConfig.databases.flagsId;
-
+  const flagsDbId = getEnvVar("NOTION_FLAGS_DATABASE_ID", localEnv);
   if (!flagsDbId) {
     throw new Error("NOTION_FLAGS_DATABASE_ID is not configured.");
   }

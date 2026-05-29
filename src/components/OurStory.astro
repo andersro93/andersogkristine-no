@@ -1,5 +1,19 @@
 ---
+import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
+import { fetchStoryFromNotion } from '../services/notion';
+
+const context = Astro.locals?.runtime?.context;
+let story = weddingConfig.story;
+
+try {
+  const notionStory = await fetchStoryFromNotion(env, context);
+  if (notionStory && notionStory.length > 0) {
+    story = notionStory;
+  }
+} catch (err) {
+  console.error("Error loading story from Notion:", err);
+}
 ---
 
 <section id="story" class="py-20 px-4 md:px-8 bg-brand-bg/40 max-w-6xl mx-auto border-b border-brand-title/5">
@@ -14,7 +28,7 @@ import { weddingConfig } from '../config';
     <div class="absolute left-4 md:left-1/2 top-0 bottom-0 w-[1px] bg-brand-title/20 -translate-x-1/2"></div>
 
     <div class="space-y-12 md:space-y-20">
-      {weddingConfig.story.map((item, index) => {
+      {story.map((item, index) => {
         const isEven = index % 2 === 0;
         return (
           <div class={`relative flex flex-col md:flex-row items-stretch ${isEven ? 'md:flex-row-reverse' : ''}`}>

@@ -1,42 +1,4 @@
 export const notionConfig = {
-  // Database IDs (fallback to process.env during local dev)
-  databases: {
-    invitesId:
-      process.env.NOTION_INVITES_DATABASE_ID ||
-      "36c8d3696e2d801493eefe611eb2f646",
-    guestsId:
-      process.env.NOTION_GUESTS_DATABASE_ID ||
-      "2e68d3696e2d8086a009ea4e06c26cdc",
-    tablesId:
-      process.env.NOTION_TABLES_DATABASE_ID ||
-      "36c8d3696e2d80698c3ddea712dda88f",
-    programId:
-      process.env.NOTION_PROGRAM_DATABASE_ID ||
-      "2e68d3696e2d80cca2cafe8e90fedd96",
-    locationsId:
-      process.env.NOTION_LOCATIONS_DATABASE_ID ||
-      "36e8d3696e2d80999344e01768cb51d3",
-    egentidId:
-      process.env.NOTION_EGENTID_DATABASE_ID ||
-      "36e8d3696e2d802b9123c611a0cdac1c",
-    medvirkendeId:
-      process.env.NOTION_MEDVIRKENDE_DATABASE_ID ||
-      "36e8d3696e2d80ccb490ff3e45af3cdc",
-    faqId:
-      process.env.NOTION_FAQ_DATABASE_ID ||
-      "36e8d3696e2d806c9430e41b435129c2",
-    flagsId:
-      process.env.NOTION_FLAGS_DATABASE_ID ||
-      "36e8d3696e2d80858115ef4a9810858c",
-  },
-
-  // Data Source IDs (used in modern 2026 Notion API query & retrieve endpoints)
-  dataSources: {
-    invitesDsId: "36c8d369-6e2d-8032-a574-000bd5ad3f22",
-    guestsDsId: "2e68d369-6e2d-80e0-aea4-000bbbeacda4",
-    tablesDsId: "36c8d369-6e2d-80f7-9de2-000bc538baa2",
-  },
-
   // Mappings between Notion columns and app keys
   mappings: {
     invites: {

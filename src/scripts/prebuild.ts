@@ -1,9 +1,37 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { fetchScheduleFromNotion, fetchEgentidData, fetchFaqFromNotion } from '../services/notion';
-import type { ScheduleEvent, Contributor, FaqItem } from '../services/notion';
+import {
+  fetchScheduleFromNotion,
+  fetchEgentidData,
+  fetchFaqFromNotion,
+  fetchLocationsFromNotion,
+  fetchAllSeatingData,
+  fetchFeatureFlags,
+  fetchToastmasterFromNotion,
+  fetchStoryFromNotion,
+} from '../services/notion';
+import type {
+  ScheduleEvent,
+  Contributor,
+  FaqItem,
+  WeddingLocation,
+  TableWithGuests,
+  ToastmasterData,
+  StoryItem,
+} from '../services/notion';
 
 const FALLBACK_FILE = path.join(process.cwd(), 'src/config/notion-fallback.json');
+
+interface FallbackData {
+  schedule: ScheduleEvent[];
+  egentid: { contributors: Contributor[] };
+  faqs: FaqItem[];
+  locations: WeddingLocation[];
+  seating: TableWithGuests[];
+  flags: Record<string, boolean>;
+  toastmaster?: ToastmasterData;
+  story?: StoryItem[];
+}
 
 async function downloadImage(url: string, id: string): Promise<string> {
   // If it's already a local path, return as is
@@ -57,16 +85,17 @@ async function run() {
   console.log('--- Notion Pre-build: Syncing Static Fallbacks ---');
   
   // 1. Load existing data if available
-  let existingData: {
-    schedule: ScheduleEvent[];
-    egentid: {
-      contributors: Contributor[];
-    };
-    faqs: FaqItem[];
-  } = { schedule: [], egentid: { contributors: [] }, faqs: [] };
+  let existingData: FallbackData = {
+    schedule: [],
+    egentid: { contributors: [] },
+    faqs: [],
+    locations: [],
+    seating: [],
+    flags: {},
+  };
   if (fs.existsSync(FALLBACK_FILE)) {
     try {
-      existingData = JSON.parse(fs.readFileSync(FALLBACK_FILE, 'utf-8'));
+      existingData = { ...existingData, ...JSON.parse(fs.readFileSync(FALLBACK_FILE, 'utf-8')) };
     } catch {
       // Ignore parse errors, start fresh
     }
@@ -118,6 +147,61 @@ async function run() {
     }
   } catch (err: any) {
     console.warn('⚠️ Warning: Failed to pre-fetch FAQs:', err.message || err);
+  }
+
+  try {
+    console.log('Syncing Locations (Steder)...');
+    const locations = await fetchLocationsFromNotion();
+    if (locations && locations.length > 0) {
+      existingData.locations = locations;
+      console.log(`Fetched ${locations.length} locations.`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Warning: Failed to pre-fetch locations:', err.message || err);
+  }
+
+  try {
+    console.log('Syncing Seating (Bord)...');
+    const seating = await fetchAllSeatingData();
+    if (seating && seating.length > 0) {
+      existingData.seating = seating;
+      console.log(`Fetched ${seating.length} tables with guests.`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Warning: Failed to pre-fetch seating data:', err.message || err);
+  }
+
+  try {
+    console.log('Syncing Feature Flags...');
+    const flags = await fetchFeatureFlags();
+    if (flags && Object.keys(flags).length > 0) {
+      existingData.flags = flags;
+      console.log(`Fetched ${Object.keys(flags).length} feature flags.`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Warning: Failed to pre-fetch feature flags:', err.message || err);
+  }
+
+  try {
+    console.log('Syncing Toastmaster...');
+    const toastmaster = await fetchToastmasterFromNotion();
+    if (toastmaster) {
+      existingData.toastmaster = toastmaster;
+      console.log(`Fetched toastmaster: ${toastmaster.name}.`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Warning: Failed to pre-fetch toastmaster:', err.message || err);
+  }
+
+  try {
+    console.log('Syncing Our Story (Historie)...');
+    const story = await fetchStoryFromNotion();
+    if (story && story.length > 0) {
+      existingData.story = story;
+      console.log(`Fetched ${story.length} story items.`);
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Warning: Failed to pre-fetch story items:', err.message || err);
   }
 
   // 3. Write data back to file
