@@ -1302,11 +1302,11 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
     .map((page) => {
       const props = page.properties;
       const question = getTitleProperty(
-        props["Spørsmål"] || props.Sporsmal || props.Question || props.Name,
+        props.Spørsmål || props.Sporsmal || props.Question || props.Name,
         "Uten spørsmål",
       );
       const answer = notionRichTextToHtml(
-        props["Svar"] || props.Svar || props.Answer || props.Description,
+        props.Svar || props.Svar || props.Answer || props.Description,
         "",
       );
 

@@ -3,8 +3,8 @@ import { env as rawEnv } from "cloudflare:workers";
 
 const env = rawEnv as Env;
 
-import { verifySessionCookie } from "./services/pin";
 import { fetchFeatureFlags } from "./services/notion";
+import { verifySessionCookie } from "./services/pin";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
@@ -35,9 +35,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // Retrieve feature flags
-  let flags: Record<string, boolean> = { rsvp: true, seating: true, music: true, map: true };
+  let flags: Record<string, boolean> = {
+    rsvp: true,
+    seating: true,
+    music: true,
+    map: true,
+  };
   try {
-    const fetchedFlags = await fetchFeatureFlags(env, context.locals?.runtime?.context);
+    const fetchedFlags = await fetchFeatureFlags(
+      env,
+      context.locals?.runtime?.context,
+    );
     if (fetchedFlags) {
       flags = fetchedFlags;
     }

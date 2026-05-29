@@ -22,9 +22,12 @@ export const weddingConfig = {
   },
   toastmaster: {
     name: (notionFallback as any).toastmaster?.name,
-    contact: (notionFallback as any).toastmaster?.email && (notionFallback as any).toastmaster?.phone
-      ? `${(notionFallback as any).toastmaster.email} / ${(notionFallback as any).toastmaster.phone}`
-      : (notionFallback as any).toastmaster?.email || (notionFallback as any).toastmaster?.phone,
+    contact:
+      (notionFallback as any).toastmaster?.email &&
+      (notionFallback as any).toastmaster?.phone
+        ? `${(notionFallback as any).toastmaster.email} / ${(notionFallback as any).toastmaster.phone}`
+        : (notionFallback as any).toastmaster?.email ||
+          (notionFallback as any).toastmaster?.phone,
     info: "Meld gjerne ifra om taler eller innslag innen 1. juli.",
   },
   story: (notionFallback as any).story || [],
