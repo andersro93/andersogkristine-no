@@ -1,14 +1,14 @@
 version: 2
 updates:
-  # Maintain dependencies for npm/bun packages
-  - package-ecosystem: "npm"
+  # Maintain dependencies for bun packages
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "08:00"
       timezone: "Europe/Oslo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
 
   # Maintain GitHub Actions dependencies
   - package-ecosystem: "github-actions"
@@ -18,4 +18,4 @@ updates:
       day: "monday"
       time: "08:00"
       timezone: "Europe/Oslo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
