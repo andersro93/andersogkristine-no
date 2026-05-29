@@ -16,7 +16,7 @@
     "dev:clean": "rm -rf .wrangler/state/v3 .astro"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^13.5.4",
+    "@astrojs/cloudflare": "^13.6.0",
     "@astrojs/react": "^5.0.5",
     "@notionhq/client": "^5.22.0",
     "@tailwindcss/vite": "^4.3.0",
