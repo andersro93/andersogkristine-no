@@ -1,18 +1,25 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "andersogkristine-no",
-	"compatibility_date": "2026-05-25",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"assets": {
-		"directory": "./dist",
-		"binding": "ASSETS"
-	},
-	"kv_namespaces": [
-		{
-			"binding": "WEDDING_CACHE",
-			"id": "941f1a0df58e4b97805db7829b63d93d"
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "andersogkristine-no",
+  "compatibility_date": "2026-05-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "WEDDING_CACHE",
+      "id": "941f1a0df58e4b97805db7829b63d93d"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  }
 }
