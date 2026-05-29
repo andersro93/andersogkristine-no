@@ -18,7 +18,7 @@ interface Env {
   SPOTIFY_CLIENT_SECRET?: string;
   SPOTIFY_REFRESH_TOKEN?: string;
   SPOTIFY_PLAYLIST_ID?: string;
-  WEDDING_CACHE?: KVNamespace;
+  CACHE?: KVNamespace;
 }
 
 declare module "cloudflare:workers" {

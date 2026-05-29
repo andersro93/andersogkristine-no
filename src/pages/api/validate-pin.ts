@@ -17,7 +17,7 @@ interface ValidatePinRequestBody {
 
 export const POST: APIRoute = async (context) => {
   const ip = context.clientAddress || "unknown-ip";
-  const kv = env?.WEDDING_CACHE;
+  const kv = env?.CACHE;
 
   try {
     // 1. Check rate limit

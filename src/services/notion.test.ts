@@ -1,11 +1,11 @@
-import { mock, describe, test, expect, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
-  fetchFeatureFlags,
-  fetchScheduleFromNotion,
   fetchEgentidData,
   fetchFaqFromNotion,
-  fetchToastmasterFromNotion,
+  fetchFeatureFlags,
+  fetchScheduleFromNotion,
   fetchStoryFromNotion,
+  fetchToastmasterFromNotion,
 } from "./notion";
 
 // Setup mocks for @notionhq/client
@@ -96,7 +96,7 @@ describe("Notion Service Integration & Fallbacks", () => {
       NOTION_EGENTID_DATABASE_ID: "egentid-db",
       NOTION_LOCATIONS_DATABASE_ID: "locations-db",
       NOTION_STORY_DATABASE_ID: "story-db",
-      WEDDING_CACHE: mockKV,
+      CACHE: mockKV,
     };
   });
 
@@ -217,11 +217,11 @@ describe("Notion Service Integration & Fallbacks", () => {
       mockFaqResults = [
         {
           properties: {
-            "Spørsmål": {
+            Spørsmål: {
               type: "title",
               title: [{ plain_text: "Hva er kleskoden?" }],
             },
-            "Svar": {
+            Svar: {
               type: "rich_text",
               rich_text: [
                 {
@@ -295,7 +295,9 @@ describe("Notion Service Integration & Fallbacks", () => {
       expect(egentidData[0].name).toBe("Kristine");
       expect(egentidData[0].suggestions).toHaveLength(1);
       expect(egentidData[0].suggestions[0].text).toContain("Liebling");
-      expect(egentidData[0].suggestions[0].locationId).toBe("location-liebling");
+      expect(egentidData[0].suggestions[0].locationId).toBe(
+        "location-liebling",
+      );
     });
   });
 
@@ -385,12 +387,20 @@ describe("Notion Service Integration & Fallbacks", () => {
   describe("KV Cache Flow (SWR)", () => {
     test("should return cached data immediately if available", async () => {
       const cachedTimeline = [
-        { time: "11:00", title: "Cached Event", description: "From Cache", icon: "ring" },
+        {
+          time: "11:00",
+          title: "Cached Event",
+          description: "From Cache",
+          icon: "ring",
+        },
       ];
-      await mockKV.put("notion_schedule", JSON.stringify({
-        data: cachedTimeline,
-        timestamp: Date.now(),
-      }));
+      await mockKV.put(
+        "notion_schedule",
+        JSON.stringify({
+          data: cachedTimeline,
+          timestamp: Date.now(),
+        }),
+      );
 
       // This call should bypass querying the Notion API (results array is empty)
       const schedule = await fetchScheduleFromNotion(mockEnv);

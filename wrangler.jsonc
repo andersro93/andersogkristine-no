@@ -9,8 +9,8 @@
   },
   "kv_namespaces": [
     {
-      "binding": "WEDDING_CACHE",
-      "id": "941f1a0df58e4b97805db7829b63d93d"
+      "binding": "CACHE",
+      "id": "86176175555f4144a41c0e93583f789b"
     }
   ],
   "observability": {

@@ -1,8 +1,8 @@
 import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
-import { cloudflareEnv, getEnvVar, requireEnvVar } from "./env";
 import notionFallback from "../config/notion-fallback.json";
+import { cloudflareEnv, getEnvVar, requireEnvVar } from "./env";
 
 // Helper interfaces for Notion API JSON properties
 interface NotionRichTextItem {
@@ -40,7 +40,7 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
   // 1. Convert each rich text item into HTML with annotations, keeping \n intact
   const htmlParts = prop.rich_text.map((item: any) => {
     let text = item.plain_text || "";
-    
+
     // Escape HTML entities to prevent XSS
     text = text
       .replace(/&/g, "&amp;")
@@ -55,14 +55,14 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
     if (ann.strikethrough) text = `<del>${text}</del>`;
     if (ann.underline) text = `<u>${text}</u>`;
     if (ann.code) text = `<code>${text}</code>`;
-    
+
     if (item.href) {
       const url = item.href;
       if (/^https?:\/\/|^mailto:/i.test(url)) {
         text = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline hover:text-brand-title/80 transition-colors">${text}</a>`;
       }
     }
-    
+
     return text;
   });
 
@@ -75,7 +75,7 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    
+
     // Check if the line is a bullet point (starts with -, *, or •)
     const match = trimmed.match(/^(?:&bull;|-|•|\*)\s*(.*)/);
     if (match) {
@@ -473,7 +473,7 @@ export async function fetchScheduleFromNotion(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<ScheduleEvent[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_schedule";
 
   // 1. Try to read from KV cache
@@ -522,7 +522,7 @@ interface RawScheduleEvent {
 async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_schedule";
 
   const programDbId = getEnvVar("NOTION_PROGRAM_DATABASE_ID", localEnv);
@@ -702,14 +702,15 @@ export interface WeddingLocation {
 }
 
 // Locations fallback: sourced from prebuild-generated notion-fallback.json
-const fallbackLocations: WeddingLocation[] = (notionFallback as any).locations || [];
+const fallbackLocations: WeddingLocation[] =
+  (notionFallback as any).locations || [];
 
 export async function fetchLocationsFromNotion(
   localEnv?: Env,
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<WeddingLocation[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_locations";
 
   // 1. Try to read from KV cache
@@ -762,7 +763,7 @@ async function updateLocationsCache(
 ): Promise<WeddingLocation[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_locations";
 
   const locationsDbId = getEnvVar("NOTION_LOCATIONS_DATABASE_ID", localEnv);
@@ -1113,7 +1114,7 @@ export async function fetchEgentidData(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<Contributor[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_egentid_contributors";
 
   // 1. Try to read from KV cache
@@ -1128,16 +1129,20 @@ export async function fetchEgentidData(
         // If the cache is older than 45 minutes, force a synchronous fetch
         // to avoid serving expired image links to the user.
         if (age > 45 * 60 * 1000) {
-          console.log("Egentid cache is too old (S3 URLs may be expired), forcing synchronous fetch...");
+          console.log(
+            "Egentid cache is too old (S3 URLs may be expired), forcing synchronous fetch...",
+          );
         } else {
           // If cache is stale (> 1 minute), trigger background update (SWR)
           if (age > 60 * 1000) {
             console.log(
               `Egentid cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
             );
-            const updatePromise = updateEgentidCache(currentEnv).catch((err) => {
-              console.error("Error in background Egentid sync:", err);
-            });
+            const updatePromise = updateEgentidCache(currentEnv).catch(
+              (err) => {
+                console.error("Error in background Egentid sync:", err);
+              },
+            );
 
             if (context?.waitUntil) {
               context.waitUntil(updatePromise);
@@ -1159,7 +1164,7 @@ export async function fetchEgentidData(
 
 async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_egentid_contributors";
 
   console.log("Updating Egentid KV cache...");
@@ -1238,7 +1243,7 @@ export async function fetchFaqFromNotion(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<FaqItem[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_faq";
 
   // 1. Try to read from KV cache
@@ -1279,7 +1284,7 @@ export async function fetchFaqFromNotion(
 async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_faq";
 
   const faqDbId = getEnvVar("NOTION_FAQ_DATABASE_ID", localEnv);
@@ -1296,8 +1301,14 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
     .filter((page): page is PageObjectResponse => "properties" in page)
     .map((page) => {
       const props = page.properties;
-      const question = getTitleProperty(props["Spørsmål"] || props.Sporsmal || props.Question || props.Name, "Uten spørsmål");
-      const answer = notionRichTextToHtml(props["Svar"] || props.Svar || props.Answer || props.Description, "");
+      const question = getTitleProperty(
+        props["Spørsmål"] || props.Sporsmal || props.Question || props.Name,
+        "Uten spørsmål",
+      );
+      const answer = notionRichTextToHtml(
+        props["Svar"] || props.Svar || props.Answer || props.Description,
+        "",
+      );
 
       return {
         question,
@@ -1339,7 +1350,7 @@ export async function fetchToastmasterFromNotion(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<ToastmasterData> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_toastmaster";
   const fallback = (notionFallback as any).toastmaster || {
     name: "",
@@ -1360,9 +1371,11 @@ export async function fetchToastmasterFromNotion(
           console.log(
             `Toastmaster cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
           );
-          const updatePromise = updateToastmasterCache(currentEnv).catch((err) => {
-            console.error("Error in background toastmaster sync:", err);
-          });
+          const updatePromise = updateToastmasterCache(currentEnv).catch(
+            (err) => {
+              console.error("Error in background toastmaster sync:", err);
+            },
+          );
 
           // Register background promise if context is available
           if (context?.waitUntil) {
@@ -1382,15 +1395,20 @@ export async function fetchToastmasterFromNotion(
   try {
     return await updateToastmasterCache(currentEnv);
   } catch (err) {
-    console.error("Error fetching toastmaster from Notion, using fallback:", err);
+    console.error(
+      "Error fetching toastmaster from Notion, using fallback:",
+      err,
+    );
     return fallback;
   }
 }
 
-async function updateToastmasterCache(localEnv?: Env): Promise<ToastmasterData> {
+async function updateToastmasterCache(
+  localEnv?: Env,
+): Promise<ToastmasterData> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_toastmaster";
   const fallback = (notionFallback as any).toastmaster || {
     name: "",
@@ -1412,7 +1430,10 @@ async function updateToastmasterCache(localEnv?: Env): Promise<ToastmasterData> 
   let toastmasterPage: PageObjectResponse | null = null;
   for (const page of response.results as PageObjectResponse[]) {
     if ("properties" in page) {
-      const role = getRichTextFull(page.properties.Role || page.properties.Rolle, "");
+      const role = getRichTextFull(
+        page.properties.Role || page.properties.Rolle,
+        "",
+      );
       if (role.trim().toLowerCase() === "toastmaster") {
         toastmasterPage = page;
         break;
@@ -1427,7 +1448,7 @@ async function updateToastmasterCache(localEnv?: Env): Promise<ToastmasterData> 
 
   const props = toastmasterPage.properties;
   const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
-  
+
   // Get email
   let email = "";
   const emailProp = props.Email || props.email || props.Epost || props.epost;
@@ -1437,7 +1458,8 @@ async function updateToastmasterCache(localEnv?: Env): Promise<ToastmasterData> 
 
   // Get phone
   let phone = "";
-  const phoneProp = props.Telefon || props.telefon || props.Phone || props.phone;
+  const phoneProp =
+    props.Telefon || props.telefon || props.Phone || props.phone;
   if (phoneProp?.type === "phone_number") {
     phone = phoneProp.phone_number || "";
   }
@@ -1479,7 +1501,7 @@ export async function fetchStoryFromNotion(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<StoryItem[]> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_story";
   const fallback = (notionFallback as any).story || [];
 
@@ -1526,7 +1548,7 @@ export async function fetchStoryFromNotion(
 async function updateStoryCache(localEnv?: Env): Promise<StoryItem[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_story";
 
   const storyDbId = getEnvVar("NOTION_STORY_DATABASE_ID", localEnv);
@@ -1543,9 +1565,15 @@ async function updateStoryCache(localEnv?: Env): Promise<StoryItem[]> {
     .filter((page): page is PageObjectResponse => "properties" in page)
     .map((page) => {
       const props = page.properties;
-      const title = getTitleProperty(props.Tittel || props.Title || props.Name, "Uten tittel");
-      const content = getRichTextFull(props.Beskrivelse || props.Content || props.Description, "");
-      
+      const title = getTitleProperty(
+        props.Tittel || props.Title || props.Name,
+        "Uten tittel",
+      );
+      const content = getRichTextFull(
+        props.Beskrivelse || props.Content || props.Description,
+        "",
+      );
+
       const dateStr = getDateProperty(props.Dato || props.Date);
       const year = dateStr ? dateStr.split("-")[0] : "";
 
@@ -1576,10 +1604,9 @@ async function updateStoryCache(localEnv?: Env): Promise<StoryItem[]> {
   return storyItems;
 }
 
-
-
 // Feature flags fallback: sourced from prebuild-generated notion-fallback.json
-const DEFAULT_FLAGS: Record<string, boolean> = (notionFallback as any).flags || {};
+const DEFAULT_FLAGS: Record<string, boolean> =
+  (notionFallback as any).flags || {};
 
 /**
  * Retrieves the feature flags from the Notion flags database,
@@ -1590,7 +1617,7 @@ export async function fetchFeatureFlags(
   context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<Record<string, boolean>> {
   const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_flags";
 
   // 1. Try to read from KV cache
@@ -1628,10 +1655,12 @@ export async function fetchFeatureFlags(
   return await updateFlagsCache(currentEnv);
 }
 
-async function updateFlagsCache(localEnv?: Env): Promise<Record<string, boolean>> {
+async function updateFlagsCache(
+  localEnv?: Env,
+): Promise<Record<string, boolean>> {
   const currentEnv = localEnv || cloudflareEnv;
   const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.WEDDING_CACHE;
+  const kv = currentEnv?.CACHE;
   const cacheKey = "notion_flags";
 
   const flagsDbId = getEnvVar("NOTION_FLAGS_DATABASE_ID", localEnv);
@@ -1692,9 +1721,11 @@ async function updateFlagsCache(localEnv?: Env): Promise<Record<string, boolean>
       }
     }
   } catch (error) {
-    console.error("Failed to query Notion feature flags, falling back to defaults:", error);
+    console.error(
+      "Failed to query Notion feature flags, falling back to defaults:",
+      error,
+    );
   }
 
   return flags;
 }
-

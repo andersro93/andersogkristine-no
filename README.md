@@ -38,15 +38,15 @@ bun run dev:clean
 Follow these steps to deploy your website to production on Cloudflare:
 
 ### 1. Create the KV Cache Namespace
-The site uses a Cloudflare KV namespace called `WEDDING_CACHE` to cache database requests. Create it by running:
+The site uses a Cloudflare KV namespace called `CACHE` to cache database requests. Create it by running:
 ```bash
-bun x wrangler kv namespace create WEDDING_CACHE
+bun x wrangler kv namespace create CACHE
 ```
-Copy the string `id` from the output and replace `"WEDDING_CACHE_PLACEHOLDER"` in your `wrangler.jsonc` configuration:
+Copy the string `id` from the output and replace `"CACHE_PLACEHOLDER"` in your `wrangler.jsonc` configuration:
 ```json
   "kv_namespaces": [
     {
-      "binding": "WEDDING_CACHE",
+      "binding": "CACHE",
       "id": "YOUR_KV_NAMESPACE_ID_HERE"
     }
   ]

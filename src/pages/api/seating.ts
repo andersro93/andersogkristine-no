@@ -3,13 +3,13 @@ import { env as rawEnv } from "cloudflare:workers";
 const env = rawEnv as Env;
 
 import type { APIRoute } from "astro";
+import notionFallback from "../../config/notion-fallback.json";
 import type { TableWithGuests } from "../../services/notion";
 import { fetchAllSeatingData } from "../../services/notion";
-import notionFallback from "../../config/notion-fallback.json";
 
 export const GET: APIRoute = async (_context) => {
   try {
-    const kv = env?.WEDDING_CACHE;
+    const kv = env?.CACHE;
     let seatingData: TableWithGuests[] | null = null;
     let cacheHit = false;
 
@@ -33,7 +33,10 @@ export const GET: APIRoute = async (_context) => {
       try {
         seatingData = await fetchAllSeatingData(env);
       } catch (err) {
-        console.error("Error fetching seating from Notion, falling back to prebuild data:", err);
+        console.error(
+          "Error fetching seating from Notion, falling back to prebuild data:",
+          err,
+        );
         seatingData = (notionFallback as any).seating || [];
       }
 

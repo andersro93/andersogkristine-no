@@ -42,7 +42,7 @@ export const POST: APIRoute = async (context) => {
     await Promise.all(updatePromises);
 
     // Invalidate the seating cache in Cloudflare KV
-    const kv = env?.WEDDING_CACHE;
+    const kv = env?.CACHE;
     if (kv) {
       try {
         await kv.delete("seating_data");

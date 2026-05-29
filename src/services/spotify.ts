@@ -249,7 +249,7 @@ export async function searchTracks(
  * Get all tracks currently in the playlist (cached in Cloudflare KV).
  */
 export async function getPlaylistTracks(env?: Env): Promise<SpotifyTrack[]> {
-  const kv = env?.WEDDING_CACHE;
+  const kv = env?.CACHE;
 
   // Mock Mode fallback
   if (!isSpotifyConfigured(env)) {
@@ -383,7 +383,7 @@ export async function addTrackToPlaylist(
     }
 
     // Invalidate Cache
-    const kv = env?.WEDDING_CACHE;
+    const kv = env?.CACHE;
     if (kv) {
       try {
         await kv.delete("spotify_playlist_tracks");
