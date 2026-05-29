@@ -79,13 +79,9 @@ bun x wrangler secret put SPOTIFY_REFRESH_TOKEN
 *(Alternatively, you can manage these secrets inside the Cloudflare Dashboard under **Workers & Pages > [your-worker] > Settings > Variables & Secrets**).*
 
 ### 3. Build & Deploy
-Compile the assets and deploy to Cloudflare:
+Compile the assets and deploy to Cloudflare using the combined deploy script:
 ```bash
-# Build
-bun run build
-
-# Deploy
-bun x wrangler deploy
+bun run deploy
 ```
 
 ---
