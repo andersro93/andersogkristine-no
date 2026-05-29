@@ -9,21 +9,30 @@ import type {
   ToastmasterData,
   WeddingLocation,
 } from "../services/notion";
-import {
-  fetchAllSeatingData,
-  fetchEgentidData,
-  fetchFaqFromNotion,
-  fetchFeatureFlags,
-  fetchLocationsFromNotion,
-  fetchScheduleFromNotion,
-  fetchStoryFromNotion,
-  fetchToastmasterFromNotion,
-} from "../services/notion";
 
 const FALLBACK_FILE = path.join(
   process.cwd(),
   "src/config/notion-fallback.json",
 );
+
+// Bootstrap the fallback file if it doesn't exist yet to prevent import errors in services/notion.ts
+if (!fs.existsSync(FALLBACK_FILE)) {
+  console.log("Bootstrap: notion-fallback.json does not exist. Creating default dummy to prevent loader crash...");
+  fs.mkdirSync(path.dirname(FALLBACK_FILE), { recursive: true });
+  fs.writeFileSync(
+    FALLBACK_FILE,
+    JSON.stringify({
+      schedule: [],
+      egentid: { contributors: [] },
+      faqs: [],
+      locations: [],
+      seating: [],
+      flags: {},
+      story: []
+    }, null, 2),
+    "utf-8"
+  );
+}
 
 interface FallbackData {
   schedule: ScheduleEvent[];
@@ -91,6 +100,18 @@ async function downloadImage(url: string, id: string): Promise<string> {
 
 async function run() {
   console.log("--- Notion Pre-build: Syncing Static Fallbacks ---");
+
+  // Dynamic import of services to avoid importing notion.ts statically before fallback is generated
+  const {
+    fetchAllSeatingData,
+    fetchEgentidData,
+    fetchFaqFromNotion,
+    fetchFeatureFlags,
+    fetchLocationsFromNotion,
+    fetchScheduleFromNotion,
+    fetchStoryFromNotion,
+    fetchToastmasterFromNotion,
+  } = await import("../services/notion");
 
   // 1. Load existing data if available
   let existingData: FallbackData = {
