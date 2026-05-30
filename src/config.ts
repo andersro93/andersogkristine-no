@@ -37,7 +37,7 @@ export const weddingConfig = {
       name: "Quality Hotel™ 33",
       distance: "5 min unna",
       description:
-        "Hotellet er et prisvinnende designhotell på Økern i Oslo, bare en kort t-banetur fra alt byen har å by på. Hotellet ligger også 5 minutter gange fra selskapslokalene.",
+        'Hotellet er et prisvinnende designhotell på Økern i Oslo, bare en kort t-banetur fra alt byen har å by på. Hotellet ligger også 5 minutter gange fra selskapslokalene. Når du skal bestille så sender du en e-post til q.hotel33@strawberry.no. Ta også med koden: "Tårnet15" så får du 15% rabatt på bestillingen',
       link: "https://www.strawberry.no/hotell/norge/oslo/quality-hotel-33",
     },
   ],
