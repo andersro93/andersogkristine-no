@@ -7,7 +7,7 @@ import { weddingConfig } from '../config';
     
     <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
       <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">Sted & Overnatting</h2>
-      <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>
+      <div class="w-12 h-px bg-brand-title/30 mx-auto"></div>
       <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">Hvor det skjer og hvor dere kan bo</p>
     </div>
 
@@ -35,7 +35,7 @@ import { weddingConfig } from '../config';
 
         <!-- Embedded Map -->
         {weddingConfig.venue.embedMapSrc && (
-          <div class="relative w-full h-[300px] md:h-[350px] rounded-lg overflow-hidden border border-brand-title/10 shadow-inner group">
+          <div class="relative w-full h-75 md:h-87.5 rounded-lg overflow-hidden border border-brand-title/10 shadow-inner group">
             <iframe 
               src={weddingConfig.venue.embedMapSrc} 
               class="absolute inset-0 w-full h-full border-0 grayscale hover:grayscale-0 transition-all duration-700" 
