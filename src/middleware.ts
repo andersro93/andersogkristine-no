@@ -3,8 +3,8 @@ import { env as rawEnv } from "cloudflare:workers";
 
 const env = rawEnv as Env;
 
-import { fetchFeatureFlags } from "./services/notion";
-import { verifySessionCookie } from "./services/pin";
+import { fetchFeatureFlags, fetchInviteByCode } from "./services/notion";
+import { generateSessionCookie, verifySessionCookie } from "./services/pin";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
@@ -26,12 +26,46 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Retrieve cookie and check validity
   const sessionCookie = context.cookies.get("wedding_access");
-  const isAuthed = sessionCookie
+  let isAuthed = sessionCookie
     ? verifySessionCookie(sessionCookie.value, env)
     : false;
 
+  // Check if code query param is present
+  const code = url.searchParams.get("code");
+  if (code && !isAuthed) {
+    try {
+      const invite = await fetchInviteByCode(code, env);
+      if (invite) {
+        // Valid invite: generate and set cookie
+        const newCookieValue = generateSessionCookie(env);
+        context.cookies.set("wedding_access", newCookieValue, {
+          path: "/",
+          httpOnly: true,
+          secure: true,
+          sameSite: "strict",
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+        });
+        isAuthed = true;
+      } else {
+        // Invalid code: redirect to /pin with error and next
+        const redirectUrl = new URL("/pin", url.origin);
+        redirectUrl.searchParams.set("error", "invalid_invite");
+        redirectUrl.searchParams.set("next", pathname + url.search);
+        return context.redirect(redirectUrl.pathname + redirectUrl.search);
+      }
+    } catch (err) {
+      console.error("Error verifying invite code in middleware:", err);
+      const redirectUrl = new URL("/pin", url.origin);
+      redirectUrl.searchParams.set("error", "verification_error");
+      redirectUrl.searchParams.set("next", pathname + url.search);
+      return context.redirect(redirectUrl.pathname + redirectUrl.search);
+    }
+  }
+
   if (!isAuthed) {
-    return context.redirect("/pin");
+    const redirectUrl = new URL("/pin", url.origin);
+    redirectUrl.searchParams.set("next", pathname + url.search);
+    return context.redirect(redirectUrl.pathname + redirectUrl.search);
   }
 
   // Retrieve feature flags

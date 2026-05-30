@@ -1,6 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { weddingConfig } from '../config';
+
+const errorParam = Astro.url.searchParams.get('error');
+let initialError = '';
+if (errorParam === 'invalid_invite') {
+  initialError = 'Ugyldig invitasjonskode. Vennligst tast inn PIN-koden for å få tilgang.';
+} else if (errorParam === 'verification_error') {
+  initialError = 'Det oppstod en feil ved verifisering av invitasjonskoden. Vennligst prøv igjen med PIN-koden.';
+}
 ---
 
 <Layout title="Adgangskontroll - Kristine & Anders">
@@ -37,7 +45,8 @@ import { weddingConfig } from '../config';
         </p>
 
         <!-- Error Container -->
-        <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans transition-all duration-300">
+        <div id="error-message" class={initialError ? "bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans transition-all duration-300" : "hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans transition-all duration-300"}>
+          {initialError}
         </div>
 
         <!-- Form -->

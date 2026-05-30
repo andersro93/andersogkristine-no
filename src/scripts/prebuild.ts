@@ -17,20 +17,26 @@ const FALLBACK_FILE = path.join(
 
 // Bootstrap the fallback file if it doesn't exist yet to prevent import errors in services/notion.ts
 if (!fs.existsSync(FALLBACK_FILE)) {
-  console.log("Bootstrap: notion-fallback.json does not exist. Creating default dummy to prevent loader crash...");
+  console.log(
+    "Bootstrap: notion-fallback.json does not exist. Creating default dummy to prevent loader crash...",
+  );
   fs.mkdirSync(path.dirname(FALLBACK_FILE), { recursive: true });
   fs.writeFileSync(
     FALLBACK_FILE,
-    JSON.stringify({
-      schedule: [],
-      egentid: { contributors: [] },
-      faqs: [],
-      locations: [],
-      seating: [],
-      flags: {},
-      story: []
-    }, null, 2),
-    "utf-8"
+    JSON.stringify(
+      {
+        schedule: [],
+        egentid: { contributors: [] },
+        faqs: [],
+        locations: [],
+        seating: [],
+        flags: {},
+        story: [],
+      },
+      null,
+      2,
+    ),
+    "utf-8",
   );
 }
 
