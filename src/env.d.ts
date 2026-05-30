@@ -29,9 +29,9 @@ declare namespace App {
   interface Locals {
     runtime?: {
       env: Env;
-      ctx: {
-        waitUntil(promise: Promise<any>): void;
-      };
+    };
+    cfContext?: {
+      waitUntil(promise: Promise<any>): void;
     };
   }
 }

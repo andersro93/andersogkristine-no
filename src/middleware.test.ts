@@ -100,10 +100,8 @@ function createMockContext(
       has: (name: string) => cookieStore.has(name),
     },
     locals: {
-      runtime: {
-        ctx: {
-          waitUntil: () => {},
-        },
+      cfContext: {
+        waitUntil: () => {},
       },
     },
     redirect: (redirectUrl: string) => {

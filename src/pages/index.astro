@@ -10,7 +10,7 @@ import PracticalInfo from '../components/PracticalInfo.astro';
 import Footer from '../components/Footer.astro';
 import { fetchFeatureFlags } from '../services/notion';
 
-const context = Astro.locals?.runtime?.ctx;
+const context = Astro.locals?.cfContext;
 let flags = { rsvp: true, seating: true, music: true, map: true, egentid: true, program: true };
 try {
   const fetchedFlags = await fetchFeatureFlags(env as Env, context);

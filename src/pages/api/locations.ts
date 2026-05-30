@@ -4,7 +4,7 @@ import { fetchLocationsFromNotion } from "../../services/notion";
 
 export const GET: APIRoute = async (context) => {
   try {
-    const cloudflareContext = context.locals.runtime?.ctx;
+    const cloudflareContext = context.locals?.cfContext;
 
     const locations = await fetchLocationsFromNotion(
       env as Env,
