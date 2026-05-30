@@ -16,7 +16,6 @@ interface Invite {
 interface GuestFormState {
   rsvp: string;
   allergies: string;
-  comment: string;
 }
 
 type FormState = Record<string, GuestFormState>;
@@ -32,7 +31,7 @@ export default function RSVPForm({ invite }: Props) {
     Object.fromEntries(
       invite.guests.map((g) => [
         g.id,
-        { rsvp: g.rsvp ?? "", allergies: g.allergies ?? "", comment: "" },
+        { rsvp: g.rsvp ?? "", allergies: g.allergies ?? "" },
       ]),
     ),
   );
@@ -56,7 +55,6 @@ export default function RSVPForm({ invite }: Props) {
       id: g.id,
       rsvp: formState[g.id]?.rsvp ?? "",
       allergies: formState[g.id]?.allergies ?? "",
-      comment: formState[g.id]?.comment ?? "",
     }));
 
     const declined = guests.every((g) => g.rsvp !== "Kommer");
@@ -235,32 +233,6 @@ export default function RSVPForm({ invite }: Props) {
                       updateGuest(guest.id, "allergies", e.target.value)
                     }
                     className="w-full px-4 py-2.5 rounded-lg border border-brand-title/15 bg-white text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-sm"
-                  />
-                </div>
-
-                {/* Song request / comment — only shown when attending */}
-                <div
-                  className={`space-y-2 transition-all duration-300 overflow-hidden ${
-                    isAttending
-                      ? "max-h-40 opacity-100"
-                      : "max-h-0 opacity-0 pointer-events-none"
-                  }`}
-                >
-                  <label
-                    htmlFor={`comment-${guest.id}`}
-                    className="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95"
-                  >
-                    Hilsen til brudeparet / Sangønske
-                  </label>
-                  <textarea
-                    id={`comment-${guest.id}`}
-                    rows={2}
-                    placeholder="Skriv gjerne en kommentar eller låt du vil høre!"
-                    value={state?.comment ?? ""}
-                    onChange={(e) =>
-                      updateGuest(guest.id, "comment", e.target.value)
-                    }
-                    className="w-full px-4 py-2.5 rounded-lg border border-brand-title/15 bg-white text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-sm resize-none"
                   />
                 </div>
               </div>

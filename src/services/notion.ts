@@ -296,7 +296,6 @@ export async function updateGuestRSVP(
   guestId: string,
   rsvp: string,
   allergies: string,
-  comment?: string,
   localEnv?: Env,
 ): Promise<void> {
   const notion = getNotionClient(localEnv);
@@ -313,50 +312,13 @@ export async function updateGuestRSVP(
         : { select: null },
     };
 
-    // Try to update comments (song requests/messages) if they added a Kommentar field.
-    // We use a safe try-catch so it won't crash if they don't have the column in their Notion table.
-    if (comment?.trim()) {
-      properties.Kommentar = {
-        rich_text: [
-          {
-            text: {
-              content: comment.trim(),
-            },
-          },
-        ],
-      };
-    }
-
     await notion.pages.update({
       page_id: guestId,
       properties,
     });
   } catch (error) {
     console.error(`Error updating guest RSVP for ${guestId}:`, error);
-    // If it failed because of "Kommentar" property (e.g. doesn't exist), retry without it
-    if (
-      comment &&
-      error instanceof Error &&
-      error.message.includes("Kommentar")
-    ) {
-      console.log("Retrying update without 'Kommentar' column...");
-      const propertiesRetry: Record<string, any> = {
-        [notionConfig.mappings.guests.rsvp]: {
-          status: {
-            name: rsvp,
-          },
-        },
-        [notionConfig.mappings.guests.allergies]: allergies.trim()
-          ? { select: { name: allergies.trim() } }
-          : { select: null },
-      };
-      await notion.pages.update({
-        page_id: guestId,
-        properties: propertiesRetry,
-      });
-    } else {
-      throw error;
-    }
+    throw error;
   }
 }
 

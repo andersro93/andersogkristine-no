@@ -10,7 +10,6 @@ interface RSVPRequestBody {
     id: string;
     rsvp: string;
     allergies?: string;
-    comment?: string;
   }[];
 }
 
@@ -31,13 +30,7 @@ export const POST: APIRoute = async (context) => {
 
     // Update each guest in Notion
     const updatePromises = guests.map((guest) =>
-      updateGuestRSVP(
-        guest.id,
-        guest.rsvp,
-        guest.allergies || "",
-        guest.comment || "",
-        env,
-      ),
+      updateGuestRSVP(guest.id, guest.rsvp, guest.allergies || "", env),
     );
     await Promise.all(updatePromises);
 
