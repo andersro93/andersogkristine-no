@@ -24,6 +24,7 @@ mock.module("astro:middleware", () => {
 
 // Mock notion client
 let mockInviteCodeResponse: any = null;
+let mockFlagsResponse: Array<{ key: string; enabled: boolean }> = [];
 
 mock.module("@notionhq/client", () => {
   return {
@@ -42,22 +43,19 @@ mock.module("@notionhq/client", () => {
             return { results: [] };
           }
           if (data_source_id.includes("test-flags-db")) {
-            return {
-              results: [
-                {
-                  properties: {
-                    Navn: {
-                      type: "title",
-                      title: [{ plain_text: "rsvp" }],
-                    },
-                    Aktiv: {
-                      type: "checkbox",
-                      checkbox: true,
-                    },
-                  },
+            const results = mockFlagsResponse.map((f) => ({
+              properties: {
+                Name: {
+                  type: "title",
+                  title: [{ plain_text: f.key }],
                 },
-              ],
-            };
+                Aktivert: {
+                  type: "select",
+                  select: { name: f.enabled ? "Ja" : "Nei" },
+                },
+              },
+            }));
+            return { results };
           }
           return { results: [] };
         },
@@ -121,6 +119,12 @@ function createMockContext(
 describe("Astro Middleware & Invite Code Bypass", () => {
   beforeEach(() => {
     mockInviteCodeResponse = null;
+    mockFlagsResponse = [
+      { key: "rsvp", enabled: true },
+      { key: "seating", enabled: true },
+      { key: "music", enabled: true },
+      { key: "map", enabled: true },
+    ];
   });
 
   test("should pass through static assets without checks", async () => {
@@ -219,5 +223,58 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     );
     expect(nextCalled).not.toHaveBeenCalled();
     expect(context._setCalls.length).toBe(0);
+  });
+
+  describe("Feature Flags Blocking", () => {
+    test("should allow accessing /rsvp if rsvp flag is enabled", async () => {
+      mockFlagsResponse = [{ key: "rsvp", enabled: true }];
+      const validCookie = generateSessionCookie(mockEnv as any);
+      const context = createMockContext("/rsvp", {
+        wedding_access: validCookie,
+      });
+      const nextCalled = mock(async () => new Response("RSVP_PAGE"));
+
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("RSVP_PAGE");
+      expect(nextCalled).toHaveBeenCalled();
+    });
+
+    test("should redirect /rsvp to / if rsvp flag is disabled", async () => {
+      mockFlagsResponse = [{ key: "rsvp", enabled: false }];
+      const validCookie = generateSessionCookie(mockEnv as any);
+      const context = createMockContext("/rsvp", {
+        wedding_access: validCookie,
+      });
+      const nextCalled = mock(async () => new Response("RSVP_PAGE"));
+
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("/");
+      expect(nextCalled).not.toHaveBeenCalled();
+    });
+
+    test("should redirect /bordoppsett to / if seating flag is disabled", async () => {
+      mockFlagsResponse = [{ key: "seating", enabled: false }];
+      const validCookie = generateSessionCookie(mockEnv as any);
+      const context = createMockContext("/bordoppsett", {
+        wedding_access: validCookie,
+      });
+      const nextCalled = mock(async () => new Response("SEATING_PAGE"));
+
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("/");
+      expect(nextCalled).not.toHaveBeenCalled();
+    });
   });
 });
