@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
 import { fetchStoryFromNotion } from '../services/notion';
 
-const context = Astro.locals?.runtime?.context;
+const context = Astro.locals?.runtime?.ctx;
 let story = weddingConfig.story;
 
 try {

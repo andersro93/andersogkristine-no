@@ -11,7 +11,7 @@ const { flags } = Astro.props;
 let schedule = weddingConfig.schedule;
 
 // Retrieve Cloudflare runtime context
-const cloudflareContext = Astro.locals?.runtime?.context;
+const cloudflareContext = Astro.locals?.runtime?.ctx;
 
 try {
   const notionSchedule = await fetchScheduleFromNotion(env as Env, cloudflareContext);

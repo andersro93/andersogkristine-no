@@ -29,7 +29,7 @@ declare namespace App {
   interface Locals {
     runtime?: {
       env: Env;
-      context: {
+      ctx: {
         waitUntil(promise: Promise<any>): void;
       };
     };

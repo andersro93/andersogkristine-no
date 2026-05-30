@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { flags } = Astro.props;
-const context = Astro.locals?.runtime?.context;
+const context = Astro.locals?.runtime?.ctx;
 
 let faqs = weddingConfig.faqs;
 let toastmaster = weddingConfig.toastmaster;

@@ -78,7 +78,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   try {
     const fetchedFlags = await fetchFeatureFlags(
       env,
-      context.locals?.runtime?.context,
+      context.locals?.runtime?.ctx,
     );
     if (fetchedFlags) {
       flags = fetchedFlags;

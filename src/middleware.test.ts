@@ -101,7 +101,7 @@ function createMockContext(
     },
     locals: {
       runtime: {
-        context: {
+        ctx: {
           waitUntil: () => {},
         },
       },
