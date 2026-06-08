@@ -6,9 +6,9 @@ import { weddingConfig } from '../config';
   <div class="max-w-6xl mx-auto">
     
     <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-      <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">Sted & Overnatting</h2>
+      <h2>Sted & Overnatting</h2>
       <div class="w-12 h-px bg-brand-title/30 mx-auto"></div>
-      <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">Hvor det skjer og hvor dere kan bo</p>
+      <p class="text-lead">Hvor det skjer og hvor dere kan bo</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch">
@@ -16,9 +16,9 @@ import { weddingConfig } from '../config';
       <!-- Venue & Map column -->
       <div class="flex flex-col space-y-6 bg-brand-bg p-6 md:p-8 rounded-xl border border-brand-title/10 shadow-xs">
         <div class="space-y-3">
-          <p class="text-xs uppercase tracking-widest text-brand-title/80 font-semibold">Selskapslokale</p>
-          <h3 class="font-serif text-2xl text-brand-title font-semibold">{weddingConfig.venue.name}</h3>
-          <p class="font-sans text-sm text-brand-text/90 font-light leading-relaxed">
+          <h3 class="text-lead">Selskapslokale</h3>
+          <h4>{weddingConfig.venue.name}</h4>
+          <p class="text-body">
             {weddingConfig.venue.address}
           </p>
           
@@ -52,22 +52,22 @@ import { weddingConfig } from '../config';
       <div class="flex flex-col justify-between space-y-8 bg-brand-bg p-6 md:p-8 rounded-xl border border-brand-title/10 shadow-xs">
         <div class="space-y-6">
           <div>
-            <p class="text-xs uppercase tracking-widest text-brand-title/80 font-semibold mb-2">Overnattingsforslag</p>
-            <p class="font-sans text-sm text-brand-text/80 font-light leading-relaxed">
+            <h3 class="text-lead mb-2">Overnattingsforslag</h3>
+            <p class="text-body">
               Vi anbefaler følgende hotell hvis du har tenkt å sjekke inn på hotell
             </p>
           </div>
-
+ 
           <div class="space-y-6">
             {weddingConfig.accommodations.map((hotel) => (
               <div class="p-5 rounded-lg bg-brand-bg/60 border border-brand-title/5 hover:border-brand-title/15 transition-all duration-300 space-y-3">
                 <div class="flex items-baseline justify-between flex-wrap gap-2">
-                  <h4 class="font-serif text-xl text-brand-title font-semibold">{hotel.name}</h4>
+                  <h4>{hotel.name}</h4>
                   <span class="text-xs font-semibold px-2 py-0.5 bg-brand-title/10 text-brand-title rounded-full font-sans">
                     {hotel.distance}
                   </span>
                 </div>
-                <p class="font-sans text-sm text-brand-text/85 font-light leading-relaxed">
+                <p class="text-body">
                   {hotel.description}
                 </p>
                 {hotel.link && (
@@ -87,7 +87,7 @@ import { weddingConfig } from '../config';
         </div>
 
         <div class="pt-4 border-t border-brand-title/10 text-center">
-          <p class="font-sans text-xs text-brand-text/70 italic">
+          <p class="text-caption">
             Trenger du hjelp med transport eller bestilling? Ta gjerne kontakt med oss!
           </p>
         </div>

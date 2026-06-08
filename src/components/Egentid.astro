@@ -22,10 +22,10 @@ const initialContributor = contributors[0] || egentid.contributors[0];
     
     <!-- Title & Subtitle -->
     <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-      <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">{egentid.title}</h2>
+      <h2>{egentid.title}</h2>
       <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>
-      <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">{egentid.subtitle}</p>
-      <p class="font-sans text-sm text-brand-text/80 font-light leading-relaxed max-w-lg mx-auto pt-2">
+      <p class="text-lead">{egentid.subtitle}</p>
+      <p class="text-body max-w-lg mx-auto pt-2">
         {egentid.description}
       </p>
     </div>
@@ -77,10 +77,10 @@ const initialContributor = contributors[0] || egentid.contributors[0];
       <!-- Framing decorative line -->
       <div id="egentid-content-container" class="opacity-100 transition-opacity duration-200 ease-in-out space-y-6">
         <div>
-          <h3 id="egentid-role" class="font-serif text-2xl text-brand-title font-semibold mb-2">
+          <h3 id="egentid-role" class="mb-2">
             {initialContributor.role}
           </h3>
-          <p id="egentid-desc" class="font-sans text-xs uppercase tracking-widest text-brand-text/75 font-semibold">
+          <p id="egentid-desc" class="text-lead text-brand-text/75 font-semibold">
             {initialContributor.description}
           </p>
         </div>

@@ -103,11 +103,9 @@ export default function RSVPForm({ invite }: Props) {
           </svg>
         </div>
 
-        <h3 className="font-wedding text-4xl text-brand-title">
-          Tusen takk for svar!
-        </h3>
+        <h2 className="text-4xl">Tusen takk for svar!</h2>
 
-        <p className="font-serif italic text-lg max-w-md mx-auto leading-relaxed text-brand-text/90">
+        <p className="text-body-serif max-w-md mx-auto">
           {allDeclined
             ? "Det var veldig synd at dere ikke kan komme, men takk for at dere meldte ifra! Vi vil savne dere."
             : "Vi gleder oss utrolig mye til å feire denne store dagen sammen med dere på Tårnet Kulturarena!"}
@@ -115,7 +113,7 @@ export default function RSVPForm({ invite }: Props) {
 
         <div className="w-12 h-px bg-brand-title/20 mx-auto my-6" />
 
-        <p className="font-sans text-sm text-brand-text/70">
+        <p className="text-caption">
           Du kan når som helst endre svaret ditt ved å gå tilbake til denne
           siden med din kode.
         </p>
@@ -146,10 +144,10 @@ export default function RSVPForm({ invite }: Props) {
   /* ── Form ───────────────────────────────────────────────────── */
   return (
     <div>
-      <h2 className="font-serif text-3xl text-brand-title text-center mb-2">
+      <h2 className="font-serif text-3xl text-center mb-2">
         Velkommen, {invite.name}!
       </h2>
-      <p className="font-sans text-sm text-center text-brand-text/70 mb-10">
+      <p className="text-caption text-center mb-10">
         Vennligst kryss av for om du/dere kan komme og fyll ut eventuelle
         detaljer.
       </p>
@@ -167,7 +165,7 @@ export default function RSVPForm({ invite }: Props) {
               >
                 {/* Guest title */}
                 <div className="flex items-center justify-between border-b border-brand-title/10 pb-4">
-                  <span className="font-serif text-xl text-brand-title font-medium">
+                  <span className="font-serif text-xl font-medium">
                     {guest.name}
                   </span>
                   <span className="text-xs tracking-wider uppercase px-2.5 py-1 rounded bg-brand-title/10 text-brand-title font-medium">
@@ -177,9 +175,7 @@ export default function RSVPForm({ invite }: Props) {
 
                 {/* Attendance */}
                 <div className="space-y-2">
-                  <p className="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95">
-                    Kommer du?
-                  </p>
+                  <p className="text-lead block opacity-95">Kommer du?</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(["Kommer", "Kommer ikke"] as const).map((option) => (
                       <label
@@ -220,7 +216,7 @@ export default function RSVPForm({ invite }: Props) {
                 >
                   <label
                     htmlFor={`allergies-${guest.id}`}
-                    className="block text-xs font-semibold uppercase tracking-wider text-brand-title opacity-95"
+                    className="text-lead block opacity-95"
                   >
                     Allergier / Mathensyn
                   </label>

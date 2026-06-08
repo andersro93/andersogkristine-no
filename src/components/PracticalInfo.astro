@@ -38,16 +38,16 @@ try {
 <section id="practical" class="py-20 px-4 md:px-8 bg-brand-bg max-w-6xl mx-auto border-b border-brand-title/5">
   
   <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-    <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">Praktisk Informasjon</h2>
+    <h2>Praktisk Informasjon</h2>
     <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>
-    <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">Alt du trenger å vite om bryllupsdagen</p>
+    <p class="text-lead">Alt du trenger å vite om bryllupsdagen</p>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
     
     <!-- FAQ Column (Takes 2 columns on large screens) -->
     <div class="lg:col-span-2 space-y-6 bg-brand-bg p-6 md:p-8 rounded-xl border border-brand-title/10 shadow-xs">
-      <h3 class="font-serif text-2xl md:text-3xl text-brand-title font-semibold mb-6 flex items-center gap-3">
+      <h3 class="mb-6 flex items-center gap-3">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
         </svg>
@@ -65,7 +65,7 @@ try {
                 </svg>
               </span>
             </summary>
-            <div class="mt-4 font-sans text-sm text-brand-text/90 font-light leading-relaxed max-w-2xl transition-all duration-300" set:html={faq.answer}>
+            <div class="mt-4 text-body max-w-2xl transition-all duration-300" set:html={faq.answer}>
             </div>
           </details>
         ))}
@@ -78,13 +78,13 @@ try {
       <!-- RSVP, Seating & Music Card -->
       {(flags.rsvp || flags.seating || flags.music) && (
         <div class="bg-brand-bg p-6 rounded-xl border border-brand-title/10 shadow-xs space-y-4">
-          <h3 class="font-serif text-2xl text-brand-title font-semibold flex items-center gap-2.5">
+          <h3 class="flex items-center gap-2.5">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
             </svg>
             <span>Svar, Seating & Musikk</span>
           </h3>
-          <p class="font-sans text-sm text-brand-text/90 font-light leading-relaxed">
+          <p class="text-body">
             Meld deg på bryllupet, registrer allergier, finn bordet ditt, og send inn musikkønsker direkte her på nettsiden.
           </p>
           <div class="flex flex-col gap-2 pt-2">
@@ -110,22 +110,22 @@ try {
       {toastmaster.name && (
         <!-- Toastmaster Card -->
         <div class="bg-brand-bg p-6 rounded-xl border border-brand-title/10 shadow-xs space-y-4">
-          <h3 class="font-serif text-2xl text-brand-title font-semibold flex items-center gap-2.5">
+          <h3 class="flex items-center gap-2.5">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
             </svg>
             <span>Toastmaster</span>
           </h3>
-          <p class="font-sans text-sm text-brand-text/90 font-light leading-relaxed">
+          <p class="text-body">
             Vår toastmaster for anledningen er <strong class="font-medium text-brand-title">{toastmaster.name}</strong>.
           </p>
-          <p class="font-sans text-sm text-brand-text/80 font-light leading-relaxed">
+          <p class="text-body">
             {toastmaster.info}
           </p>
           {toastmaster.contact && (
             <div class="p-3 bg-brand-bg/60 rounded-lg border border-brand-title/5">
-              <span class="text-xs font-semibold uppercase tracking-wider text-brand-title/80 block mb-1">Kontaktinformasjon</span>
-              <span class="font-sans text-xs text-brand-text font-medium select-all">{toastmaster.contact}</span>
+              <span class="text-lead text-[10px] text-brand-title/80 block mb-1">Kontaktinformasjon</span>
+              <span class="text-body text-xs font-medium select-all">{toastmaster.contact}</span>
             </div>
           )}
         </div>

@@ -188,10 +188,10 @@ export default function SpotifyPlaylist() {
       {/* ── TOP SECTION: SPONSOR / Spotify Redirect Link ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-brand-bg/40 border border-brand-title/10 rounded-2xl p-6 md:p-8">
         <div className="text-center sm:text-left space-y-2">
-          <h3 className="font-serif text-2xl text-brand-title font-medium">
+          <h2 className="font-serif text-2xl font-medium">
             Bli med på å lage spillelisten!
-          </h3>
-          <p className="text-sm text-brand-text/75 max-w-md leading-relaxed">
+          </h2>
+          <p className="text-body max-w-md">
             Her kan du foreslå låter du vil høre på dansegulvet. Klikk under for
             å åpne og følge listen direkte på din Spotify.
           </p>
@@ -363,10 +363,8 @@ export default function SpotifyPlaylist() {
       {/* ── CURRENT PLAYLIST ── */}
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="font-serif text-3xl text-brand-title">
-            Ønskede låter
-          </h2>
-          <p className="text-xs text-brand-text/70 uppercase tracking-widest mt-1">
+          <h2 className="font-serif text-3xl">Ønskede låter</h2>
+          <p className="text-lead mt-1">
             {isLoadingPlaylist
               ? "Laster spilleliste..."
               : `${playlistTracks.length} sanger foreslått`}
@@ -395,10 +393,10 @@ export default function SpotifyPlaylist() {
         ) : playlistTracks.length === 0 ? (
           <div className="text-center py-12 bg-brand-bg/10 rounded-2xl border border-dashed border-brand-title/20 max-w-4xl mx-auto">
             <span className="text-3xl">💿</span>
-            <p className="font-serif italic text-lg text-brand-title/80 mt-3">
+            <p className="text-body-serif text-brand-title/80 mt-3">
               Ingen sanger er foreslått enda.
             </p>
-            <p className="text-xs text-brand-text/50 mt-1">
+            <p className="text-caption mt-1">
               Vær den første til å foreslå en sang ved å søke over!
             </p>
           </div>

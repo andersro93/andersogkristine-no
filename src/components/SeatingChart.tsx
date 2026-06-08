@@ -125,21 +125,19 @@ export default function SeatingChart({ tables }: Props) {
                     : "border-brand-title/10 hover:shadow-lg"
               }`}
             >
-              <h3
+              <h2
                 className={`font-serif text-2xl text-center mb-4 transition-colors duration-300 ${
                   isHighlighted ? "text-brand-text" : "text-brand-title"
                 }`}
               >
                 {table.name}
-              </h3>
+              </h2>
 
               <div className="w-12 h-px bg-brand-title/10 mx-auto mb-4" />
 
               {/* Guest list */}
               <div className="space-y-2">
-                <h4 className="text-xs uppercase font-bold tracking-wider text-brand-title/50 mb-3 text-center">
-                  Gjesteliste
-                </h4>
+                <h5 className="mb-3 text-center">Gjesteliste</h5>
                 <ul className="space-y-1.5 font-sans">
                   {table.guests.map((guest) => {
                     const isMatch = matchedGuestIds.has(guest.id);

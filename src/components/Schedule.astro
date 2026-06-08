@@ -135,9 +135,9 @@ const getIconSvg = (iconName?: string) => {
 
 <section id="schedule" class="py-20 px-4 md:px-8 bg-brand-bg max-w-5xl mx-auto border-b border-brand-title/5">
   <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-    <h2 class="font-wedding text-5xl md:text-6xl text-brand-title">Program</h2>
+    <h2>Program</h2>
     <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>
-    <p class="font-sans text-xs uppercase tracking-widest text-brand-text/80 font-medium">Slik ser bryllupsdagen ut</p>
+    <p class="text-lead">Slik ser bryllupsdagen ut</p>
   </div>
 
   <!-- Timeline List -->
@@ -165,13 +165,13 @@ const getIconSvg = (iconName?: string) => {
             <div class="md:hidden font-serif text-lg text-brand-title font-semibold mb-1 select-none">
               {event.time}
             </div>
-            <h3 class="font-serif text-xl text-brand-title font-semibold mb-2 group-hover:text-brand-text transition-colors flex items-center gap-1.5">
+            <h3 class="text-xl mb-2 group-hover:text-brand-text transition-colors flex items-center gap-1.5">
               <span>{event.title}</span>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-brand-title/70 group-hover/card:translate-x-0.5 transition-transform">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
             </h3>
-            <p class="font-sans text-sm leading-relaxed text-brand-text/85 font-light">
+            <p class="text-body">
               {event.description}
             </p>
             <span class="text-xs font-semibold text-brand-title group-hover/card:underline block mt-3">Les våre nabolagsanbefalinger &rarr;</span>
@@ -182,10 +182,10 @@ const getIconSvg = (iconName?: string) => {
             <div class="md:hidden font-serif text-lg text-brand-title font-semibold mb-1 select-none">
               {event.time}
             </div>
-            <h3 class="font-serif text-xl text-brand-title font-semibold mb-2 group-hover:text-brand-text transition-colors">
+            <h3 class="text-xl mb-2 group-hover:text-brand-text transition-colors">
               {event.title}
             </h3>
-            <p class="font-sans text-sm leading-relaxed text-brand-text/85 font-light">
+            <p class="text-body">
               {event.description}
             </p>
             {flags.map && event.locationId && (

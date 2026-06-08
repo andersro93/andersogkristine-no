@@ -40,47 +40,47 @@ const { flags } = Astro.props;
   <div id="intro" class="py-20 px-4 md:px-8 bg-brand-bg text-center border-b border-brand-title/10 relative z-20 scroll-mt-0">
     <div class="max-w-2xl mx-auto space-y-8">
       
-      <p class="uppercase tracking-widest text-xs md:text-sm font-sans font-semibold text-brand-title/80">
+      <p class="text-lead text-brand-title/80">
         Velkommen til vårt bryllup
       </p>
-
+ 
       <div class="flex items-center justify-center gap-3">
         <div class="w-12 h-[1px] bg-brand-title/20"></div>
         <span class="text-brand-title/40 text-xs">&#9670;</span>
         <div class="w-12 h-[1px] bg-brand-title/20"></div>
       </div>
-
+ 
       <div class="space-y-4">
-        <p class="font-serif text-2xl md:text-3xl text-brand-text/90 font-semibold italic">
+        <p class="text-body-serif text-2xl md:text-3xl font-semibold text-brand-text/90">
           {weddingConfig.date.displayDate}
         </p>
-        <p class="font-sans uppercase tracking-widest text-sm md:text-base font-semibold text-brand-title/95">
+        <p class="text-lead text-sm md:text-base text-brand-title/95">
           {weddingConfig.venue.name} &mdash; {weddingConfig.venue.city}
         </p>
       </div>
-
+ 
       <!-- Countdown Timer -->
       <div id="countdown-container" class="max-w-md mx-auto bg-brand-bg py-6 px-6 rounded-lg border border-brand-title/15 shadow-xs transition-all duration-300">
-        <p class="text-xs uppercase tracking-wider text-brand-title/70 font-semibold mb-4">Tid igjen til vi sier ja</p>
+        <p class="text-lead text-[10px] text-brand-title/70 mb-4">Tid igjen til vi sier ja</p>
         <div id="countdown" class="flex justify-center gap-4 md:gap-6 font-sans">
           <div class="flex flex-col items-center">
             <span id="cd-days" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
-            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Dager</span>
+            <span class="text-lead text-[9px] text-brand-text/75 mt-1">Dager</span>
           </div>
           <span class="text-2xl font-light text-brand-title/50">:</span>
           <div class="flex flex-col items-center">
             <span id="cd-hours" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
-            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Timer</span>
+            <span class="text-lead text-[9px] text-brand-text/75 mt-1">Timer</span>
           </div>
           <span class="text-2xl font-light text-brand-title/50">:</span>
           <div class="flex flex-col items-center">
             <span id="cd-minutes" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
-            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Min</span>
+            <span class="text-lead text-[9px] text-brand-text/75 mt-1">Min</span>
           </div>
           <span class="text-2xl font-light text-brand-title/50">:</span>
           <div class="flex flex-col items-center">
             <span id="cd-seconds" class="text-2xl md:text-3xl font-light text-brand-title">00</span>
-            <span class="text-[10px] uppercase tracking-wider text-brand-text/75 font-semibold mt-1">Sek</span>
+            <span class="text-lead text-[9px] text-brand-text/75 mt-1">Sek</span>
           </div>
         </div>
       </div>
