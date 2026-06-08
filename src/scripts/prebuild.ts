@@ -6,7 +6,6 @@ import type {
   ScheduleEvent,
   StoryItem,
   TableWithGuests,
-  ToastmasterData,
   WeddingLocation,
 } from "../services/notion";
 
@@ -47,7 +46,6 @@ interface FallbackData {
   locations: WeddingLocation[];
   seating: TableWithGuests[];
   flags: Record<string, boolean>;
-  toastmaster?: ToastmasterData;
   story?: StoryItem[];
 }
 
@@ -116,7 +114,6 @@ async function run() {
     fetchLocationsFromNotion,
     fetchScheduleFromNotion,
     fetchStoryFromNotion,
-    fetchToastmasterFromNotion,
   } = await import("../services/notion");
 
   // 1. Load existing data if available
@@ -238,20 +235,6 @@ async function run() {
   } catch (err: any) {
     console.warn(
       "⚠️ Warning: Failed to pre-fetch feature flags:",
-      err.message || err,
-    );
-  }
-
-  try {
-    console.log("Syncing Toastmaster...");
-    const toastmaster = await fetchToastmasterFromNotion();
-    if (toastmaster) {
-      existingData.toastmaster = toastmaster;
-      console.log(`Fetched toastmaster: ${toastmaster.name}.`);
-    }
-  } catch (err: any) {
-    console.warn(
-      "⚠️ Warning: Failed to pre-fetch toastmaster:",
       err.message || err,
     );
   }

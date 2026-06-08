@@ -20,16 +20,6 @@ export const weddingConfig = {
     embedMapSrc:
       "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2754.258417190076!2d10.816381977151805!3d59.926990474909225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x46416fb7de792a47%3A0x5971fe1774ec4171!2sT%C3%A5rnet%20Kulturarena!5e1!3m2!1sno!2sno!4v1779748057725!5m2!1sno!2sno",
   },
-  toastmaster: {
-    name: (notionFallback as any).toastmaster?.name,
-    contact:
-      (notionFallback as any).toastmaster?.email &&
-      (notionFallback as any).toastmaster?.phone
-        ? `${(notionFallback as any).toastmaster.email} / ${(notionFallback as any).toastmaster.phone}`
-        : (notionFallback as any).toastmaster?.email ||
-          (notionFallback as any).toastmaster?.phone,
-    info: "Meld gjerne ifra om taler eller innslag innen 1. juli.",
-  },
   story: (notionFallback as any).story || [],
   schedule: notionFallback.schedule || [],
   accommodations: [

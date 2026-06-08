@@ -5,7 +5,6 @@ import {
   fetchFeatureFlags,
   fetchScheduleFromNotion,
   fetchStoryFromNotion,
-  fetchToastmasterFromNotion,
 } from "./notion";
 
 // Setup mocks for @notionhq/client
@@ -298,40 +297,6 @@ describe("Notion Service Integration & Fallbacks", () => {
       expect(egentidData[0].suggestions[0].locationId).toBe(
         "location-liebling",
       );
-    });
-  });
-
-  describe("fetchToastmasterFromNotion", () => {
-    test("should fetch toastmaster page by Role 'Toastmaster'", async () => {
-      mockMedvirkendeResults = [
-        {
-          id: "contrib-toastmaster",
-          properties: {
-            Navn: {
-              type: "title",
-              title: [{ plain_text: "Sandra Ingdal" }],
-            },
-            Role: {
-              type: "rich_text",
-              rich_text: [{ plain_text: "Toastmaster" }],
-            },
-            Email: {
-              type: "email",
-              email: "toastmaster@example.com",
-            },
-            Telefon: {
-              type: "phone_number",
-              phone_number: "+47 999 99 999",
-            },
-          },
-        },
-      ];
-
-      const tm = await fetchToastmasterFromNotion(mockEnv);
-      expect(tm).toBeDefined();
-      expect(tm.name).toBe("Sandra Ingdal");
-      expect(tm.email).toBe("toastmaster@example.com");
-      expect(tm.phone).toBe("+47 999 99 999");
     });
   });
 
