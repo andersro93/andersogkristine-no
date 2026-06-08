@@ -31,5 +31,83 @@ const {
   </head>
   <body class="min-h-screen selection:bg-brand-title/20 selection:text-brand-text bg-brand-bg text-brand-text">
     <slot />
+
+    <script is:inline>
+      (function() {
+        const isHomepage = window.location.pathname === '/' || window.location.pathname === '/index.html';
+
+        if (isHomepage) {
+          // 1. Save scroll position on scroll/click/pagehide
+          let scrollTimeout;
+          window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+              sessionStorage.setItem('mainPageScrollY', window.scrollY);
+            }, 100);
+          }, { passive: true });
+
+          window.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.href) {
+              sessionStorage.setItem('mainPageScrollY', window.scrollY);
+            }
+          });
+
+          window.addEventListener('pagehide', () => {
+            sessionStorage.setItem('mainPageScrollY', window.scrollY);
+          });
+
+          // 2. Restore scroll position if returning from subpages or back navigation
+          const savedY = sessionStorage.getItem('mainPageScrollY');
+          if (savedY && savedY !== '0') {
+            const referrer = document.referrer;
+            const currentHost = window.location.host;
+            const isInternal = referrer && referrer.includes(currentHost);
+            
+            let isHomepageReferrer = false;
+            if (referrer) {
+              try {
+                const referrerUrl = new URL(referrer);
+                isHomepageReferrer = referrerUrl.pathname === '/' || referrerUrl.pathname === '/index.html';
+              } catch (e) {
+                // Ignore invalid URLs
+              }
+            }
+            
+            const isFromSubpage = isInternal && !isHomepageReferrer;
+            
+            const navEntries = performance.getEntriesByType('navigation');
+            const navType = navEntries.length > 0 ? navEntries[0].type : '';
+            const isBackForward = navType === 'back_forward';
+            const isReload = navType === 'reload';
+
+            if (isFromSubpage || isBackForward || isReload) {
+              // Temporarily disable smooth scroll to scroll instantly
+              const htmlEl = document.documentElement;
+              const originalScrollBehavior = htmlEl.style.scrollBehavior;
+              htmlEl.style.scrollBehavior = 'auto';
+
+              // Attempt immediate scroll
+              window.scrollTo(0, parseInt(savedY, 10));
+
+              // Also execute on DOMContentLoaded/load just in case rendering timing is delayed
+              const performScroll = () => {
+                window.scrollTo(0, parseInt(savedY, 10));
+                // Restore smooth scroll behavior after restoration
+                setTimeout(() => {
+                  htmlEl.style.scrollBehavior = originalScrollBehavior;
+                }, 50);
+              };
+
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', performScroll);
+              } else {
+                performScroll();
+              }
+            }
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
