@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Maintain dependencies for npm packages
-  - package-ecosystem: "npm"
+  # Maintain dependencies for bun packages
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
