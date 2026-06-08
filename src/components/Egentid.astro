@@ -72,7 +72,7 @@ const initialContributor = contributors[0] || egentid.contributors[0];
     </div>
 
     <!-- Inline Suggestions Card (Dynamically updated) -->
-    <div class="max-w-2xl mx-auto bg-brand-bg rounded-xl border border-brand-title/15 shadow-sm p-6 md:p-8 min-h-[250px]">
+    <div id="egentid-content-card" class="max-w-2xl mx-auto bg-brand-bg rounded-xl border border-brand-title/15 shadow-sm p-6 md:p-8 min-h-[250px] scroll-mt-24">
       
       <!-- Framing decorative line -->
       <div id="egentid-content-container" class="opacity-100 transition-opacity duration-200 ease-in-out space-y-6">
@@ -164,6 +164,14 @@ const initialContributor = contributors[0] || egentid.contributors[0];
           }
           container.style.opacity = '1';
         }, 150);
+      }
+
+      // Smooth scroll to the suggestions card
+      const contentCard = document.getElementById('egentid-content-card');
+      if (contentCard) {
+        setTimeout(() => {
+          contentCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 180);
       }
     });
   });
