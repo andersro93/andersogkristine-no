@@ -6,7 +6,6 @@ import OurStory from '../components/OurStory.astro';
 import Schedule from '../components/Schedule.astro';
 import Egentid from '../components/Egentid.astro';
 import Location from '../components/Location.astro';
-import PracticalInfo from '../components/PracticalInfo.astro';
 import Footer from '../components/Footer.astro';
 import { fetchFeatureFlags } from '../services/notion';
 
@@ -25,7 +24,6 @@ try {
 <Layout>
   <main class="overflow-x-hidden min-h-screen">
     <Hero flags={flags} />
-    <PracticalInfo flags={flags} />
     {flags.program && <Schedule flags={flags} />}
     {flags.egentid && <Egentid />}
     {flags.map && <Location />}

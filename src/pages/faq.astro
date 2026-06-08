@@ -1,0 +1,31 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../layouts/Layout.astro';
+import PracticalInfo from '../components/PracticalInfo.astro';
+import { fetchFeatureFlags } from '../services/notion';
+
+const context = Astro.locals?.cfContext;
+let flags = { rsvp: true, seating: true, music: true, map: true, egentid: true, program: true };
+try {
+  const fetchedFlags = await fetchFeatureFlags(env as Env, context);
+  if (fetchedFlags) {
+    flags = fetchedFlags;
+  }
+} catch (err) {
+  console.error("Failed to load feature flags in FAQ page:", err);
+}
+---
+
+<Layout title="Praktisk Informasjon - Kristine og Anders">
+  <main class="min-h-screen py-16 px-4 md:px-8 max-w-6xl mx-auto">
+    
+    <!-- Header Back Link -->
+    <div class="mb-10 select-none">
+      <a href="/" class="inline-block text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
+    </div>
+
+    <!-- PracticalInfo component directly -->
+    <PracticalInfo flags={flags} />
+
+  </main>
+</Layout>
