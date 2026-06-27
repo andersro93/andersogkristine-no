@@ -29,6 +29,11 @@ interface LeafletMarker extends LeafletLayer {
   openPopup(): LeafletMarker;
 }
 
+interface LeafletPolygon extends LeafletLayer {
+  addTo(map: LeafletMap): LeafletPolygon;
+  bindPopup(content: string, options?: Record<string, unknown>): LeafletPolygon;
+}
+
 interface LeafletLayerGroup extends LeafletLayer {
   addTo(map: LeafletMap): LeafletLayerGroup;
   addLayer(layer: LeafletLayer): LeafletLayerGroup;
@@ -54,6 +59,10 @@ interface LeafletStatic {
     options?: Record<string, unknown>,
   ): LeafletMarker;
   latLngBounds(bounds: [number, number][]): LeafletLatLngBounds;
+  polygon(
+    latlngs: [number, number][],
+    options?: Record<string, unknown>,
+  ): LeafletPolygon;
 }
 
 export interface LocationActivity {
@@ -73,6 +82,8 @@ export interface WeddingLocation {
   googleMapsUrl?: string;
   ikon?: string;
   activities?: LocationActivity[];
+  zone?: [number, number][];
+  zoneColor?: string;
 }
 
 export default function InteractiveMap() {
@@ -267,6 +278,15 @@ export default function InteractiveMap() {
               </svg>
             `;
           break;
+        case "parkering":
+          colorClass = "bg-[#6b7280] text-white border-[#4b5563]"; // Neutral gray
+          iconSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
+              <rect x="4" y="3" width="16" height="18" rx="2" ry="2" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h3.5a2.5 2.5 0 0 0 0-5H9" />
+            </svg>
+          `;
+          break;
         default:
           colorClass = "bg-[#d0bfa8] text-white border-[#bfae96]"; // Beige fallback
           iconSvg = `
@@ -347,6 +367,7 @@ export default function InteractiveMap() {
       else if (loc.ikon === "park") typeLabel = "Park";
       else if (loc.ikon === "food") typeLabel = "Mat & Drikke";
       else if (loc.ikon === "buss") typeLabel = "Transport";
+      else if (loc.ikon === "parkering") typeLabel = "Parkering";
 
       const popupHtml = `
         <div class="font-sans p-1 text-brand-title max-w-xs space-y-1">
@@ -369,6 +390,29 @@ export default function InteractiveMap() {
 
       markersGroup.addLayer(marker);
       markerInstancesRef.current.set(loc.id, marker);
+
+      // Render zone polygon if coordinates are provided
+      if (loc.zone && loc.zone.length >= 3) {
+        const zoneColorMap: Record<string, { fill: string; border: string }> = {
+          blue: { fill: "#3b82f6", border: "#3b82f6" },
+          red: { fill: "#ef4444", border: "#ef4444" },
+          green: { fill: "#22c55e", border: "#22c55e" },
+          yellow: { fill: "#eab308", border: "#eab308" },
+          purple: { fill: "#a855f7", border: "#a855f7" },
+          orange: { fill: "#f97316", border: "#f97316" },
+          gray: { fill: "#6b7280", border: "#6b7280" },
+        };
+        const colors = zoneColorMap[(loc.zoneColor || "blue").toLowerCase()] || zoneColorMap.blue;
+        const polygon = L.polygon(loc.zone, {
+          color: colors.border,
+          fillColor: colors.fill,
+          fillOpacity: 0.15,
+          opacity: 0.5,
+          weight: 2,
+          dashArray: "6 4",
+        });
+        markersGroup.addLayer(polygon);
+      }
     });
 
     // Pan map to fit markers
@@ -617,6 +661,7 @@ export default function InteractiveMap() {
               if (loc.ikon === "hotel") iconSymbol = "🏨";
               if (loc.ikon === "park") iconSymbol = "🌳";
               if (loc.ikon === "food") iconSymbol = "🍻";
+              if (loc.ikon === "parkering") iconSymbol = "🅿️";
 
               const isSelected = loc.id === selectedLocationId;
               const activeBgClass = isSelected
