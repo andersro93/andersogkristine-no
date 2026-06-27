@@ -661,6 +661,8 @@ export interface WeddingLocation {
   googleMapsUrl?: string;
   ikon?: string;
   activities?: LocationActivity[];
+  zone?: [number, number][];
+  zoneColor?: string;
 }
 
 // Locations fallback: sourced from prebuild-generated notion-fallback.json
@@ -768,7 +770,7 @@ async function updateLocationsCache(
           ? props["Google Maps"].url
           : undefined;
 
-      // Ikon (text or select)
+      // Ikon (text, select, or multi_select)
       let ikon = "default";
       const ikonProp = props.Ikon || props.ikon;
       if (ikonProp) {
@@ -778,8 +780,36 @@ async function updateLocationsCache(
           ikon =
             (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
             "default";
+        } else if (ikonProp.type === "multi_select" && Array.isArray(ikonProp.multi_select) && ikonProp.multi_select.length > 0) {
+          ikon = (ikonProp.multi_select as NotionSelectItem[])[0].name.trim().toLowerCase() || "default";
         }
       }
+
+      // Sone (zone polygon coordinates from rich_text)
+      let zone: [number, number][] | undefined;
+      const soneRaw = getRichTextFull(props.Sone || props.sone).trim();
+      if (soneRaw) {
+        const parsed = soneRaw
+          .split(";")
+          .map((segment) => {
+            const parts = segment.trim().split(",");
+            if (parts.length >= 2) {
+              const lat = parseFloat(parts[0].trim());
+              const lng = parseFloat(parts[1].trim());
+              if (!isNaN(lat) && !isNaN(lng)) {
+                return [lat, lng] as [number, number];
+              }
+            }
+            return null;
+          })
+          .filter((pair): pair is [number, number] => pair !== null);
+        if (parsed.length >= 3) {
+          zone = parsed;
+        }
+      }
+
+      // Sone-farge (zone color from select)
+      const zoneColor = getSelectProperty(props["Sone-farge"] || props["sone-farge"]) || undefined;
 
       // Map categories to dynamic fallback icons
       ikon = getIconForLocation(name, ikon);
@@ -825,6 +855,8 @@ async function updateLocationsCache(
         googleMapsUrl,
         ikon,
         activities,
+        zone,
+        zoneColor,
       };
     })
     .filter((loc) => loc.lat !== null && loc.lng !== null) as WeddingLocation[];
@@ -889,6 +921,9 @@ function getIconForLocation(name: string, ikon?: string): string {
   }
   if (lowerName.includes("buss")) {
     return "buss";
+  }
+  if (lowerName.includes("parkering") || lowerName.includes("parking")) {
+    return "parkering";
   }
   return "default";
 }
