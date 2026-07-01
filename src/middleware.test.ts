@@ -148,19 +148,39 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     expect(apiNext).toHaveBeenCalled();
   });
 
+  test("should pass through /rsvp and /api/rsvp without pin checks", async () => {
+    const rsvpContext = createMockContext("/rsvp");
+    const rsvpNext = mock(async () => new Response("RSVP_PAGE"));
+    let response = (await onRequest(rsvpContext as any, rsvpNext)) as Response;
+    expect(await response.text()).toBe("RSVP_PAGE");
+    expect(rsvpNext).toHaveBeenCalled();
+
+    const rsvpWithCode = createMockContext("/rsvp?code=some-code");
+    const rsvpCodeNext = mock(async () => new Response("RSVP_WITH_CODE"));
+    response = (await onRequest(rsvpWithCode as any, rsvpCodeNext)) as Response;
+    expect(await response.text()).toBe("RSVP_WITH_CODE");
+    expect(rsvpCodeNext).toHaveBeenCalled();
+
+    const apiRsvpContext = createMockContext("/api/rsvp");
+    const apiRsvpNext = mock(async () => new Response("API_RSVP"));
+    response = (await onRequest(apiRsvpContext as any, apiRsvpNext)) as Response;
+    expect(await response.text()).toBe("API_RSVP");
+    expect(apiRsvpNext).toHaveBeenCalled();
+  });
+
   test("should redirect unauthenticated users to /pin, preserving the next page", async () => {
-    const context = createMockContext("/rsvp");
+    const context = createMockContext("/musikk");
     const nextCalled = mock(async () => new Response("OK"));
 
     const response = (await onRequest(context as any, nextCalled)) as Response;
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe("/pin?next=%2Frsvp");
+    expect(response.headers.get("Location")).toBe("/pin?next=%2Fmusikk");
     expect(nextCalled).not.toHaveBeenCalled();
   });
 
   test("should allow authenticated users to pass through without re-checking notion", async () => {
     const validCookie = generateSessionCookie(mockEnv as any);
-    const context = createMockContext("/rsvp", { wedding_access: validCookie });
+    const context = createMockContext("/musikk", { wedding_access: validCookie });
     const nextCalled = mock(async () => new Response("OK"));
 
     const response = (await onRequest(context as any, nextCalled)) as Response;
@@ -169,7 +189,7 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     expect(nextCalled).toHaveBeenCalled();
   });
 
-  test("should automatically log in a user with a valid invite code", async () => {
+  test("should automatically log in a user with a valid invite code on non-rsvp pages", async () => {
     mockInviteCodeResponse = {
       id: "invite-123",
       properties: {
@@ -188,7 +208,7 @@ describe("Astro Middleware & Invite Code Bypass", () => {
       },
     };
 
-    const context = createMockContext("/rsvp?code=secret-code");
+    const context = createMockContext("/?code=secret-code");
     const nextCalled = mock(async () => new Response("OK"));
 
     const response = (await onRequest(context as any, nextCalled)) as Response;
@@ -207,47 +227,47 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     expect(options.httpOnly).toBe(true);
   });
 
-  test("should redirect to /pin with error if the invite code is invalid", async () => {
+  test("should redirect to /pin with error if the invite code is invalid on non-rsvp pages", async () => {
     mockInviteCodeResponse = null; // invalid code
 
-    const context = createMockContext("/rsvp?code=invalid-code");
+    const context = createMockContext("/?code=invalid-code");
     const nextCalled = mock(async () => new Response("OK"));
 
     const response = (await onRequest(context as any, nextCalled)) as Response;
 
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe(
-      "/pin?error=invalid_invite&next=%2Frsvp%3Fcode%3Dinvalid-code",
+      "/pin?error=invalid_invite&next=%2F%3Fcode%3Dinvalid-code",
     );
     expect(nextCalled).not.toHaveBeenCalled();
     expect(context._setCalls.length).toBe(0);
   });
 
   describe("Feature Flags Blocking", () => {
-    test("should allow accessing /rsvp if rsvp flag is enabled", async () => {
-      mockFlagsResponse = [{ key: "rsvp", enabled: true }];
+    test("should allow accessing /musikk if music flag is enabled", async () => {
+      mockFlagsResponse = [{ key: "music", enabled: true }];
       const validCookie = generateSessionCookie(mockEnv as any);
-      const context = createMockContext("/rsvp", {
+      const context = createMockContext("/musikk", {
         wedding_access: validCookie,
       });
-      const nextCalled = mock(async () => new Response("RSVP_PAGE"));
+      const nextCalled = mock(async () => new Response("MUSIC_PAGE"));
 
       const response = (await onRequest(
         context as any,
         nextCalled,
       )) as Response;
       expect(response.status).toBe(200);
-      expect(await response.text()).toBe("RSVP_PAGE");
+      expect(await response.text()).toBe("MUSIC_PAGE");
       expect(nextCalled).toHaveBeenCalled();
     });
 
-    test("should redirect /rsvp to / if rsvp flag is disabled", async () => {
-      mockFlagsResponse = [{ key: "rsvp", enabled: false }];
+    test("should redirect /musikk to / if music flag is disabled", async () => {
+      mockFlagsResponse = [{ key: "music", enabled: false }];
       const validCookie = generateSessionCookie(mockEnv as any);
-      const context = createMockContext("/rsvp", {
+      const context = createMockContext("/musikk", {
         wedding_access: validCookie,
       });
-      const nextCalled = mock(async () => new Response("RSVP_PAGE"));
+      const nextCalled = mock(async () => new Response("MUSIC_PAGE"));
 
       const response = (await onRequest(
         context as any,
