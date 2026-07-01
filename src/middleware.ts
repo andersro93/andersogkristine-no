@@ -13,6 +13,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Exclude auth routes and static assets from protection
   const isPinPage = pathname === "/pin";
   const isValidatePinApi = pathname === "/api/validate-pin";
+  const isRsvpPage = pathname === "/rsvp";
+  const isRsvpApi = pathname === "/api/rsvp";
 
   const isStaticAsset =
     pathname.startsWith("/_") ||
@@ -20,7 +22,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     pathname === "/favicon.svg" ||
     pathname === "/robots.txt";
 
-  if (isPinPage || isValidatePinApi || isStaticAsset) {
+  if (isPinPage || isValidatePinApi || isRsvpPage || isRsvpApi || isStaticAsset) {
     return next();
   }
 

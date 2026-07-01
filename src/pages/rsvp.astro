@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
 import { fetchInviteByCode, type Invite } from '../services/notion';
+import { generateSessionCookie } from '../services/pin';
 import { weddingConfig } from '../config';
 
 // Server-side invite lookup
@@ -13,7 +14,17 @@ let errorMsg: string | null = null;
 if (code) {
   try {
     invite = await fetchInviteByCode(code, env as Env);
-    if (!invite) {
+    if (invite) {
+      // Valid invite: grant a site-wide session so guests can browse other pages
+      const cookieValue = generateSessionCookie(env as Env);
+      Astro.cookies.set('wedding_access', cookieValue, {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      });
+    } else {
       errorMsg = "Ugyldig invitasjonskode. Vennligst sjekk at koden stemmer.";
     }
   } catch (err) {
