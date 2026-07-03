@@ -780,8 +780,15 @@ async function updateLocationsCache(
           ikon =
             (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
             "default";
-        } else if (ikonProp.type === "multi_select" && Array.isArray(ikonProp.multi_select) && ikonProp.multi_select.length > 0) {
-          ikon = (ikonProp.multi_select as NotionSelectItem[])[0].name.trim().toLowerCase() || "default";
+        } else if (
+          ikonProp.type === "multi_select" &&
+          Array.isArray(ikonProp.multi_select) &&
+          ikonProp.multi_select.length > 0
+        ) {
+          ikon =
+            (ikonProp.multi_select as NotionSelectItem[])[0].name
+              .trim()
+              .toLowerCase() || "default";
         }
       }
 
@@ -809,7 +816,9 @@ async function updateLocationsCache(
       }
 
       // Sone-farge (zone color from select)
-      const zoneColor = getSelectProperty(props["Sone-farge"] || props["sone-farge"]) || undefined;
+      const zoneColor =
+        getSelectProperty(props["Sone-farge"] || props["sone-farge"]) ||
+        undefined;
 
       // Map categories to dynamic fallback icons
       ikon = getIconForLocation(name, ikon);
@@ -1187,13 +1196,13 @@ async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
       // Maintain static copy fallback for description if none exists in DB
       let description = `Anbefalinger fra ${c.name}.`;
       if (c.name.toLowerCase() === "kristine") {
-        description = "Koselige kafeer og rolige, grønne lunger.";
+        description = "Drinker, drinker, drinker";
       } else if (c.name.toLowerCase() === "anders") {
-        description = "Beste ølserveringer, rask mat og utsiktspunkter.";
+        description = "Kaffe og øl";
       } else if (c.name.toLowerCase() === "nora") {
-        description = "Lekeplasser, vaffel og byens beste isbarer.";
+        description = "Enkel mat og avslapping";
       } else if (c.name.toLowerCase() === "lilo") {
-        description = "Hundeparker, turområder og de beste snusestoppene.";
+        description = "Tur og mat";
       }
 
       return {
