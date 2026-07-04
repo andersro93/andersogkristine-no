@@ -1184,21 +1184,97 @@ export async function fetchEgentidData(
  * Fetches the toastmaster from the Medvirkende database.
  * Identifies the toastmaster by filtering for a contributor whose
  * role contains "Toastmaster" (case-insensitive).
+ * Cached in Cloudflare KV with SWR logic.
  */
 export async function fetchToastmaster(
   localEnv?: Env,
+  context?: { waitUntil(promise: Promise<any>): void },
 ): Promise<{ name: string; email: string; photo: string } | null> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.CACHE;
+  const cacheKey = "notion_toastmaster";
+
+  // 1. Try to read from KV cache
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        // Notion S3 URLs expire after 1 hour.
+        // If cache is older than 45 minutes, force synchronous fetch.
+        if (age > 45 * 60 * 1000) {
+          console.log(
+            "Toastmaster cache is too old (S3 URLs may be expired), forcing synchronous fetch...",
+          );
+        } else {
+          // If cache is stale (> 1 minute), trigger background update (SWR)
+          if (age > 60 * 1000) {
+            console.log(
+              `Toastmaster cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
+            );
+            const updatePromise = updateToastmasterCache(currentEnv).catch(
+              (err) => {
+                console.error("Error in background Toastmaster sync:", err);
+              },
+            );
+
+            if (context?.waitUntil) {
+              context.waitUntil(updatePromise);
+            }
+          }
+
+          return data;
+        }
+      }
+    } catch (err) {
+      console.error("KV read error for Toastmaster:", err);
+    }
+  }
+
+  // 2. Cache miss: Fetch and update synchronously
+  console.log("Toastmaster cache miss, performing synchronous fetch...");
+  return await updateToastmasterCache(currentEnv);
+}
+
+async function updateToastmasterCache(
+  localEnv?: Env,
+): Promise<{ name: string; email: string; photo: string } | null> {
+  const currentEnv = localEnv || cloudflareEnv;
+  const kv = currentEnv?.CACHE;
+  const cacheKey = "notion_toastmaster";
+
   const rawContributors = await fetchRawContributors(localEnv);
   const toastmaster = rawContributors.find((c) =>
     c.role.toLowerCase().includes("toastmaster"),
   );
-  if (!toastmaster) return null;
-  return {
-    name: toastmaster.name,
-    email: toastmaster.email,
-    photo: toastmaster.photo,
-  };
+
+  const result = toastmaster
+    ? {
+        name: toastmaster.name,
+        email: toastmaster.email,
+        photo: toastmaster.photo,
+      }
+    : null;
+
+  // Save to KV cache
+  if (kv) {
+    try {
+      const cacheValue = JSON.stringify({
+        data: result,
+        timestamp: Date.now(),
+      });
+      await kv.put(cacheKey, cacheValue);
+      console.log("Toastmaster KV cache updated successfully.");
+    } catch (err) {
+      console.error("KV write error for Toastmaster:", err);
+    }
+  }
+
+  return result;
 }
+
 
 async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
   const currentEnv = localEnv || cloudflareEnv;

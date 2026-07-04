@@ -4,8 +4,9 @@ import Layout from '../layouts/Layout.astro';
 import { fetchToastmaster } from '../services/notion';
 
 let toastmaster: { name: string; email: string; photo: string } | null = null;
+const context = Astro.locals?.cfContext;
 try {
-  toastmaster = await fetchToastmaster(env as Env);
+  toastmaster = await fetchToastmaster(env as Env, context);
 } catch (err) {
   console.error("Failed to load toastmaster from Notion:", err);
 }
