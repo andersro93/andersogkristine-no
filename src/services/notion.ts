@@ -969,6 +969,7 @@ interface RawContributor {
   photo: string;
   role: string;
   emoji: string;
+  email: string;
 }
 
 interface RawEgentidItem {
@@ -991,6 +992,7 @@ export interface Contributor {
   role: string;
   description: string;
   emoji?: string;
+  email?: string;
   suggestions: EgentidSuggestion[];
 }
 
@@ -1015,6 +1017,15 @@ async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
       const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
       const role = getRichTextFull(props.Role || props.Rolle, "");
       const emoji = getRichTextFull(props.Emoji, "");
+
+      // Handle email property
+      let email = "";
+      const emailProp = props.Email || props.email || props["E-post"];
+      if (emailProp?.type === "email" && emailProp.email) {
+        email = emailProp.email;
+      } else if (emailProp?.type === "rich_text") {
+        email = getRichTextFull(emailProp, "");
+      }
 
       // Handle photo (Bilde files property)
       let photo = "";
@@ -1044,6 +1055,7 @@ async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
         photo,
         role,
         emoji,
+        email,
       };
     });
 }
@@ -1168,6 +1180,26 @@ export async function fetchEgentidData(
   return await updateEgentidCache(currentEnv);
 }
 
+/**
+ * Fetches the toastmaster from the Medvirkende database.
+ * Identifies the toastmaster by filtering for a contributor whose
+ * role contains "Toastmaster" (case-insensitive).
+ */
+export async function fetchToastmaster(
+  localEnv?: Env,
+): Promise<{ name: string; email: string; photo: string } | null> {
+  const rawContributors = await fetchRawContributors(localEnv);
+  const toastmaster = rawContributors.find((c) =>
+    c.role.toLowerCase().includes("toastmaster"),
+  );
+  if (!toastmaster) return null;
+  return {
+    name: toastmaster.name,
+    email: toastmaster.email,
+    photo: toastmaster.photo,
+  };
+}
+
 async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
   const currentEnv = localEnv || cloudflareEnv;
   const kv = currentEnv?.CACHE;
@@ -1212,6 +1244,7 @@ async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
         role: c.role || `${c.name}s favoritter`,
         description,
         emoji: c.emoji,
+        email: c.email || undefined,
         suggestions,
       };
     })

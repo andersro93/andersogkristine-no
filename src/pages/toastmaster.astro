@@ -1,0 +1,109 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../layouts/Layout.astro';
+import { fetchToastmaster } from '../services/notion';
+
+let toastmaster: { name: string; email: string; photo: string } | null = null;
+try {
+  toastmaster = await fetchToastmaster(env as Env);
+} catch (err) {
+  console.error("Failed to load toastmaster from Notion:", err);
+}
+---
+
+<Layout title="Toastmaster - Kristine og Anders" description="Informasjon om toastmaster for bryllupet til Kristine og Anders. Kontakt toastmaster om du ønsker å holde tale.">
+  <main class="min-h-screen py-16 px-4 md:px-8 max-w-5xl mx-auto flex flex-col justify-center">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
+      <h1 class="mb-2">Toastmaster</h1>
+      <p class="text-body-serif">Taler og underholdning</p>
+      <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl p-8 md:p-12 shadow-xl shadow-brand-title/5 relative overflow-hidden">
+
+      <!-- Corner ornaments -->
+      <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
+      <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
+      <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
+      <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
+
+      {toastmaster ? (
+        <div class="flex flex-col items-center text-center space-y-8">
+
+          <!-- Photo -->
+          <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
+            <img
+              src={toastmaster.photo}
+              alt={toastmaster.name}
+              class="w-full h-full object-cover"
+              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"
+            />
+            <div class="hidden w-full h-full flex items-center justify-center bg-brand-title/10 text-brand-title">
+              <span class="font-wedding text-5xl">{toastmaster.name.charAt(0)}</span>
+            </div>
+          </div>
+
+          <!-- Name & Role -->
+          <div class="space-y-1">
+            <h2 class="text-3xl md:text-4xl">{toastmaster.name}</h2>
+            <p class="text-lead">Toastmaster</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="w-16 h-px bg-brand-title/15"></div>
+
+          <!-- Contact info -->
+          <div class="max-w-lg space-y-4">
+            <p class="text-body text-base leading-relaxed">
+              Ønsker du å holde tale eller lignende? Ta kontakt med {toastmaster.name}.
+            </p>
+
+            {toastmaster.email && (
+              <p class="text-body text-base">
+                <span class="font-medium">Email:</span>{' '}
+                <a
+                  href={`mailto:${toastmaster.email}`}
+                  class="text-brand-title hover:underline font-medium transition-colors"
+                >
+                  {toastmaster.email}
+                </a>
+              </p>
+            )}
+          </div>
+
+          <!-- Divider -->
+          <div class="w-16 h-px bg-brand-title/15"></div>
+
+          <!-- Guidelines -->
+          <div class="max-w-lg space-y-4 text-left">
+            <h3 class="text-center">Tips til taler</h3>
+            <ul class="space-y-3 text-body text-base">
+              <li class="flex items-start gap-3">
+                <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
+                <span>Gi gjerne toastmaster beskjed i god tid om du ønsker å holde tale</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
+                <span>Hold talen kort og personlig &mdash; rundt 3-5 minutter er perfekt</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
+                <span>Sanger, dikt eller andre innslag er også velkomne!</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      ) : (
+        <div class="text-center py-12">
+          <p class="text-body text-base">Informasjon om toastmaster kommer snart.</p>
+        </div>
+      )}
+
+    </div>
+  </main>
+</Layout>
