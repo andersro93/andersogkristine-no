@@ -2,8 +2,8 @@
 
 @theme {
   --color-brand-bg: #f2f1eb;
-  --color-brand-title: #3a5a40;
-  --color-brand-text: #6e001b;
+  --color-brand-title: #000000;
+  --color-brand-text: #000000;
 
   --font-wedding: "Breathing", "Playfair Display", "Cormorant Garamond", serif;
   --font-serif: "Playfair Display", "Cormorant Garamond", serif;
