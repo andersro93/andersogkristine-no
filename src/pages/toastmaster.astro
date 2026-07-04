@@ -38,14 +38,11 @@ try {
           <!-- Photo -->
           <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
             <img
-              src={toastmaster.photo}
+              src="/images/toastmaster/sandra.webp"
               alt={toastmaster.name}
               class="w-full h-full object-cover"
-              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"
+              onerror={`this.onerror=null; this.src='${toastmaster.photo}';`}
             />
-            <div class="hidden w-full h-full flex items-center justify-center bg-brand-title/10 text-brand-title">
-              <span class="font-wedding text-5xl">{toastmaster.name.charAt(0)}</span>
-            </div>
           </div>
 
           <!-- Name & Role -->
