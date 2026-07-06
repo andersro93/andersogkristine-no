@@ -24,9 +24,11 @@ type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 interface Props {
   invite: Invite;
+  seatingEnabled?: boolean;
+  musicEnabled?: boolean;
 }
 
-export default function RSVPForm({ invite }: Props) {
+export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled = false }: Props) {
   const [formState, setFormState] = useState<FormState>(() =>
     Object.fromEntries(
       invite.guests.map((g) => [
@@ -124,18 +126,22 @@ export default function RSVPForm({ invite }: Props) {
           >
             Til hovedsiden
           </a>
-          <a
-            href="/bordoppsett"
-            className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
-          >
-            Se bordoppsett
-          </a>
-          <a
-            href="/musikk"
-            className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
-          >
-            Foreslå musikk
-          </a>
+          {seatingEnabled && (
+            <a
+              href="/bordoppsett"
+              className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
+            >
+              Se bordoppsett
+            </a>
+          )}
+          {musicEnabled && (
+            <a
+              href="/musikk"
+              className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
+            >
+              Foreslå musikk
+            </a>
+          )}
         </div>
       </div>
     );

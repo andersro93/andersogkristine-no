@@ -2,7 +2,7 @@
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
-import { fetchInviteByCode, type Invite } from '../services/notion';
+import { fetchInviteByCode, fetchFeatureFlags, type Invite } from '../services/notion';
 import { generateSessionCookie } from '../services/pin';
 import { weddingConfig } from '../config';
 
@@ -31,6 +31,18 @@ if (code) {
     console.error("Error fetching invite in page:", err);
     errorMsg = "Det oppstod en feil ved henting av din invitasjon. Vennligst prøv igjen.";
   }
+}
+
+// Fetch feature flags for conditional button rendering
+const context = Astro.locals?.cfContext;
+let flags = { rsvp: true, seating: true, music: true, map: true, egentid: true, program: true };
+try {
+  const fetchedFlags = await fetchFeatureFlags(env as Env, context);
+  if (fetchedFlags) {
+    flags = fetchedFlags;
+  }
+} catch (err) {
+  console.error("Failed to load feature flags in RSVP page:", err);
 }
 ---
 
@@ -87,7 +99,7 @@ if (code) {
         </div>
       ) : (
         /* State B: React island handles all the interactive form logic */
-        <RSVPForm invite={invite} client:load />
+        <RSVPForm invite={invite} seatingEnabled={flags.seating} musicEnabled={flags.music} client:load />
       )}
 
     </div>
