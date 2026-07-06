@@ -1,21 +1,26 @@
 ---
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
-import { fetchToastmaster } from '../services/notion';
+import { fetchToastmasters } from '../services/notion';
 
-let toastmaster: { name: string; email: string; photo: string } | null = null;
+let toastmasters: { name: string; email: string; photo: string }[] = [];
 const context = Astro.locals?.cfContext;
 try {
-  toastmaster = await fetchToastmaster(env as Env, context);
+  toastmasters = await fetchToastmasters(env as Env, context);
 } catch (err) {
-  console.error("Failed to load toastmaster from Notion:", err);
+  console.error("Failed to load toastmasters from Notion:", err);
 }
+
+const toastmasterNames = toastmasters.map(t => t.name);
+const namesText = toastmasterNames.length === 2
+  ? `${toastmasterNames[0]} eller ${toastmasterNames[1]}`
+  : toastmasterNames.join(', ');
 ---
 
 <Layout title="Toastmaster - Kristine og Anders" description="Informasjon om toastmaster for bryllupet til Kristine og Anders. Kontakt toastmaster om du ønsker å holde tale.">
   <main class="min-h-screen py-16 px-4 md:px-8 max-w-5xl mx-auto flex flex-col justify-center">
 
-    <!-- Header -->
+    {/* Header */}
     <div class="text-center mb-10">
       <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
       <h1 class="mb-2">Toastmaster</h1>
@@ -23,60 +28,67 @@ try {
       <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
     </div>
 
-    <!-- Main Card -->
+    {/* Main Card */}
     <div class="bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl p-8 md:p-12 shadow-xl shadow-brand-title/5 relative overflow-hidden">
 
-      <!-- Corner ornaments -->
+      {/* Corner ornaments */}
       <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
       <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
       <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
       <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
 
-      {toastmaster ? (
+      {toastmasters.length > 0 ? (
         <div class="flex flex-col items-center text-center space-y-8">
 
-          <!-- Photo -->
-          <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
-            <img
-              src="/images/toastmaster/sandra.webp"
-              alt={toastmaster.name}
-              class="w-full h-full object-cover"
-              onerror={`this.onerror=null; this.src='${toastmaster.photo}';`}
-            />
+          {/* Toastmaster photos and names */}
+          <div class={`grid gap-8 md:gap-12 ${toastmasters.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} justify-items-center`}>
+            {toastmasters.map((tm) => (
+              <div class="flex flex-col items-center space-y-4">
+                {/* Photo */}
+                <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
+                  <img
+                    src={`/images/toastmaster/${tm.name.split(' ')[0].toLowerCase()}.webp`}
+                    alt={tm.name}
+                    class="w-full h-full object-cover"
+                    onerror={`this.onerror=null; this.src='${tm.photo}';`}
+                  />
+                </div>
+
+                {/* Name & Role */}
+                <div class="space-y-1">
+                  <h2 class="text-3xl md:text-4xl">{tm.name}</h2>
+                  <p class="text-lead">Toastmaster</p>
+                </div>
+
+                {/* Email */}
+                {tm.email && (
+                  <p class="text-body text-base">
+                    <a
+                      href={`mailto:${tm.email}`}
+                      class="text-brand-title hover:underline font-medium transition-colors"
+                    >
+                      {tm.email}
+                    </a>
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
 
-          <!-- Name & Role -->
-          <div class="space-y-1">
-            <h2 class="text-3xl md:text-4xl">{toastmaster.name}</h2>
-            <p class="text-lead">Toastmaster</p>
-          </div>
-
-          <!-- Divider -->
+          {/* Divider */}
           <div class="w-16 h-px bg-brand-title/15"></div>
 
-          <!-- Contact info -->
+          {/* Contact info */}
           <div class="max-w-lg space-y-4">
             <p class="text-body text-base leading-relaxed">
-              Ønsker du å holde tale eller lignende? Ta kontakt med {toastmaster.name}.
+              Ønsker du å holde tale eller lignende? Ta kontakt med {namesText}.
             </p>
-
-            {toastmaster.email && (
-              <p class="text-body text-base">
-                <span class="font-medium">Email:</span>{' '}
-                <a
-                  href={`mailto:${toastmaster.email}`}
-                  class="text-brand-title hover:underline font-medium transition-colors"
-                >
-                  {toastmaster.email}
-                </a>
-              </p>
-            )}
           </div>
 
-          <!-- Divider -->
+          {/* Divider */}
           <div class="w-16 h-px bg-brand-title/15"></div>
 
-          <!-- Guidelines -->
+          {/* Guidelines */}
           <div class="max-w-lg space-y-4 text-left">
             <h3 class="text-center">Tips til taler</h3>
             <ul class="space-y-3 text-body text-base">
