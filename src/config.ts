@@ -36,7 +36,7 @@ export const weddingConfig = {
     title: "Egentid",
     subtitle: "Tid til å utforske nabolaget",
     description:
-      "Mellom vielsen og festen åpner er det et lite opphold mens brudeparet fotograferes. Vi oppfordrer dere til å utforske det fantastiske nærområdet vårt! Klikk på bildene under for å se våre personlige anbefalinger til kafeer, lekeplasser og turstier.",
+      "Etter fellesbildet i Birkelunden er det et lite tidsrom før oppmøte på Tårnet Kutlurarena. Klikk på bildene under for å se våre personlige anbefalinger til hva du kan gjøre før selskapet på Tårnet.",
     contributors: notionFallback.egentid?.contributors || [],
   },
 };
