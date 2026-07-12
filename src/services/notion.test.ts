@@ -149,9 +149,11 @@ describe("Notion Service Integration & Fallbacks", () => {
   });
 
   describe("fetchScheduleFromNotion", () => {
-    test("should fetch, filter, sort and format program timeline", async () => {
+    test("should fetch, filter, sort and format program timeline with page emojis", async () => {
       mockProgramResults = [
         {
+          // Page-level emoji icon (top-level, not inside properties)
+          icon: { type: "emoji", emoji: "💍" },
           properties: {
             Tittel: {
               type: "title",
@@ -165,17 +167,18 @@ describe("Notion Service Integration & Fallbacks", () => {
               type: "rich_text",
               rich_text: [{ plain_text: "Vielse i Paulus Kirke" }],
             },
-            Kategori: {
-              type: "multi_select",
-              multi_select: [{ name: "Stemning" }],
-            },
             Webside: {
               type: "select",
               select: { name: "Ja" },
             },
+            Sted: {
+              type: "relation",
+              relation: [{ id: "loc-kirke" }],
+            },
           },
         },
         {
+          icon: { type: "emoji", emoji: "⛪" },
           properties: {
             Tittel: {
               type: "title",
@@ -189,13 +192,13 @@ describe("Notion Service Integration & Fallbacks", () => {
               type: "rich_text",
               rich_text: [{ plain_text: "Oppmøte i kirken" }],
             },
-            Kategori: {
-              type: "multi_select",
-              multi_select: [],
-            },
             Webside: {
               type: "select",
               select: { name: "Ja" },
+            },
+            Sted: {
+              type: "relation",
+              relation: [{ id: "loc-kirke" }],
             },
           },
         },
@@ -208,6 +211,9 @@ describe("Notion Service Integration & Fallbacks", () => {
       expect(schedule[1].title).toBe("Vielse");
       expect(schedule[0].time).toBe("12:30");
       expect(schedule[1].time).toBe("13:00");
+      // Verify icons are resolved from page emoji
+      expect(schedule[0].icon).toBe("⛪");
+      expect(schedule[1].icon).toBe("💍");
     });
   });
 

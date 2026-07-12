@@ -477,7 +477,7 @@ interface RawScheduleEvent {
   title: string;
   timeIso: string | null;
   description: string;
-  categories: string[];
+  emoji: string;
   locationId?: string;
 }
 
@@ -525,8 +525,12 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
         props.Detaljer;
       const description = getRichTextFull(descProp);
 
-      // Categories
-      const categories = getMultiSelectProperty(props.Kategori);
+      // Page emoji icon (top-level property, not inside properties)
+      const pageIcon = (page as any).icon;
+      const emoji =
+        pageIcon?.type === "emoji" && pageIcon.emoji
+          ? pageIcon.emoji
+          : "💛";
 
       // Sted (relation)
       const stedProp = props.Sted;
@@ -541,7 +545,7 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
         title,
         timeIso,
         description,
-        categories,
+        emoji,
         locationId,
       };
     })
@@ -565,8 +569,8 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
       timeZone: "Europe/Oslo",
     }).format(date);
 
-    // Map categories/titles to icons
-    const icon = getIconForEvent(e.title, e.categories);
+    // Use the page emoji directly as the icon
+    const icon = e.emoji;
 
     return {
       time,
@@ -594,55 +598,6 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
   return formattedEvents;
 }
 
-function getIconForEvent(title: string, categories: string[]): string {
-  const lowerTitle = title.toLowerCase();
-
-  if (lowerTitle.includes("vielse") || lowerTitle.includes("paulus kirke")) {
-    return "ring";
-  }
-  if (lowerTitle.includes("kirke") || lowerTitle.includes("oppmøte")) {
-    return "church";
-  }
-  if (lowerTitle.includes("foto") || lowerTitle.includes("bilde")) {
-    return "camera";
-  }
-  if (lowerTitle.includes("egentid") || lowerTitle.includes("fritid")) {
-    return "social";
-  }
-  if (
-    lowerTitle.includes("kake") ||
-    lowerTitle.includes("dessert") ||
-    lowerTitle.includes("kaffe")
-  ) {
-    return "cake";
-  }
-  if (
-    lowerTitle.includes("senga") ||
-    lowerTitle.includes("avslutt") ||
-    lowerTitle.includes("hjem")
-  ) {
-    return "sleep";
-  }
-  if (
-    lowerTitle.includes("siste bestilling") ||
-    lowerTitle.includes("stenge")
-  ) {
-    return "bell";
-  }
-
-  // Map based on categories
-  if (categories.includes("Mat")) {
-    return "food";
-  }
-  if (categories.includes("Drikke")) {
-    return "glass";
-  }
-  if (categories.includes("Stemning") || categories.includes("Fest")) {
-    return "music";
-  }
-
-  return "default";
-}
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -770,28 +725,6 @@ async function updateLocationsCache(
           ? props["Google Maps"].url
           : undefined;
 
-      // Ikon (text, select, or multi_select)
-      let ikon = "default";
-      const ikonProp = props.Ikon || props.ikon;
-      if (ikonProp) {
-        if (ikonProp.type === "rich_text") {
-          ikon = getRichTextFull(ikonProp).trim().toLowerCase() || "default";
-        } else if (ikonProp.type === "select" && ikonProp.select) {
-          ikon =
-            (ikonProp.select as NotionSelectItem).name.trim().toLowerCase() ||
-            "default";
-        } else if (
-          ikonProp.type === "multi_select" &&
-          Array.isArray(ikonProp.multi_select) &&
-          ikonProp.multi_select.length > 0
-        ) {
-          ikon =
-            (ikonProp.multi_select as NotionSelectItem[])[0].name
-              .trim()
-              .toLowerCase() || "default";
-        }
-      }
-
       // Sone (zone polygon coordinates from rich_text)
       let zone: [number, number][] | undefined;
       const soneRaw = getRichTextFull(props.Sone || props.sone).trim();
@@ -820,8 +753,15 @@ async function updateLocationsCache(
         getSelectProperty(props["Sone-farge"] || props["sone-farge"]) ||
         undefined;
 
-      // Map categories to dynamic fallback icons
-      ikon = getIconForLocation(name, ikon);
+      // Try to get page icon emoji
+      const pageIcon = (page as any).icon;
+      const pageEmoji =
+        pageIcon?.type === "emoji" && pageIcon.emoji
+          ? pageIcon.emoji
+          : null;
+
+      // Map name/page emoji to dynamic fallback emojis
+      const ikon = getEmojiForLocation(name, pageEmoji);
 
       // Map program schedule events for this location
       const locationSchedule = scheduleEvents.filter(
@@ -887,15 +827,17 @@ async function updateLocationsCache(
   return locations;
 }
 
-function getIconForLocation(name: string, ikon?: string): string {
-  const customIkon = (ikon || "default").trim().toLowerCase();
-  if (customIkon !== "default" && customIkon !== "") {
-    return customIkon;
+function getEmojiForLocation(
+  name: string,
+  pageEmoji: string | null,
+): string {
+  if (pageEmoji) {
+    return pageEmoji;
   }
 
   const lowerName = name.toLowerCase();
   if (lowerName.includes("kirke")) {
-    return "church";
+    return "⛪";
   }
   if (
     lowerName.includes("tårnet") ||
@@ -903,14 +845,14 @@ function getIconForLocation(name: string, ikon?: string): string {
     lowerName.includes("kulturarena") ||
     lowerName.includes("selskapslokale")
   ) {
-    return "ring";
+    return "🏛️";
   }
   if (
     lowerName.includes("hotell") ||
     lowerName.includes("hotel") ||
     lowerName.includes("overnatting")
   ) {
-    return "hotel";
+    return "🏨";
   }
   if (
     lowerName.includes("park") ||
@@ -918,7 +860,7 @@ function getIconForLocation(name: string, ikon?: string): string {
     lowerName.includes("plass") ||
     lowerName.includes("birkelunden")
   ) {
-    return "park";
+    return "🌳";
   }
   if (
     lowerName.includes("brygghus") ||
@@ -926,15 +868,19 @@ function getIconForLocation(name: string, ikon?: string): string {
     lowerName.includes("restaurant") ||
     lowerName.includes("mat")
   ) {
-    return "food";
+    return "🍻";
   }
   if (lowerName.includes("buss")) {
-    return "buss";
+    return "🚌";
+  }
+  if (lowerName.includes("trikk")) {
+    return "🚃";
   }
   if (lowerName.includes("parkering") || lowerName.includes("parking")) {
-    return "parkering";
+    return "🅿️";
   }
-  return "default";
+
+  return "📍";
 }
 
 /**

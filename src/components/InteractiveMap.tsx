@@ -86,6 +86,33 @@ export interface WeddingLocation {
   zoneColor?: string;
 }
 
+const getLabelForEmoji = (emoji?: string) => {
+  if (!emoji) return "Lokasjon";
+  switch (emoji) {
+    case "💍":
+    case "🏛️":
+      return "Bryllupsfest";
+    case "⛪":
+      return "Kirke";
+    case "🏨":
+      return "Hotell";
+    case "🌳":
+    case "🌲":
+      return "Park";
+    case "🍻":
+    case "🍔":
+    case "🍽️":
+      return "Mat & Drikke";
+    case "🚌":
+    case "🚃":
+      return "Transport";
+    case "🅿️":
+      return "Parkering";
+    default:
+      return "Lokasjon";
+  }
+};
+
 export default function InteractiveMap() {
   const [locations, setLocations] = useState<WeddingLocation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,87 +246,44 @@ export default function InteractiveMap() {
 
     if (filtered.length === 0) return;
 
-    // Define custom marker generator based on Ikon type
+    // Define custom marker generator based on Ikon type (emoji)
     const createCustomMarker = (ikonType: string) => {
-      let iconSvg = "";
       let colorClass = "bg-brand-title text-brand-bg border-brand-title";
 
       switch (ikonType) {
-        case "ring":
+        case "💍":
+        case "🏛️":
           colorClass = "bg-[#c5a880] text-white border-[#b3956b]"; // Matte gold
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8l1 -2.5l2 1l-1 2.5" />
-            </svg>
-          `;
           break;
-        case "church":
+        case "⛪":
           colorClass = "bg-[#8d7c68] text-white border-[#756451]"; // Clay gray-brown
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10 21v-4a2 2 0 0 1 4 0v4" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v5m-2 -3h4M6 21v-7l6-6l6 7v7M3 21h18" />
-            </svg>
-          `;
           break;
-        case "hotel":
+        case "🏨":
           colorClass = "bg-[#7c8b74] text-white border-[#64735c]"; // Sage Green
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c.13 0 .26 0 .39 0a7.5 7.5 0 0 0 7.92 12.44a9 9 0 1 1 -8.31 -12.44z" />
-            </svg>
-          `;
           break;
-        case "park":
+        case "🌳":
+        case "🌲":
           colorClass = "bg-[#627a69] text-white border-[#4d6353]"; // Soft Forest
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10a4 4 0 0 0 -4 -4h-1a1 1 0 0 0 -1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1 -1V7a1 1 0 0 0 -1 -1h-3a4 4 0 0 0 -4 4" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v10" />
-            </svg>
-          `;
           break;
-        case "food":
+        case "🍻":
+        case "🍔":
+        case "🍽️":
           colorClass = "bg-[#9e7667] text-white border-[#845c4e]"; // Terracotta
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 3h3v7a3 3 0 0 1 -3 3v8h-1v-8a3 3 0 0 1 -3 -3v-7h1v4h1v-4h1v4h1v-4z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M18 11h3v-8h-3a4 4 0 0 0 -4 4v4h1" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M18 11v10" />
-            </svg>
-          `;
           break;
-        case "buss":
+        case "🚌":
+        case "🚃":
           colorClass = "bg-[#4a90e2] text-white border-[#357ab8]"; // Bus blue
-          iconSvg = `
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V2H4zm14 16H6V4h12v14zM8 6h8v4H8V6zm0 8h8v2H8v-2z" />
-              </svg>
-            `;
           break;
-        case "parkering":
+        case "🅿️":
           colorClass = "bg-[#6b7280] text-white border-[#4b5563]"; // Neutral gray
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <rect x="4" y="3" width="16" height="18" rx="2" ry="2" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h3.5a2.5 2.5 0 0 0 0-5H9" />
-            </svg>
-          `;
           break;
         default:
           colorClass = "bg-[#d0bfa8] text-white border-[#bfae96]"; // Beige fallback
-          iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1 -6 0 3 3 0 0 1 6 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.14 -7.5 11.25 -7.5 11.25s-7.5 -4.11 -7.5 -11.25a7.5 7.5 0 0 1 15 0z" />
-            </svg>
-          `;
       }
 
       return L.divIcon({
         className: "custom-map-pin",
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all duration-300 hover:scale-110 ${colorClass}">${iconSvg}</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all duration-300 hover:scale-110 ${colorClass} text-lg leading-none select-none">${ikonType}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
         popupAnchor: [0, -16],
@@ -360,14 +344,7 @@ export default function InteractiveMap() {
         `;
       }
 
-      let typeLabel = "Lokasjon";
-      if (loc.ikon === "ring") typeLabel = "Bryllupsfest";
-      else if (loc.ikon === "church") typeLabel = "Kirke";
-      else if (loc.ikon === "hotel") typeLabel = "Hotell";
-      else if (loc.ikon === "park") typeLabel = "Park";
-      else if (loc.ikon === "food") typeLabel = "Mat & Drikke";
-      else if (loc.ikon === "buss") typeLabel = "Transport";
-      else if (loc.ikon === "parkering") typeLabel = "Parkering";
+      const typeLabel = getLabelForEmoji(loc.ikon);
 
       const popupHtml = `
         <div class="font-sans p-1 text-brand-title max-w-xs space-y-1">
@@ -654,14 +631,7 @@ export default function InteractiveMap() {
         <div className="flex-1 overflow-y-auto p-4 space-y-2 divide-y divide-brand-title/5 select-none scrollbar-thin">
           {filteredLocations.length > 0 ? (
             filteredLocations.map((loc) => {
-              // Icon mapping for sidebar display
-              let iconSymbol = "📍";
-              if (loc.ikon === "ring") iconSymbol = "💍";
-              if (loc.ikon === "church") iconSymbol = "⛪";
-              if (loc.ikon === "hotel") iconSymbol = "🏨";
-              if (loc.ikon === "park") iconSymbol = "🌳";
-              if (loc.ikon === "food") iconSymbol = "🍻";
-              if (loc.ikon === "parkering") iconSymbol = "🅿️";
+              const iconSymbol = loc.ikon || "📍";
 
               const isSelected = loc.id === selectedLocationId;
               const activeBgClass = isSelected
@@ -683,7 +653,7 @@ export default function InteractiveMap() {
                       {loc.name}
                     </p>
                     <p className="text-[10px] text-brand-text/50 font-sans uppercase tracking-wider font-bold capitalize pt-0.5">
-                      {loc.ikon === "default" ? "Lokasjon" : loc.ikon}
+                      {getLabelForEmoji(loc.ikon)}
                     </p>
                   </div>
                 </button>
