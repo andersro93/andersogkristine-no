@@ -6,9 +6,11 @@ const env = rawEnv as Env;
 import { fetchFeatureFlags, fetchInviteByCode } from "./services/notion";
 import { generateSessionCookie, verifySessionCookie } from "./services/pin";
 
+const invalidCodes = ["evig-troskap"];
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
-  const pathname = url.pathname;
+  const { pathname, searchParams } = url;
 
   // Exclude auth routes and static assets from protection
   const isPinPage = pathname === "/pin";
@@ -22,7 +24,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
     pathname === "/favicon.svg" ||
     pathname === "/robots.txt";
 
-  if (isPinPage || isValidatePinApi || isRsvpPage || isRsvpApi || isStaticAsset) {
+  if (
+    isRsvpPage &&
+    invalidCodes.includes(searchParams.get("code") ?? "")
+  ) {
+    return context.redirect(pathname, 302);
+  }
+
+  if (
+    isPinPage ||
+    isValidatePinApi ||
+    isRsvpPage ||
+    isRsvpApi ||
+    isStaticAsset
+  ) {
     return next();
   }
 

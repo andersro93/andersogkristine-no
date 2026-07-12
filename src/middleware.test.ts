@@ -104,9 +104,9 @@ function createMockContext(
         waitUntil: () => {},
       },
     },
-    redirect: (redirectUrl: string) => {
+    redirect: (redirectUrl: string, status: number = 302) => {
       return new Response(null, {
-        status: 302,
+        status,
         headers: { Location: redirectUrl },
       });
     },
@@ -166,6 +166,27 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     response = (await onRequest(apiRsvpContext as any, apiRsvpNext)) as Response;
     expect(await response.text()).toBe("API_RSVP");
     expect(apiRsvpNext).toHaveBeenCalled();
+  });
+
+  describe("Invalid code blocklist", () => {
+    test("should redirect /rsvp with a blocklisted code to /rsvp without the code", async () => {
+      const context = createMockContext("/rsvp?code=evig-troskap");
+      const nextCalled = mock(async () => new Response("RSVP_PAGE"));
+
+      const response = (await onRequest(context as any, nextCalled)) as Response;
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("/rsvp");
+      expect(nextCalled).not.toHaveBeenCalled();
+    });
+
+    test("should still pass through /rsvp with a non-blocklisted code", async () => {
+      const context = createMockContext("/rsvp?code=valid-code");
+      const nextCalled = mock(async () => new Response("RSVP_WITH_CODE"));
+
+      const response = (await onRequest(context as any, nextCalled)) as Response;
+      expect(await response.text()).toBe("RSVP_WITH_CODE");
+      expect(nextCalled).toHaveBeenCalled();
+    });
   });
 
   test("should redirect unauthenticated users to /pin, preserving the next page", async () => {
