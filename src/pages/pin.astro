@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { weddingConfig } from '../config';
+import { LOCKOUT_MINUTES } from '../services/pin';
 
 const errorParam = Astro.url.searchParams.get('error');
 let initialError = '';
@@ -8,6 +9,8 @@ if (errorParam === 'invalid_invite') {
   initialError = 'Ugyldig invitasjonskode. Vennligst tast inn PIN-koden for å få tilgang.';
 } else if (errorParam === 'verification_error') {
   initialError = 'Det oppstod en feil ved verifisering av invitasjonskoden. Vennligst prøv igjen med PIN-koden.';
+} else if (errorParam === 'too_many_attempts') {
+  initialError = `For mange forsøk med invitasjonskode. Vennligst prøv igjen om ${LOCKOUT_MINUTES} minutter, eller tast inn PIN-koden.`;
 }
 ---
 
@@ -116,8 +119,10 @@ if (errorParam === 'invalid_invite') {
 
         if (res.ok && data.success) {
           // Success: redirect to target or homepage
+          // Only allow same-origin relative paths as redirect target (no open redirect)
           const urlParams = new URLSearchParams(window.location.search);
-          const next = urlParams.get('next') || '/';
+          const rawNext = urlParams.get('next') || '/';
+          const next = /^\/(?![/\\])/.test(rawNext) ? rawNext : '/';
           window.location.href = next;
         } else {
           // Error response

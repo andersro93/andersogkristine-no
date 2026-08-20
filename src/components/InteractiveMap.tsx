@@ -379,7 +379,9 @@ export default function InteractiveMap() {
           orange: { fill: "#f97316", border: "#f97316" },
           gray: { fill: "#6b7280", border: "#6b7280" },
         };
-        const colors = zoneColorMap[(loc.zoneColor || "blue").toLowerCase()] || zoneColorMap.blue;
+        const colors =
+          zoneColorMap[(loc.zoneColor || "blue").toLowerCase()] ||
+          zoneColorMap.blue;
         const polygon = L.polygon(loc.zone, {
           color: colors.border,
           fillColor: colors.fill,
@@ -523,9 +525,11 @@ export default function InteractiveMap() {
   }
 
   return (
-    <div className={`flex flex-col lg:flex-row h-[75vh] lg:h-[70vh] rounded-2xl overflow-hidden border border-brand-title/10 shadow-lg bg-brand-bg/40 backdrop-blur-md relative ${
-      isSidebarOpen ? "sidebar-open" : ""
-    }`}>
+    <div
+      className={`flex flex-col lg:flex-row h-[75vh] lg:h-[70vh] rounded-2xl overflow-hidden border border-brand-title/10 shadow-lg bg-brand-bg/40 backdrop-blur-md relative ${
+        isSidebarOpen ? "sidebar-open" : ""
+      }`}
+    >
       <style>{`
         @media (max-width: 1023px) {
           .leaflet-bottom {
@@ -539,19 +543,21 @@ export default function InteractiveMap() {
       `}</style>
 
       {/* Sidebar Panel */}
-      <div className={`bg-[#fcfbf9]/90 border-brand-title/10 flex flex-col z-20 transition-all duration-300 
+      <div
+        className={`bg-[#fcfbf9]/90 border-brand-title/10 flex flex-col z-20 transition-all duration-300 
         absolute bottom-0 left-0 right-0 border-t
         lg:relative lg:bottom-auto lg:left-auto lg:right-auto lg:border-t-0 lg:border-r lg:w-80 lg:h-full
         ${isSidebarOpen ? "h-[50%]" : "h-[72px]"}
-      `}>
+      `}
+      >
         {/* Search Header */}
         <div className="p-3 border-b border-brand-title/10 bg-brand-bg/20 flex flex-col gap-2 shrink-0">
           {/* Decorative Drag/Grab Handle (mobile only) */}
-          <div 
+          <div
             className="lg:hidden w-10 h-1 bg-brand-title/20 rounded-full mx-auto cursor-pointer"
-            onClick={() => setIsSidebarOpen(prev => !prev)}
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
           />
-          
+
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -563,11 +569,11 @@ export default function InteractiveMap() {
               }}
               className="flex-1 px-3 py-2 rounded-lg border border-brand-title/20 bg-white font-sans text-sm text-brand-title placeholder-brand-text/50 focus:outline-none focus:ring-2 focus:ring-brand-title/50 shadow-inner"
             />
-            
+
             {/* Collapse/Expand Button (mobile only) */}
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(prev => !prev)}
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
               className="lg:hidden p-2 rounded-lg border border-brand-title/20 bg-brand-bg text-brand-title hover:bg-brand-title/5 transition"
               aria-label={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
             >
@@ -581,12 +587,18 @@ export default function InteractiveMap() {
                   isSidebarOpen ? "rotate-180" : ""
                 }`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                />
               </svg>
             </button>
           </div>
 
-          <div className={`${isSidebarOpen ? "block" : "hidden lg:block"} mt-1`}>
+          <div
+            className={`${isSidebarOpen ? "block" : "hidden lg:block"} mt-1`}
+          >
             <button
               type="button"
               onClick={handleLocateUser}
@@ -668,10 +680,7 @@ export default function InteractiveMap() {
       </div>
 
       {/* Map Element */}
-      <div
-        ref={mapContainerRef}
-        className="w-full h-full lg:flex-1 z-10"
-      />
+      <div ref={mapContainerRef} className="w-full h-full lg:flex-1 z-10" />
     </div>
   );
 }

@@ -4,7 +4,14 @@ import { env as rawEnv } from "cloudflare:workers";
 const env = rawEnv as Env;
 
 import { fetchFeatureFlags, fetchInviteByCode } from "./services/notion";
-import { generateSessionCookie, verifySessionCookie } from "./services/pin";
+import {
+  checkRateLimit,
+  generateSessionCookie,
+  recordFailedAttempt,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_OPTIONS,
+  verifySessionCookie,
+} from "./services/pin";
 
 const invalidCodes = ["evig-troskap"];
 
@@ -24,10 +31,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     pathname === "/favicon.svg" ||
     pathname === "/robots.txt";
 
-  if (
-    isRsvpPage &&
-    invalidCodes.includes(searchParams.get("code") ?? "")
-  ) {
+  if (isRsvpPage && invalidCodes.includes(searchParams.get("code") ?? "")) {
     return context.redirect(pathname, 302);
   }
 
@@ -41,48 +45,52 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
+  const redirectToPin = (error?: string) => {
+    const redirectUrl = new URL("/pin", url.origin);
+    if (error) redirectUrl.searchParams.set("error", error);
+    redirectUrl.searchParams.set("next", pathname + url.search);
+    return context.redirect(redirectUrl.pathname + redirectUrl.search);
+  };
+
   // Retrieve cookie and check validity
-  const sessionCookie = context.cookies.get("wedding_access");
+  const sessionCookie = context.cookies.get(SESSION_COOKIE_NAME);
   let isAuthed = sessionCookie
     ? verifySessionCookie(sessionCookie.value, env)
     : false;
 
   // Check if code query param is present
-  const code = url.searchParams.get("code");
+  const code = searchParams.get("code");
   if (code && !isAuthed) {
+    const ip = context.clientAddress || "unknown-ip";
+    const kv = env?.CACHE;
     try {
+      const limit = await checkRateLimit(ip, kv, "invite");
+      if (!limit.allowed) {
+        return redirectToPin("too_many_attempts");
+      }
+
       const invite = await fetchInviteByCode(code, env);
       if (invite) {
         // Valid invite: generate and set cookie
         const newCookieValue = generateSessionCookie(env);
-        context.cookies.set("wedding_access", newCookieValue, {
-          path: "/",
-          httpOnly: true,
-          secure: true,
-          sameSite: "strict",
-          maxAge: 30 * 24 * 60 * 60, // 30 days
-        });
+        context.cookies.set(
+          SESSION_COOKIE_NAME,
+          newCookieValue,
+          SESSION_COOKIE_OPTIONS,
+        );
         isAuthed = true;
       } else {
-        // Invalid code: redirect to /pin with error and next
-        const redirectUrl = new URL("/pin", url.origin);
-        redirectUrl.searchParams.set("error", "invalid_invite");
-        redirectUrl.searchParams.set("next", pathname + url.search);
-        return context.redirect(redirectUrl.pathname + redirectUrl.search);
+        await recordFailedAttempt(ip, kv, "invite");
+        return redirectToPin("invalid_invite");
       }
     } catch (err) {
       console.error("Error verifying invite code in middleware:", err);
-      const redirectUrl = new URL("/pin", url.origin);
-      redirectUrl.searchParams.set("error", "verification_error");
-      redirectUrl.searchParams.set("next", pathname + url.search);
-      return context.redirect(redirectUrl.pathname + redirectUrl.search);
+      return redirectToPin("verification_error");
     }
   }
 
   if (!isAuthed) {
-    const redirectUrl = new URL("/pin", url.origin);
-    redirectUrl.searchParams.set("next", pathname + url.search);
-    return context.redirect(redirectUrl.pathname + redirectUrl.search);
+    return redirectToPin();
   }
 
   // Retrieve feature flags

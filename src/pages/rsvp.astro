@@ -3,8 +3,14 @@ import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
 import { fetchInviteByCode, fetchFeatureFlags, fetchAllergyOptions, type Invite } from '../services/notion';
-import { generateSessionCookie } from '../services/pin';
-import { weddingConfig } from '../config';
+import {
+  LOCKOUT_MINUTES,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_OPTIONS,
+  checkRateLimit,
+  generateSessionCookie,
+  recordFailedAttempt,
+} from '../services/pin';
 
 // Server-side invite lookup
 const code = Astro.url.searchParams.get('code');
@@ -13,24 +19,26 @@ let errorMsg: string | null = null;
 let allergySuggestions: string[] = [];
 
 if (code) {
+  const ip = Astro.clientAddress || 'unknown-ip';
+  const kv = (env as Env)?.CACHE;
   try {
-    invite = await fetchInviteByCode(code, env as Env);
-    if (invite) {
-      // Existing options are offered back as suggestions so guests reuse the
-      // same spelling instead of creating a new option each time.
-      allergySuggestions = await fetchAllergyOptions(env as Env);
-
-      // Valid invite: grant a site-wide session so guests can browse other pages
-      const cookieValue = generateSessionCookie(env as Env);
-      Astro.cookies.set('wedding_access', cookieValue, {
-        path: '/',
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      });
+    const limit = await checkRateLimit(ip, kv, 'invite');
+    if (!limit.allowed) {
+      errorMsg = `For mange forsøk. Vennligst prøv igjen om ${LOCKOUT_MINUTES} minutter.`;
     } else {
-      errorMsg = "Ugyldig invitasjonskode. Vennligst sjekk at koden stemmer.";
+      invite = await fetchInviteByCode(code, env as Env);
+      if (invite) {
+        // Existing options are offered back as suggestions so guests reuse the
+        // same spelling instead of creating a new option each time.
+        allergySuggestions = await fetchAllergyOptions(env as Env);
+
+        // Valid invite: grant a site-wide session so guests can browse other pages
+        const cookieValue = generateSessionCookie(env as Env);
+        Astro.cookies.set(SESSION_COOKIE_NAME, cookieValue, SESSION_COOKIE_OPTIONS);
+      } else {
+        await recordFailedAttempt(ip, kv, 'invite');
+        errorMsg = "Ugyldig invitasjonskode. Vennligst sjekk at koden stemmer.";
+      }
     }
   } catch (err) {
     console.error("Error fetching invite in page:", err);

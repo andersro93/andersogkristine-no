@@ -7,6 +7,11 @@ try {
   // Graceful fallback for non-worker environments (like tests or CLI scripts)
 }
 
+/** Test-only: override the captured Workers env (bun mocks leak across files). */
+export function __setCloudflareEnvForTests(env: Env | undefined): void {
+  cloudflareEnv = env;
+}
+
 /**
  * Resolves an environment variable from:
  * 1. An optional local environment context (localEnv)

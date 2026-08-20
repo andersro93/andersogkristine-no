@@ -1,8 +1,22 @@
 import crypto from "node:crypto";
 import { getEnvVar } from "./env";
 
-// In-memory fallback rate-limiting cache for local development
+// In-memory fallback rate-limiting cache for local development / tests
 const memoryCache = new Map<string, string>();
+
+/** Max failed attempts before a temporary lockout (per IP, per scope). */
+export const MAX_ATTEMPTS = 10;
+/** Lockout duration after MAX_ATTEMPTS failures. */
+export const LOCKOUT_MS = 5 * 60 * 1000;
+export const LOCKOUT_MINUTES = LOCKOUT_MS / 60 / 1000;
+/** How long a rate-limit record lives in KV. */
+const RATE_LIMIT_TTL_SECONDS = 60 * 60;
+
+/**
+ * Rate-limit scopes. Each scope has its own counter per IP so that e.g.
+ * invite-code guesses do not consume PIN attempts and vice versa.
+ */
+export type RateLimitScope = "pin" | "invite";
 
 export interface RateLimitData {
   attempts: number;
@@ -16,6 +30,10 @@ export interface RateLimitResult {
   attemptsRemaining: number;
 }
 
+const isDev = (): boolean =>
+  (import.meta as any).env?.DEV === true ||
+  process.env.NODE_ENV === "development";
+
 /**
  * Perform a timing-safe comparison between two strings to prevent timing attacks.
  * It hashes both strings to SHA-256 (resulting in equal length buffers) and compares them.
@@ -28,12 +46,26 @@ export function secureCompare(a: string, b: string): boolean {
 
 /**
  * Retrieve the secret key used for session signing.
+ * Fails closed: in production a missing SESSION_SECRET is a configuration error.
  */
 function getSessionSecret(env?: Env): string {
-  return (
-    getEnvVar("SESSION_SECRET", env) ||
-    getEnvVar("NOTION_API_KEY", env) ||
-    "fallback-wedding-session-secret-key-development"
+  const secret = getEnvVar("SESSION_SECRET", env);
+  if (secret) return secret;
+  if (isDev()) return "dev-only-session-secret-do-not-use-in-prod";
+  throw new Error(
+    "SESSION_SECRET is not configured. Set it with `wrangler secret put SESSION_SECRET`.",
+  );
+}
+
+/**
+ * Retrieve the site PIN. Fails closed in production when unset.
+ */
+export function getSitePin(env?: Env): string {
+  const pin = getEnvVar("SITE_PIN", env);
+  if (pin) return pin;
+  if (isDev()) return "1234";
+  throw new Error(
+    "SITE_PIN is not configured. Set it with `wrangler secret put SITE_PIN`.",
   );
 }
 
@@ -90,13 +122,30 @@ export function verifySessionCookie(cookieValue: string, env?: Env): boolean {
 }
 
 /**
- * Retrieves the rate limit data for a given IP.
+ * Shared cookie options for the site-wide access cookie.
+ * `lax` (not `strict`) so the cookie is sent when guests arrive via links
+ * from messaging apps / email (top-level navigations).
+ */
+export const SESSION_COOKIE_NAME = "wedding_access";
+export const SESSION_COOKIE_OPTIONS = {
+  path: "/",
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax" as const,
+  maxAge: 30 * 24 * 60 * 60, // 30 days
+};
+
+function rateLimitKey(scope: RateLimitScope, ip: string): string {
+  return `${scope}_limit:${ip}`;
+}
+
+/**
+ * Retrieves the rate limit data for a given IP + scope.
  */
 async function getRateLimitData(
-  ip: string,
+  key: string,
   kv?: KVNamespace,
 ): Promise<RateLimitData> {
-  const key = `pin_limit:${ip}`;
   let dataStr: string | null = null;
 
   if (kv) {
@@ -121,20 +170,18 @@ async function getRateLimitData(
 }
 
 /**
- * Saves rate limit data for a given IP.
+ * Saves rate limit data for a given key.
  */
 async function saveRateLimitData(
-  ip: string,
+  key: string,
   data: RateLimitData,
   kv?: KVNamespace,
 ): Promise<void> {
-  const key = `pin_limit:${ip}`;
   const dataStr = JSON.stringify(data);
 
   if (kv) {
     try {
-      // Keep rate limit keys for 1 hour
-      await kv.put(key, dataStr, { expirationTtl: 3600 });
+      await kv.put(key, dataStr, { expirationTtl: RATE_LIMIT_TTL_SECONDS });
     } catch (err) {
       console.error("KV write error in rate limiter:", err);
     }
@@ -144,13 +191,15 @@ async function saveRateLimitData(
 }
 
 /**
- * Check if the IP is allowed to attempt a PIN validation.
+ * Check if the IP is allowed to make another attempt in the given scope.
  */
 export async function checkRateLimit(
   ip: string,
   kv?: KVNamespace,
+  scope: RateLimitScope = "pin",
 ): Promise<RateLimitResult> {
-  const data = await getRateLimitData(ip, kv);
+  const key = rateLimitKey(scope, ip);
+  const data = await getRateLimitData(key, kv);
   const now = Date.now();
 
   if (data.lockedUntil > now) {
@@ -165,40 +214,42 @@ export async function checkRateLimit(
   if (data.lockedUntil > 0 && data.lockedUntil <= now) {
     data.attempts = 0;
     data.lockedUntil = 0;
-    await saveRateLimitData(ip, data, kv);
+    await saveRateLimitData(key, data, kv);
   }
 
   return {
     allowed: true,
     lockedUntil: 0,
-    attemptsRemaining: Math.max(0, 5 - data.attempts),
+    attemptsRemaining: Math.max(0, MAX_ATTEMPTS - data.attempts),
   };
 }
 
 /**
- * Record a failed attempt. Locks the IP for 15 minutes on the 5th failure.
+ * Record a failed attempt. Locks the IP for LOCKOUT_MS on the MAX_ATTEMPTS-th failure.
  * Returns the lockout status.
  */
 export async function recordFailedAttempt(
   ip: string,
   kv?: KVNamespace,
+  scope: RateLimitScope = "pin",
 ): Promise<RateLimitResult> {
-  const data = await getRateLimitData(ip, kv);
+  const key = rateLimitKey(scope, ip);
+  const data = await getRateLimitData(key, kv);
   const now = Date.now();
 
   data.attempts += 1;
   data.lastAttempt = now;
 
-  if (data.attempts >= 5) {
-    data.lockedUntil = now + 15 * 60 * 1000; // 15 minutes lockout
+  if (data.attempts >= MAX_ATTEMPTS) {
+    data.lockedUntil = now + LOCKOUT_MS;
   }
 
-  await saveRateLimitData(ip, data, kv);
+  await saveRateLimitData(key, data, kv);
 
   return {
     allowed: data.lockedUntil === 0,
     lockedUntil: data.lockedUntil,
-    attemptsRemaining: Math.max(0, 5 - data.attempts),
+    attemptsRemaining: Math.max(0, MAX_ATTEMPTS - data.attempts),
   };
 }
 
@@ -208,8 +259,9 @@ export async function recordFailedAttempt(
 export async function resetRateLimit(
   ip: string,
   kv?: KVNamespace,
+  scope: RateLimitScope = "pin",
 ): Promise<void> {
-  const key = `pin_limit:${ip}`;
+  const key = rateLimitKey(scope, ip);
   if (kv) {
     try {
       await kv.delete(key);
@@ -222,7 +274,17 @@ export async function resetRateLimit(
 }
 
 /**
- * Helper to get rate limit cache keys for testing/clearing memory cache.
+ * Sanitize a post-login redirect target. Only same-origin relative paths are
+ * allowed (no `//host`, no scheme). Anything else falls back to "/".
+ */
+export function safeNextPath(next: string | null | undefined): string {
+  if (!next) return "/";
+  if (/^\/(?![/\\])/.test(next)) return next;
+  return "/";
+}
+
+/**
+ * Helper to clear the in-memory rate limit cache (tests).
  */
 export function clearMemoryCache(): void {
   memoryCache.clear();
