@@ -1,4 +1,5 @@
 ---
+import Icon from './ui/Icon.astro';
 import { weddingConfig } from '../config';
 
 interface Props {
@@ -28,9 +29,7 @@ const { flags } = Astro.props;
     <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 text-center">
       <a href="#intro" class="inline-flex flex-col items-center gap-1.5 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] hover:scale-105 transition-transform group">
         <span class="text-xs uppercase tracking-widest font-semibold font-sans">Scroll ned</span>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 animate-bounce">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+        <Icon name="chevronDown" class="w-5 h-5 animate-bounce" />
       </a>
     </div>
 

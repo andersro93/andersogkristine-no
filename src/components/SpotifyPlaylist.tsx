@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon, Spinner } from "./ui/Icon";
 
 interface SpotifyTrack {
   id: string;
@@ -168,35 +169,17 @@ export default function SpotifyPlaylist() {
           }`}
         >
           {toast.type === "success" ? (
-            <svg
+            <Icon
+              name="check"
               className="w-5 h-5 text-emerald-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <title>Suksess</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+              title="Suksess"
+            />
           ) : (
-            <svg
+            <Icon
+              name="alertCircle"
               className="w-5 h-5 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <title>Feil</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+              title="Feil"
+            />
           )}
           <span>{toast.message}</span>
         </div>
@@ -221,14 +204,11 @@ export default function SpotifyPlaylist() {
           className="flex items-center gap-3 bg-[#1DB954] hover:bg-[#1ed760] text-white px-6 py-3.5 rounded-full text-sm font-semibold tracking-wider transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#1DB954]"
         >
           {/* Spotify Icon */}
-          <svg
+          <Icon
+            name="spotify"
             className="w-5 h-5 fill-current"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <title>Spotify</title>
-            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.892-.982-.336.076-.67-.135-.746-.47-.077-.337.135-.67.472-.747 3.856-.88 7.15-.506 9.822 1.13.295.18.387.563.204.862zm1.224-2.724c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.082-1.182-.413.125-.847-.107-.972-.52-.125-.413.107-.847.52-.972 3.676-1.116 8.243-.574 11.348 1.336.368.226.488.707.26 1.078zm.105-2.836C14.692 8.879 9.366 8.7 6.273 9.64c-.477.145-.975-.125-1.12-.602-.145-.477.125-.975.602-1.12 3.56-1.08 9.425-.87 13.136 1.333.43.256.572.812.316 1.242-.256.43-.812.573-1.242.317z" />
-          </svg>
+            title="Spotify"
+          />
           <span>ÅPNE I SPOTIFY</span>
         </a>
       </div>
@@ -253,27 +233,10 @@ export default function SpotifyPlaylist() {
             />
             {isSearching && (
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <svg
-                  className="animate-spin h-5 w-5 text-brand-title/50"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Søker</title>
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
+                <Spinner
+                  className="h-5 w-5 text-brand-title/50"
+                  title="Søker"
+                />
               </div>
             )}
           </div>
@@ -308,13 +271,11 @@ export default function SpotifyPlaylist() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/45 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <svg
+                      <Icon
+                        name="play"
                         className="w-4 h-4 text-white fill-current"
-                        viewBox="0 0 24 24"
-                      >
-                        <title>Spill av</title>
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+                        title="Spill av"
+                      />
                     </div>
                   </a>
                   <div className="min-w-0">
@@ -347,20 +308,12 @@ export default function SpotifyPlaylist() {
                 >
                   {track.alreadyAdded ? (
                     <span className="flex items-center gap-1">
-                      <svg
+                      <Icon
+                        name="check"
                         className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <title>Lagt til</title>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
+                        strokeWidth={3}
+                        title="Lagt til"
+                      />
                       Lagt til
                     </span>
                   ) : addingUri === track.uri ? (
@@ -463,13 +416,11 @@ export default function SpotifyPlaylist() {
                               </div>
                             )}
                             <div className="absolute inset-0 bg-black/45 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                              <svg
+                              <Icon
+                                name="play"
                                 className="w-4 h-4 text-white fill-current"
-                                viewBox="0 0 24 24"
-                              >
-                                <title>Spill av</title>
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
+                                title="Spill av"
+                              />
                             </div>
                           </a>
                           <div className="min-w-0">

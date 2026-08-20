@@ -1,4 +1,5 @@
 ---
+import Icon from './ui/Icon.astro';
 import { env } from 'cloudflare:workers';
 import { fetchFaqFromNotion } from '../services/notion';
 
@@ -25,9 +26,7 @@ const faqs = await fetchFaqFromNotion(env as Env, Astro.locals?.cfContext);
         <summary class="flex justify-between items-center font-serif text-lg md:text-xl text-brand-title font-semibold list-none select-none outline-hidden">
           <span>{faq.question}</span>
           <span class="text-brand-title/60 group-open:rotate-180 group-hover:text-brand-title transition-transform duration-300">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
+            <Icon name="chevronDown" class="w-5 h-5" />
           </span>
         </summary>
         <div class="mt-4 text-body max-w-2xl transition-all duration-300" set:html={faq.answer}>

@@ -1,0 +1,27 @@
+---
+/** Inline SVG icon from the shared registry. Pass `class` for size/colour. */
+import { ICONS, type IconName } from './icons';
+
+interface Props extends Omit<astroHTML.JSX.SVGAttributes, 'class'> {
+  name: IconName;
+  class?: string;
+  strokeWidth?: number;
+  title?: string;
+}
+
+const { name, class: className, strokeWidth, title, ...rest } = Astro.props;
+const icon = ICONS[name];
+const sw = strokeWidth ?? icon.strokeWidth;
+---
+
+{'fill' in icon && icon.fill ? (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class={className} aria-hidden={title ? undefined : 'true'} {...rest}>
+    {title && <title>{title}</title>}
+    {icon.paths.map((d) => <path d={d} />)}
+  </svg>
+) : (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width={sw} class={className} aria-hidden={title ? undefined : 'true'} {...rest}>
+    {title && <title>{title}</title>}
+    {icon.paths.map((d) => <path stroke-linecap="round" stroke-linejoin="round" d={d} />)}
+  </svg>
+)}

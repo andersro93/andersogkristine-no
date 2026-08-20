@@ -66,7 +66,7 @@ Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace) and `ASSETS`.
 
 ### Notion schema expectations
 
-Column names are mapped in `src/config/notion.ts`. The important ones:
+Every Notion column the site reads is mapped in **`src/config/notion.ts`** (`notionConfig.mappings`, one entry per database, with the column type noted). If you rename a column in Notion, change it there. The important ones:
 
 - **Invites**: `Kode` (rich_text, the invite code), `🧑‍🤝‍🧑 Gjester` (relation → Guests), `Name` (title).
 - **Guests**: `Navn` (title), `RSVP` (status: `Venter` / `Kommer` / `Kommer ikke`), `Allergener` (**multi_select** — new options are created automatically from what guests type; review before sending to the kitchen), `Bord` (relation → Tables).

@@ -2,6 +2,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { escapeHtml } from "../utils/html";
+import { Icon } from "./ui/Icon";
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -507,25 +508,13 @@ export default function InteractiveMap() {
               className="lg:hidden p-2 rounded-lg border border-brand-title/20 bg-brand-bg text-brand-title hover:bg-brand-title/5 transition"
               aria-label={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
+              <Icon
+                name="chevronDown"
                 className={`w-4 h-4 transition-transform duration-300 ${
                   isSidebarOpen ? "rotate-180" : ""
                 }`}
-              >
-                <title>
-                  {isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
-                </title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                />
-              </svg>
+                title={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
+              />
             </button>
           </div>
 
@@ -545,26 +534,11 @@ export default function InteractiveMap() {
                 </>
               ) : (
                 <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
+                  <Icon
+                    name="mapPin"
                     className="w-4 h-4"
-                  >
-                    <title>Vis posisjon</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0z"
-                    />
-                  </svg>
+                    title="Vis posisjon"
+                  />
                   <span>Vis min posisjon</span>
                 </>
               )}
