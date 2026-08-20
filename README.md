@@ -13,11 +13,16 @@ Features:
 
 ## 🛠️ Local development
 
+Runtime versions are pinned in **`mise.toml`** (Bun, Node) and managed with [mise](https://mise.jdx.dev) — the same file drives CI, so local, CI and production build with identical runtimes.
+
 ```bash
+mise trust && mise install   # first time: installs the pinned bun + node
 bun install
-cp .env.example .env     # fill in the values below
-bun run dev              # runs the Notion prebuild sync, then `astro dev`
+cp .env.example .env         # fill in the values below
+bun run dev                  # runs the Notion prebuild sync, then `astro dev`
 ```
+
+If you use mise's shell activation, the pinned versions are on `PATH` automatically inside this directory; otherwise prefix commands with `mise exec --` (e.g. `mise exec -- bun run dev`). To bump a runtime, change `mise.toml`, run `mise install`, and update the `BUN_VERSION` / `NODE_VERSION` build variables in Cloudflare (see Deployment).
 
 Useful scripts:
 
@@ -77,12 +82,13 @@ Deployments run through **Cloudflare Workers Builds**, connected to this GitHub 
 
 - Merges to `main` build and deploy production.
 - Pull requests get a **preview URL** from Workers Builds (enable "Preview deployments" for non-production branches in the Worker's Builds settings if it is not already on) — use it to verify changes before merging.
+- **Runtime versions:** Workers Builds does not read `mise.toml`. Set the build variables `BUN_VERSION` and `NODE_VERSION` in the Worker's Builds settings to the same values as `mise.toml` (currently Bun `1.4.0`, Node `24`); otherwise the build image's defaults are used and may differ from what CI tested.
 - The build command is `bun run build`. Because the prebuild step snapshots Notion into `src/config/notion-fallback.json` (the offline fallback the site serves if Notion is down and nothing is cached), the **Notion variables must be available as build variables** in Workers Builds, not only as runtime secrets. Without them the build still succeeds but the fallbacks are empty.
 - `bun run deploy` (build + `wrangler deploy`) still works as a manual escape hatch.
 
 ### Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request: Biome (lint + format), `tsc --noEmit`, the unit tests and a hermetic `astro build` (no Notion key, so the prebuild sync is skipped). Mark the **"Lint, typecheck, test, build"** check as required on `main`.
+`.github/workflows/ci.yml` runs on every push and pull request: installs the runtimes from `mise.toml` via `jdx/mise-action`, then Biome (lint + format), `tsc --noEmit`, the unit tests and a hermetic `astro build` (no Notion key, so the prebuild sync is skipped). Mark the **"Lint, typecheck, test, build"** check as required on `main`.
 
 ### KV cache
 
