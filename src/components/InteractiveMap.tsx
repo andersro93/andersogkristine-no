@@ -1,88 +1,56 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { escapeHtml } from "../utils/html";
-import { Icon } from "./ui/Icon";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LocationSidebar } from "./map/LocationSidebar";
+import {
+  createBaseMap,
+  createLocationMarker,
+  createUserMarker,
+  createZonePolygon,
+} from "./map/markers";
+import type { WeddingLocation } from "./map/types";
 
-export interface LocationActivity {
-  type: "program" | "egentid";
-  title: string;
-  time?: string;
-  description?: string;
-  suggestedBy?: string;
-  suggestedByEmoji?: string;
-}
+export type { LocationActivity, WeddingLocation } from "./map/types";
 
-export interface WeddingLocation {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  googleMapsUrl?: string;
-  ikon?: string;
-  activities?: LocationActivity[];
-  zone?: [number, number][];
-  zoneColor?: string;
-}
+const DESKTOP_MIN_WIDTH = 1024;
 
-const getLabelForEmoji = (emoji?: string) => {
-  if (!emoji) return "Lokasjon";
-  switch (emoji) {
-    case "💍":
-    case "🏛️":
-      return "Bryllupsfest";
-    case "⛪":
-      return "Kirke";
-    case "🏨":
-      return "Hotell";
-    case "🌳":
-    case "🌲":
-      return "Park";
-    case "🍻":
-    case "🍔":
-    case "🍽️":
-      return "Mat & Drikke";
-    case "🚌":
-    case "🚃":
-      return "Transport";
-    case "🅿️":
-      return "Parkering";
-    default:
-      return "Lokasjon";
-  }
-};
-
+/** Leaflet map of wedding locations with a searchable sidebar and geolocation. */
 export default function InteractiveMap() {
   const [locations, setLocations] = useState<WeddingLocation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userLocationActive, setUserLocationActive] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null,
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    if (window.innerWidth >= 1024) {
-      setIsSidebarOpen(true);
-    }
-  }, []);
-
-  // Invalidate map size on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      mapRef.current?.invalidateSize();
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map());
+
+  const filteredLocations = useMemo(
+    () =>
+      locations.filter((loc) =>
+        loc.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [locations, searchQuery],
+  );
+
+  // Sidebar starts open on desktop
+  useEffect(() => {
+    if (window.innerWidth >= DESKTOP_MIN_WIDTH) setIsSidebarOpen(true);
+  }, []);
+
+  // Keep Leaflet's size in sync with the window
+  useEffect(() => {
+    const handleResize = () => mapRef.current?.invalidateSize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // 1. Fetch locations on mount
   useEffect(() => {
@@ -91,341 +59,103 @@ export default function InteractiveMap() {
         if (!res.ok) throw new Error("Klarte ikke å hente lokasjoner");
         return res.json() as Promise<WeddingLocation[]>;
       })
-      .then((data) => {
-        setLocations(data);
-        setIsLoading(false);
-      })
+      .then((data) => setLocations(data))
       .catch((err) => {
         console.error(err);
         setError(
           "Det oppstod en feil ved lasting av kartet. Vennligst prøv igjen.",
         );
-        setIsLoading(false);
-      });
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // Helper to find the tile pane for custom CSS injection
-  const getMapPane = useCallback(() => {
-    if (!mapContainerRef.current) return null;
-    return mapContainerRef.current.querySelector(
-      ".leaflet-tile-pane",
-    ) as HTMLDivElement;
-  }, []);
-
-  // 2. Initialize Leaflet map once loading is done
+  // 2. Initialize the Leaflet map once loading is done
   useEffect(() => {
     if (isLoading || error || !mapContainerRef.current || mapRef.current)
       return;
 
-    // Initialize map centered around Grünerløkka, Oslo
-    const map = L.map(mapContainerRef.current, {
-      center: [59.924, 10.758],
-      zoom: 13,
-      zoomControl: false, // Position custom zoom control later
-    });
-
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    // Warm elegant map tiles from CartoDB (Positron without labels, then add labels, or Positron standard)
-    // We style it using CSS filters applied to the tile pane
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
-      },
-    ).addTo(map);
-
-    // Add marker layer group
-    const markersGroup = L.layerGroup().addTo(map);
-
+    const map = createBaseMap(mapContainerRef.current);
     mapRef.current = map;
-    markersGroupRef.current = markersGroup;
-
-    // Apply warm styling filter to the leaflet pane
-    const mapPane = getMapPane();
-    if (mapPane) {
-      mapPane.style.filter =
-        "sepia(0.2) contrast(0.95) saturate(0.9) brightness(1.02)";
-    }
+    markersGroupRef.current = L.layerGroup().addTo(map);
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
-  }, [isLoading, error, getMapPane]);
+  }, [isLoading, error]);
 
-  // 3. Update markers when locations or search query changes
+  // 3. (Re)draw markers and zones when locations or the search query change
   useEffect(() => {
-    if (!mapRef.current || !markersGroupRef.current) return;
     const map = mapRef.current;
     const markersGroup = markersGroupRef.current;
+    if (!map || !markersGroup) return;
 
-    // Filter locations based on search query
-    const filtered = locations.filter((loc) =>
-      loc.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-
-    // Clear old markers
     markersGroup.clearLayers();
     markerInstancesRef.current.clear();
+    if (filteredLocations.length === 0) return;
 
-    if (filtered.length === 0) return;
-
-    // Define custom marker generator based on Ikon type (emoji)
-    const createCustomMarker = (ikonType: string) => {
-      let colorClass = "bg-brand-title text-brand-bg border-brand-title";
-
-      switch (ikonType) {
-        case "💍":
-        case "🏛️":
-          colorClass = "bg-[#c5a880] text-white border-[#b3956b]"; // Matte gold
-          break;
-        case "⛪":
-          colorClass = "bg-[#8d7c68] text-white border-[#756451]"; // Clay gray-brown
-          break;
-        case "🏨":
-          colorClass = "bg-[#7c8b74] text-white border-[#64735c]"; // Sage Green
-          break;
-        case "🌳":
-        case "🌲":
-          colorClass = "bg-[#627a69] text-white border-[#4d6353]"; // Soft Forest
-          break;
-        case "🍻":
-        case "🍔":
-        case "🍽️":
-          colorClass = "bg-[#9e7667] text-white border-[#845c4e]"; // Terracotta
-          break;
-        case "🚌":
-        case "🚃":
-          colorClass = "bg-[#4a90e2] text-white border-[#357ab8]"; // Bus blue
-          break;
-        case "🅿️":
-          colorClass = "bg-[#6b7280] text-white border-[#4b5563]"; // Neutral gray
-          break;
-        default:
-          colorClass = "bg-[#d0bfa8] text-white border-[#bfae96]"; // Beige fallback
-      }
-
-      return L.divIcon({
-        className: "custom-map-pin",
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all duration-300 hover:scale-110 ${colorClass} text-lg leading-none select-none">${escapeHtml(ikonType)}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16],
-      });
-    };
-
-    // Plot each marker
-    filtered.forEach((loc) => {
-      const programActs = (loc.activities || []).filter(
-        (a) => a.type === "program",
-      );
-      const eigentidActs = (loc.activities || []).filter(
-        (a) => a.type === "egentid",
-      );
-
-      let activitiesHtml = "";
-
-      if (programActs.length > 0) {
-        activitiesHtml += `
-          <div class="mt-2">
-            <h5 class="text-[10px] font-bold uppercase tracking-wider text-brand-title/60 mb-1">Program</h5>
-            <ul class="space-y-1 text-xs list-none pl-0 my-0">
-              ${programActs
-                .map(
-                  (a) => `
-                <li class="flex items-start gap-1.5 my-0.5">
-                  <span class="font-bold text-brand-title">${escapeHtml(a.time)}</span>
-                  <span class="text-brand-text/90">${escapeHtml(a.title)}</span>
-                </li>
-              `,
-                )
-                .join("")}
-            </ul>
-          </div>
-        `;
-      }
-
-      if (eigentidActs.length > 0) {
-        activitiesHtml += `
-          <div class="mt-2 pt-2 border-t border-brand-title/10">
-            <h5 class="text-[10px] font-bold uppercase tracking-wider text-brand-title/60 mb-1">Anbefalinger / Egentid</h5>
-            <ul class="space-y-2 text-xs list-none pl-0 my-0">
-              ${eigentidActs
-                .map(
-                  (a) => `
-                <li class="space-y-0.5 my-1">
-                  <div class="font-medium text-brand-title flex items-center gap-1">
-                    <span>${escapeHtml(a.suggestedByEmoji || "📍")}</span>
-                    <span>${escapeHtml(a.suggestedBy)}</span>
-                  </div>
-                  <p class="text-[11px] text-brand-text/80 leading-snug my-0">${escapeHtml(a.title)}</p>
-                </li>
-              `,
-                )
-                .join("")}
-            </ul>
-          </div>
-        `;
-      }
-
-      const typeLabel = getLabelForEmoji(loc.ikon);
-
-      const popupHtml = `
-        <div class="font-sans p-1 text-brand-title max-w-xs space-y-1">
-          <div class="flex items-center justify-between border-b border-brand-title/15 pb-1 gap-4">
-            <h4 class="font-serif font-semibold text-base leading-tight my-0">${escapeHtml(loc.name)}</h4>
-            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-brand-title/10 text-brand-title rounded shrink-0">${escapeHtml(typeLabel)}</span>
-          </div>
-          ${activitiesHtml}
-          ${
-            loc.googleMapsUrl
-              ? `<a href="${escapeHtml(loc.googleMapsUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-title hover:underline mt-2 pt-1 block">Veibeskrivelse i Google Maps &rarr;</a>`
-              : ""
-          }
-        </div>
-      `;
-
-      const marker = L.marker([loc.lat, loc.lng], {
-        icon: createCustomMarker(loc.ikon || "default"),
-      }).bindPopup(popupHtml, { minWidth: 180 });
-
+    for (const loc of filteredLocations) {
+      const marker = createLocationMarker(loc);
       markersGroup.addLayer(marker);
       markerInstancesRef.current.set(loc.id, marker);
-
-      // Render zone polygon if coordinates are provided
-      if (loc.zone && loc.zone.length >= 3) {
-        const zoneColorMap: Record<string, { fill: string; border: string }> = {
-          blue: { fill: "#3b82f6", border: "#3b82f6" },
-          red: { fill: "#ef4444", border: "#ef4444" },
-          green: { fill: "#22c55e", border: "#22c55e" },
-          yellow: { fill: "#eab308", border: "#eab308" },
-          purple: { fill: "#a855f7", border: "#a855f7" },
-          orange: { fill: "#f97316", border: "#f97316" },
-          gray: { fill: "#6b7280", border: "#6b7280" },
-        };
-        const colors =
-          zoneColorMap[(loc.zoneColor || "blue").toLowerCase()] ||
-          zoneColorMap.blue;
-        const polygon = L.polygon(loc.zone, {
-          color: colors.border,
-          fillColor: colors.fill,
-          fillOpacity: 0.15,
-          opacity: 0.5,
-          weight: 2,
-          dashArray: "6 4",
-        });
-        markersGroup.addLayer(polygon);
-      }
-    });
-
-    // Pan map to fit markers
-    if (filtered.length > 0) {
-      const bounds = L.latLngBounds(filtered.map((l) => [l.lat, l.lng]));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      const zone = createZonePolygon(loc);
+      if (zone) markersGroup.addLayer(zone);
     }
-  }, [locations, searchQuery]);
 
-  // 4. Focus map on location clicked in sidebar
-  const handleLocationClick = useCallback((loc: WeddingLocation) => {
+    map.fitBounds(
+      L.latLngBounds(filteredLocations.map((l) => [l.lat, l.lng])),
+      { padding: [50, 50], maxZoom: 15 },
+    );
+  }, [filteredLocations]);
+
+  // 4. Focus a location (sidebar click or ?loc= param)
+  const focusLocation = useCallback((loc: WeddingLocation) => {
     setSelectedLocationId(loc.id);
     if (!mapRef.current) return;
-
     mapRef.current.setView([loc.lat, loc.lng], 16);
-
-    const marker = markerInstancesRef.current.get(loc.id);
-    if (marker) {
-      marker.openPopup();
-    }
-
-    // Collapse sidebar on mobile to show the map
-    if (window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
+    markerInstancesRef.current.get(loc.id)?.openPopup();
+    if (window.innerWidth < DESKTOP_MIN_WIDTH) setIsSidebarOpen(false);
   }, []);
 
-  // 4b. Focus location from URL query parameter (loc) on mount/load
   useEffect(() => {
     if (isLoading || locations.length === 0 || !mapRef.current) return;
+    const targetId = new URLSearchParams(window.location.search).get("loc");
+    const target = targetId && locations.find((l) => l.id === targetId);
+    if (!target) return;
+    // Small delay so markers have rendered before we open the popup
+    const timer = setTimeout(() => focusLocation(target), 300);
+    return () => clearTimeout(timer);
+  }, [isLoading, locations, focusLocation]);
 
-    const params = new URLSearchParams(window.location.search);
-    const targetLocId = params.get("loc");
-    if (targetLocId) {
-      const targetLoc = locations.find((l) => l.id === targetLocId);
-      if (targetLoc) {
-        // Subtle delay to ensure markers have finished rendering on map container
-        const timer = setTimeout(() => {
-          handleLocationClick(targetLoc);
-        }, 300);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isLoading, locations, handleLocationClick]);
-
-  // 5. Geolocation handler
+  // 5. Geolocation
   const handleLocateUser = () => {
     if (!navigator.geolocation) {
       alert("Nettleseren din støtter ikke deling av posisjon.");
       return;
     }
-
     const map = mapRef.current;
     if (!map) return;
 
-    setUserLocationActive(true);
-
+    setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-
-        // Custom pulsing dot for user location
-        const userIcon = L.divIcon({
-          className: "user-location-dot",
-          html: `
-            <div class="relative flex h-5 w-5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-5 w-5 bg-blue-500 border-2 border-white shadow-md"></span>
-            </div>
-          `,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        });
-
-        // Remove old marker if exists
-        if (userMarkerRef.current) {
-          map.removeLayer(userMarkerRef.current);
-        }
-
-        const marker = L.marker([latitude, longitude], { icon: userIcon })
-          .addTo(map)
-          .bindPopup(
-            '<div class="font-sans text-xs font-semibold p-1">Du er her</div>',
-          );
-
+      ({ coords: { latitude, longitude } }) => {
+        if (userMarkerRef.current) map.removeLayer(userMarkerRef.current);
+        const marker = createUserMarker(latitude, longitude).addTo(map);
         userMarkerRef.current = marker;
         map.setView([latitude, longitude], 15);
         marker.openPopup();
-        setUserLocationActive(false);
+        setIsLocating(false);
       },
       (err) => {
         console.error(err);
         alert(
           "Klarte ikke å hente posisjonen din. Vennligst sjekk stedstjenester.",
         );
-        setUserLocationActive(false);
+        setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
-
-  const filteredLocations = locations.filter((loc) =>
-    loc.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
 
   if (isLoading) {
     return (
@@ -471,120 +201,20 @@ export default function InteractiveMap() {
         }
       `}</style>
 
-      {/* Sidebar Panel */}
-      <div
-        className={`bg-[#fcfbf9]/90 border-brand-title/10 flex flex-col z-20 transition-all duration-300 
-        absolute bottom-0 left-0 right-0 border-t
-        lg:relative lg:bottom-auto lg:left-auto lg:right-auto lg:border-t-0 lg:border-r lg:w-80 lg:h-full
-        ${isSidebarOpen ? "h-[50%]" : "h-[72px]"}
-      `}
-      >
-        {/* Search Header */}
-        <div className="p-3 border-b border-brand-title/10 bg-brand-bg/20 flex flex-col gap-2 shrink-0">
-          {/* Decorative Drag/Grab Handle (mobile only) */}
-          <button
-            type="button"
-            aria-label={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
-            className="lg:hidden block w-10 h-1 bg-brand-title/20 rounded-full mx-auto cursor-pointer border-0 p-0"
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
-          />
-
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Søk etter steder..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (!isSidebarOpen) setIsSidebarOpen(true); // Auto-expand when typing
-              }}
-              className="input-base flex-1 px-3 py-2 text-sm placeholder-brand-text/50 shadow-inner"
-            />
-
-            {/* Collapse/Expand Button (mobile only) */}
-            <button
-              type="button"
-              onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="lg:hidden p-2 rounded-lg border border-brand-title/20 bg-brand-bg text-brand-title hover:bg-brand-title/5 transition"
-              aria-label={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
-            >
-              <Icon
-                name="chevronDown"
-                className={`w-4 h-4 transition-transform duration-300 ${
-                  isSidebarOpen ? "rotate-180" : ""
-                }`}
-                title={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
-              />
-            </button>
-          </div>
-
-          <div
-            className={`${isSidebarOpen ? "block" : "hidden lg:block"} mt-1`}
-          >
-            <button
-              type="button"
-              onClick={handleLocateUser}
-              disabled={userLocationActive}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-brand-bg border border-brand-title/20 rounded-lg text-xs font-semibold text-brand-title hover:bg-brand-title/5 hover:border-brand-title/40 active:bg-brand-title/10 transition disabled:opacity-50 select-none shadow-xs"
-            >
-              {userLocationActive ? (
-                <>
-                  <div className="animate-spin h-3.5 w-3.5 border-2 border-brand-title/20 border-t-brand-title rounded-full"></div>
-                  <span>Henter posisjon...</span>
-                </>
-              ) : (
-                <>
-                  <Icon
-                    name="mapPin"
-                    className="w-4 h-4"
-                    title="Vis posisjon"
-                  />
-                  <span>Vis min posisjon</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Location List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 divide-y divide-brand-title/5 select-none scrollbar-thin">
-          {filteredLocations.length > 0 ? (
-            filteredLocations.map((loc) => {
-              const iconSymbol = loc.ikon || "📍";
-
-              const isSelected = loc.id === selectedLocationId;
-              const activeBgClass = isSelected
-                ? "bg-brand-title/10 border-l-4 border-l-brand-title pl-2"
-                : "hover:bg-brand-title/5 active:bg-brand-title/10 border-l-4 border-l-transparent";
-
-              return (
-                <button
-                  type="button"
-                  key={loc.id}
-                  onClick={() => handleLocationClick(loc)}
-                  className={`w-full text-left p-3 pt-4 rounded-lg flex items-center gap-3 transition group border-0 bg-transparent cursor-pointer ${activeBgClass}`}
-                >
-                  <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">
-                    {iconSymbol}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-serif font-semibold text-brand-title text-base group-hover:text-brand-text transition-colors truncate">
-                      {loc.name}
-                    </p>
-                    <p className="text-[10px] text-brand-text/50 font-sans uppercase tracking-wider font-bold capitalize pt-0.5">
-                      {getLabelForEmoji(loc.ikon)}
-                    </p>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-center font-sans text-sm text-brand-text/60 py-8">
-              Ingen steder matcher søket.
-            </p>
-          )}
-        </div>
-      </div>
+      <LocationSidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen((prev) => !prev)}
+        searchQuery={searchQuery}
+        onSearchChange={(value) => {
+          setSearchQuery(value);
+          if (!isSidebarOpen) setIsSidebarOpen(true); // Auto-expand when typing
+        }}
+        locations={filteredLocations}
+        selectedId={selectedLocationId}
+        onSelect={focusLocation}
+        onLocate={handleLocateUser}
+        isLocating={isLocating}
+      />
 
       {/* Map Element */}
       <div ref={mapContainerRef} className="w-full h-full lg:flex-1 z-10" />
