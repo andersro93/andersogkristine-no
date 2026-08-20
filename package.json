@@ -13,7 +13,6 @@
     "test": "bun test",
     "lint": "biome lint .",
     "check": "tsc --noEmit",
-    "test": "bun test",
     "ci": "bun run src/scripts/prebuild.ts && biome ci . && bun run check && bun test && bun run build",
     "format": "biome format .",
     "astro": "astro",
