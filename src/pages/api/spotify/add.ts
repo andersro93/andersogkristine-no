@@ -6,6 +6,7 @@ import type { APIRoute } from "astro";
 import {
   addTrackToPlaylist,
   getPlaylistTracks,
+  SpotifyNotConfiguredError,
 } from "../../../services/spotify";
 
 interface AddTrackRequestBody {
@@ -41,6 +42,15 @@ export const POST: APIRoute = async (context) => {
       },
     );
   } catch (error) {
+    if (error instanceof SpotifyNotConfiguredError) {
+      return new Response(
+        JSON.stringify({
+          error: "Musikkønsker er ikke tilgjengelig akkurat nå.",
+          unavailable: true,
+        }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      );
+    }
     console.error("Error in Spotify Add API:", error);
     return new Response(
       JSON.stringify({ error: "Kunne ikke legge til sangen i spillelisten." }),

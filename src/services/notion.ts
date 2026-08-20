@@ -12,6 +12,10 @@ import {
 
 export type { WaitUntilContext } from "./cache";
 
+import { escapeHtml } from "../utils/html";
+
+export { escapeHtml };
+
 /** KV cache keys — kept stable across refactors (tests and ops rely on them). */
 export const CACHE_KEYS = {
   schedule: "notion_schedule",
@@ -54,16 +58,6 @@ function getRichTextFull(prop: any, fallback = ""): string {
   return prop?.type === "rich_text"
     ? (prop.rich_text as NotionRichTextItem[]).map((t) => t.plain_text).join("")
     : fallback;
-}
-
-/** Escape text for safe interpolation into HTML text nodes and attributes. */
-export function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 function notionRichTextToHtml(prop: any, fallback = ""): string {

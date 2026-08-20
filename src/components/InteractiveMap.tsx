@@ -1,6 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { escapeHtml } from "../utils/html";
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -211,7 +212,7 @@ export default function InteractiveMap() {
 
       return L.divIcon({
         className: "custom-map-pin",
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all duration-300 hover:scale-110 ${colorClass} text-lg leading-none select-none">${ikonType}</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all duration-300 hover:scale-110 ${colorClass} text-lg leading-none select-none">${escapeHtml(ikonType)}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
         popupAnchor: [0, -16],
@@ -238,8 +239,8 @@ export default function InteractiveMap() {
                 .map(
                   (a) => `
                 <li class="flex items-start gap-1.5 my-0.5">
-                  <span class="font-bold text-brand-title">${a.time}</span>
-                  <span class="text-brand-text/90">${a.title}</span>
+                  <span class="font-bold text-brand-title">${escapeHtml(a.time)}</span>
+                  <span class="text-brand-text/90">${escapeHtml(a.title)}</span>
                 </li>
               `,
                 )
@@ -259,10 +260,10 @@ export default function InteractiveMap() {
                   (a) => `
                 <li class="space-y-0.5 my-1">
                   <div class="font-medium text-brand-title flex items-center gap-1">
-                    <span>${a.suggestedByEmoji || "📍"}</span>
-                    <span>${a.suggestedBy}</span>
+                    <span>${escapeHtml(a.suggestedByEmoji || "📍")}</span>
+                    <span>${escapeHtml(a.suggestedBy)}</span>
                   </div>
-                  <p class="text-[11px] text-brand-text/80 leading-snug my-0">${a.title}</p>
+                  <p class="text-[11px] text-brand-text/80 leading-snug my-0">${escapeHtml(a.title)}</p>
                 </li>
               `,
                 )
@@ -277,13 +278,13 @@ export default function InteractiveMap() {
       const popupHtml = `
         <div class="font-sans p-1 text-brand-title max-w-xs space-y-1">
           <div class="flex items-center justify-between border-b border-brand-title/15 pb-1 gap-4">
-            <h4 class="font-serif font-semibold text-base leading-tight my-0">${loc.name}</h4>
-            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-brand-title/10 text-brand-title rounded shrink-0">${typeLabel}</span>
+            <h4 class="font-serif font-semibold text-base leading-tight my-0">${escapeHtml(loc.name)}</h4>
+            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-brand-title/10 text-brand-title rounded shrink-0">${escapeHtml(typeLabel)}</span>
           </div>
           ${activitiesHtml}
           ${
             loc.googleMapsUrl
-              ? `<a href="${loc.googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-title hover:underline mt-2 pt-1 block">Veibeskrivelse i Google Maps &rarr;</a>`
+              ? `<a href="${escapeHtml(loc.googleMapsUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-title hover:underline mt-2 pt-1 block">Veibeskrivelse i Google Maps &rarr;</a>`
               : ""
           }
         </div>

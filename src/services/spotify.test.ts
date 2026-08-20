@@ -143,3 +143,34 @@ describe("Spotify Playlist Integration (Mock Mode)", () => {
     });
   });
 });
+
+describe("Production without configuration", () => {
+  test("throws SpotifyNotConfiguredError instead of serving mock data", async () => {
+    const prev = process.env.NODE_ENV;
+    const saved: Record<string, string | undefined> = {};
+    for (const key of [
+      "SPOTIFY_CLIENT_ID",
+      "SPOTIFY_CLIENT_SECRET",
+      "SPOTIFY_REFRESH_TOKEN",
+      "SPOTIFY_PLAYLIST_ID",
+    ]) {
+      saved[key] = process.env[key]; // bun auto-loads .env
+      delete process.env[key];
+    }
+    process.env.NODE_ENV = "production";
+    try {
+      const { SpotifyNotConfiguredError } = await import("./spotify");
+      await expect(
+        getPlaylistTracks({} as unknown as Env),
+      ).rejects.toBeInstanceOf(SpotifyNotConfiguredError);
+      await expect(
+        searchTracks("abba", {} as unknown as Env),
+      ).rejects.toBeInstanceOf(SpotifyNotConfiguredError);
+    } finally {
+      process.env.NODE_ENV = prev;
+      for (const [key, value] of Object.entries(saved)) {
+        if (value !== undefined) process.env[key] = value;
+      }
+    }
+  });
+});

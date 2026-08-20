@@ -19,7 +19,40 @@ import {
 
 const invalidCodes = ["evig-troskap"];
 
+/**
+ * Baseline security headers. No script-src CSP (inline scripts + third-party
+ * tiles/fonts make that a larger job); frame-ancestors alone stops clickjacking.
+ */
+const SECURITY_HEADERS: Record<string, string> = {
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "Permissions-Policy": "camera=(), microphone=(), payment=()",
+};
+
+function withSecurityHeaders(response: Response): Response {
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    if (!response.headers.has(name)) {
+      try {
+        response.headers.set(name, value);
+      } catch {
+        // Immutable headers (e.g. some static asset responses) — skip
+      }
+    }
+  }
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
+  const response = (await handleRequest(context, next)) as Response;
+  return withSecurityHeaders(response);
+});
+
+const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
+  context,
+  next,
+) => {
   const url = new URL(context.request.url);
   const { pathname, searchParams } = url;
 
@@ -28,6 +61,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isValidatePinApi = pathname === "/api/validate-pin";
   const isRsvpPage = pathname === "/rsvp";
   const isRsvpApi = pathname === "/api/rsvp";
+  const isHealthApi = pathname === "/api/health";
 
   const isStaticAsset =
     pathname.startsWith("/_") ||
@@ -48,7 +82,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   };
 
-  if (isPinPage || isValidatePinApi || isRsvpApi || isStaticAsset) {
+  if (
+    isPinPage ||
+    isValidatePinApi ||
+    isRsvpApi ||
+    isHealthApi ||
+    isStaticAsset
+  ) {
     return next();
   }
 
@@ -125,4 +165,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return next();
-});
+};
