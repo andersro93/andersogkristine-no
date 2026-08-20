@@ -134,6 +134,32 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     expect(nextCalled).toHaveBeenCalled();
   });
 
+  test("should add baseline security headers to responses", async () => {
+    const context = createMockContext("/pin");
+    const response = (await onRequest(
+      context as any,
+      mock(async () => new Response("PIN")),
+    )) as Response;
+    expect(response.headers.get("Content-Security-Policy")).toBe(
+      "frame-ancestors 'none'",
+    );
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("Strict-Transport-Security")).toContain(
+      "max-age=",
+    );
+    expect(response.headers.get("Referrer-Policy")).toBe(
+      "strict-origin-when-cross-origin",
+    );
+  });
+
+  test("should let /api/health through without auth", async () => {
+    const context = createMockContext("/api/health");
+    const nextCalled = mock(async () => new Response("HEALTH"));
+    const response = (await onRequest(context as any, nextCalled)) as Response;
+    expect(await response.text()).toBe("HEALTH");
+    expect(nextCalled).toHaveBeenCalled();
+  });
+
   test("should pass through PIN page and validate-pin API without checks", async () => {
     const pinContext = createMockContext("/pin");
     const pinNext = mock(async () => new Response("PIN_PAGE"));

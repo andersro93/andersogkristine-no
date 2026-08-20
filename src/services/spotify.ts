@@ -129,6 +129,28 @@ const mockCatalog: SpotifyTrack[] = [
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
+/** Thrown when Spotify is not configured in production (no mock fallback). */
+export class SpotifyNotConfiguredError extends Error {
+  constructor() {
+    super("Spotify integration is not configured.");
+    this.name = "SpotifyNotConfiguredError";
+  }
+}
+
+/**
+ * Mock mode only exists for local development and tests. In production a
+ * missing configuration must fail visibly instead of showing fake tracks.
+ */
+function isMockMode(env?: Env): boolean {
+  if (isSpotifyConfigured(env)) return false;
+  const dev =
+    (import.meta as any).env?.DEV === true ||
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "test";
+  if (!dev) throw new SpotifyNotConfiguredError();
+  return true;
+}
+
 /**
  * Check if the Spotify environment credentials are set.
  */
@@ -199,7 +221,7 @@ export async function searchTracks(
   if (!query.trim()) return [];
 
   // Mock Mode fallback
-  if (!isSpotifyConfigured(env)) {
+  if (isMockMode(env)) {
     console.log("Spotify credentials missing, running search in Mock Mode.");
     const lowerQuery = query.toLowerCase();
     return mockCatalog.filter(
@@ -252,7 +274,7 @@ export async function getPlaylistTracks(env?: Env): Promise<SpotifyTrack[]> {
   const kv = env?.CACHE;
 
   // Mock Mode fallback
-  if (!isSpotifyConfigured(env)) {
+  if (isMockMode(env)) {
     return mockPlaylistTracks;
   }
 
@@ -336,7 +358,7 @@ export async function addTrackToPlaylist(
   env?: Env,
 ): Promise<void> {
   // Mock Mode fallback
-  if (!isSpotifyConfigured(env)) {
+  if (isMockMode(env)) {
     const matchingTrack = mockCatalog.find((t) => t.uri === trackUri);
     if (matchingTrack) {
       // Check if already in mock list

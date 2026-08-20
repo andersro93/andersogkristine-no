@@ -6,6 +6,7 @@ import type { APIRoute } from "astro";
 import {
   getPlaylistTracks,
   getSpotifyPlaylistUrl,
+  SpotifyNotConfiguredError,
 } from "../../../services/spotify";
 
 export const GET: APIRoute = async () => {
@@ -24,6 +25,15 @@ export const GET: APIRoute = async () => {
       },
     );
   } catch (error) {
+    if (error instanceof SpotifyNotConfiguredError) {
+      return new Response(
+        JSON.stringify({
+          error: "Musikkønsker er ikke tilgjengelig akkurat nå.",
+          unavailable: true,
+        }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      );
+    }
     console.error("Error in Spotify Playlist API:", error);
     return new Response(
       JSON.stringify({ error: "Kunne ikke hente spilleliste." }),

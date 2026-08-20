@@ -17,6 +17,7 @@ export default function SpotifyPlaylist() {
   const [playlistUrl, setPlaylistUrl] = useState("https://open.spotify.com");
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(true);
+  const [isUnavailable, setIsUnavailable] = useState(false);
   const [addingUri, setAddingUri] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -39,6 +40,10 @@ export default function SpotifyPlaylist() {
     async function loadPlaylist() {
       try {
         const res = await fetch("/api/spotify/playlist");
+        if (res.status === 503) {
+          setIsUnavailable(true);
+          return;
+        }
         if (!res.ok) throw new Error("Kunne ikke hente spillelisten.");
         const data = (await res.json()) as {
           tracks?: SpotifyTrack[];
@@ -137,6 +142,18 @@ export default function SpotifyPlaylist() {
     } finally {
       setAddingUri(null);
     }
+  }
+
+  if (isUnavailable) {
+    return (
+      <div className="text-center py-12 space-y-3 font-sans text-brand-title">
+        <span className="text-3xl">🎶</span>
+        <p className="text-body-serif">
+          Musikkønsker er ikke tilgjengelig akkurat nå.
+        </p>
+        <p className="text-caption">Prøv igjen litt senere.</p>
+      </div>
+    );
   }
 
   return (
