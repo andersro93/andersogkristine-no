@@ -1,10 +1,10 @@
 ---
-import { env } from 'cloudflare:workers';
+import { env } from '../runtime';
 import { weddingConfig } from '../config';
 import { fetchEgentidData } from '../services/notion';
 
 // Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
-const contributors = await fetchEgentidData(env as Env, Astro.locals?.cfContext);
+const contributors = await fetchEgentidData(env, Astro.locals?.cfContext);
 const { egentid } = weddingConfig;
 const initialContributor = contributors[0];
 ---

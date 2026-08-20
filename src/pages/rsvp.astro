@@ -1,5 +1,5 @@
 ---
-import { env } from 'cloudflare:workers';
+import { env } from '../runtime';
 import SubpageLayout from '../layouts/SubpageLayout.astro';
 import RSVPForm from '../components/RSVPForm';
 import { DEFAULT_FLAGS, fetchAllergyOptions, fetchInviteByCode, type Invite } from '../services/notion';
@@ -20,20 +20,20 @@ let allergySuggestions: string[] = [];
 
 if (code) {
   const ip = Astro.clientAddress || 'unknown-ip';
-  const kv = (env as Env)?.CACHE;
+  const kv = env?.CACHE;
   try {
     const limit = await checkRateLimit(ip, kv, 'invite');
     if (!limit.allowed) {
       errorMsg = `For mange forsøk. Vennligst prøv igjen om ${LOCKOUT_MINUTES} minutter.`;
     } else {
-      invite = await fetchInviteByCode(code, env as Env);
+      invite = await fetchInviteByCode(code, env);
       if (invite) {
         // Existing options are offered back as suggestions so guests reuse the
         // same spelling instead of creating a new option each time.
-        allergySuggestions = await fetchAllergyOptions(env as Env);
+        allergySuggestions = await fetchAllergyOptionsenv;
 
         // Valid invite: grant a site-wide session so guests can browse other pages
-        const cookieValue = generateSessionCookie(env as Env);
+        const cookieValue = generateSessionCookieenv;
         Astro.cookies.set(SESSION_COOKIE_NAME, cookieValue, SESSION_COOKIE_OPTIONS);
       } else {
         await recordFailedAttempt(ip, kv, 'invite');

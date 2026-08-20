@@ -1,9 +1,9 @@
 ---
-import { env } from 'cloudflare:workers';
+import { env } from '../runtime';
 import { fetchStoryFromNotion } from '../services/notion';
 
 // Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
-const story = await fetchStoryFromNotion(env as Env, Astro.locals?.cfContext);
+const story = await fetchStoryFromNotion(env, Astro.locals?.cfContext);
 ---
 
 <section id="story" class="py-20 px-4 md:px-8 bg-brand-bg/40 max-w-6xl mx-auto border-b border-brand-title/5">

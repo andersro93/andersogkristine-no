@@ -1,6 +1,6 @@
 ---
+import { env } from '../runtime';
 import Icon from './ui/Icon.astro';
-import { env } from 'cloudflare:workers';
 import { fetchScheduleFromNotion } from '../services/notion';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 
 const { flags } = Astro.props;
 // Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
-const schedule = await fetchScheduleFromNotion(env as Env, Astro.locals?.cfContext);
+const schedule = await fetchScheduleFromNotion(env, Astro.locals?.cfContext);
 ---
 
 <section id="schedule" class="py-20 px-4 md:px-8 bg-brand-bg max-w-5xl mx-auto border-b border-brand-title/5">

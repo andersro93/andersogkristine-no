@@ -1,8 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
-import { env as rawEnv } from "cloudflare:workers";
-
-const env = rawEnv as Env;
-
+import { env } from "./runtime";
 import {
   DEFAULT_FLAGS,
   fetchFeatureFlags,

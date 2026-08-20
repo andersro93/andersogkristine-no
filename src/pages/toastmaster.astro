@@ -1,12 +1,12 @@
 ---
-import { env } from 'cloudflare:workers';
+import { env } from '../runtime';
 import SubpageLayout from '../layouts/SubpageLayout.astro';
 import { fetchToastmasters } from '../services/notion';
 
 let toastmasters: { name: string; email: string; photo: string }[] = [];
 const context = Astro.locals?.cfContext;
 try {
-  toastmasters = await fetchToastmasters(env as Env, context);
+  toastmasters = await fetchToastmasters(env, context);
 } catch (err) {
   console.error("Failed to load toastmasters from Notion:", err);
 }
