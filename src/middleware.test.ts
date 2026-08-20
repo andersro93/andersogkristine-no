@@ -45,7 +45,7 @@ mock.module("@notionhq/client", () => {
           if (data_source_id.includes("test-flags-db")) {
             const results = mockFlagsResponse.map((f) => ({
               properties: {
-                Name: {
+                "Flagg Id": {
                   type: "title",
                   title: [{ plain_text: f.key }],
                 },

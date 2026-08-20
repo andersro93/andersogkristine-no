@@ -213,6 +213,10 @@ function getNumberProperty(
     : fallback;
 }
 
+function getUrlProperty(prop: any): string | undefined {
+  return prop?.type === "url" && prop.url ? prop.url : undefined;
+}
+
 function getRelationIds(prop: any): string[] {
   return prop?.type === "relation" && Array.isArray(prop.relation)
     ? prop.relation.map((r: any) => r.id)
@@ -541,7 +545,7 @@ export interface ScheduleEvent {
 
 async function loadSchedule(env: Env): Promise<ScheduleEvent[]> {
   const pages = await queryDatabase(env, "NOTION_PROGRAM_DATABASE_ID", {
-    property: "Webside",
+    property: notionConfig.mappings.program.published,
     select: { equals: "Ja" },
   });
 
@@ -554,18 +558,13 @@ async function loadSchedule(env: Env): Promise<ScheduleEvent[]> {
   return pages
     .map((page) => {
       const props = page.properties;
-      const descProp =
-        props.Beskrivelse ||
-        props.beskrivelse ||
-        props.description ||
-        props.Info ||
-        props.Detaljer;
+      const m = notionConfig.mappings.program;
       return {
-        title: getTitleProperty(props.Tittel, "Uten tittel"),
-        timeIso: getDateProperty(props.Tidspunkt),
-        description: getRichTextFull(descProp),
+        title: getTitleProperty(props[m.title], "Uten tittel"),
+        timeIso: getDateProperty(props[m.time]),
+        description: getRichTextFull(props[m.description]),
         emoji: getPageEmoji(page) ?? "💛",
-        locationId: getRelationIds(props.Sted)[0],
+        locationId: getRelationIds(props[m.location])[0],
       };
     })
     .filter((e): e is typeof e & { timeIso: string } => e.timeIso !== null)
@@ -659,10 +658,11 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
   const pages = await queryDatabase(env, "NOTION_MEDVIRKENDE_DATABASE_ID");
   return pages.map((page) => {
     const props = page.properties;
-    const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
+    const m = notionConfig.mappings.contributors;
+    const name = getTitleProperty(props[m.name], "Ukjent");
 
     let email = "";
-    const emailProp = props.Email || props.email || props["E-post"];
+    const emailProp = props[m.email];
     if (emailProp?.type === "email" && emailProp.email) {
       email = emailProp.email;
     } else if (emailProp?.type === "rich_text") {
@@ -670,7 +670,7 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
     }
 
     let notionPhoto = "";
-    const bildeProp = props.Bilde || props.bilde || props.Photo || props.photo;
+    const bildeProp = props[m.photo];
     if (bildeProp?.type === "files" && bildeProp.files?.length > 0) {
       const fileObj = bildeProp.files[0] as any;
       notionPhoto =
@@ -685,8 +685,8 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
       id: page.id,
       name,
       photo: resolveContributorPhoto({ id: page.id, name }, notionPhoto),
-      role: getRichTextFull(props.Role || props.Rolle, ""),
-      emoji: getRichTextFull(props.Emoji, ""),
+      role: getRichTextFull(props[m.role], ""),
+      emoji: getRichTextFull(props[m.emoji], ""),
       email,
     };
   });
@@ -696,27 +696,13 @@ async function loadRawEgentidItems(env: Env): Promise<RawEgentidItem[]> {
   const pages = await queryDatabase(env, "NOTION_EGENTID_DATABASE_ID");
   return pages.map((page) => {
     const props = page.properties;
+    const m = notionConfig.mappings.egentid;
     return {
       id: page.id,
-      title: getTitleProperty(props.Name || props.Tittel || props.tittel, ""),
-      description: getRichTextFull(
-        props.Beskrivelse || props.Info || props.Details,
-        "",
-      ),
-      contributorId:
-        getRelationIds(
-          props.Medvirkende ||
-            props.medvirkende ||
-            props.Contributor ||
-            props.contributor,
-        )[0] ?? "",
-      locationIds: getRelationIds(
-        props["📍 Sted"] ||
-          props.Sted ||
-          props.sted ||
-          props.Location ||
-          props.location,
-      ),
+      title: getTitleProperty(props[m.title], ""),
+      description: getRichTextFull(props[m.description], ""),
+      contributorId: getRelationIds(props[m.contributor])[0] ?? "",
+      locationIds: getRelationIds(props[m.location]),
     };
   });
 }
@@ -895,15 +881,11 @@ async function loadLocations(
   return pages
     .map((page) => {
       const props = page.properties;
-      const name = getTitleProperty(props.Name, "Ukjent sted");
-      const lat = getNumberProperty(props.Lat, null);
-      const lng =
-        getNumberProperty(props.Long, null) ??
-        getNumberProperty(props.Lng, null);
-      const googleMapsUrl =
-        props["Google Maps"]?.type === "url" && props["Google Maps"].url
-          ? props["Google Maps"].url
-          : undefined;
+      const m = notionConfig.mappings.locations;
+      const name = getTitleProperty(props[m.name], "Ukjent sted");
+      const lat = getNumberProperty(props[m.lat], null);
+      const lng = getNumberProperty(props[m.lng], null);
+      const googleMapsUrl = getUrlProperty(props[m.googleMaps]);
 
       const activities: LocationActivity[] = [];
       for (const e of scheduleEvents.filter((e) => e.locationId === page.id)) {
@@ -932,10 +914,8 @@ async function loadLocations(
         googleMapsUrl,
         ikon: getEmojiForLocation(name, getPageEmoji(page)),
         activities,
-        zone: parseZone(getRichTextFull(props.Sone || props.sone)),
-        zoneColor:
-          getSelectProperty(props["Sone-farge"] || props["sone-farge"]) ||
-          undefined,
+        zone: parseZone(getRichTextFull(props[m.zone])),
+        zoneColor: getSelectProperty(props[m.zoneColor]) || undefined,
       };
     })
     .filter((loc) => loc.lat !== null && loc.lng !== null) as WeddingLocation[];
@@ -1036,11 +1016,11 @@ async function loadFaq(env: Env): Promise<FaqItem[]> {
       const props = page.properties;
       return {
         question: getTitleProperty(
-          props.Spørsmål || props.Sporsmal || props.Question || props.Name,
+          props[notionConfig.mappings.faq.question],
           "Uten spørsmål",
         ),
         answer: notionRichTextToHtml(
-          props.Svar || props.Answer || props.Description,
+          props[notionConfig.mappings.faq.answer],
           "",
         ),
       };
@@ -1075,17 +1055,12 @@ async function loadStory(env: Env): Promise<StoryItem[]> {
   return pages
     .map((page) => {
       const props = page.properties;
-      const dateStr = getDateProperty(props.Dato || props.Date) || "";
+      const m = notionConfig.mappings.story;
+      const dateStr = getDateProperty(props[m.date]) || "";
       return {
         year: dateStr ? dateStr.split("-")[0] : "",
-        title: getTitleProperty(
-          props.Tittel || props.Title || props.Name,
-          "Uten tittel",
-        ),
-        content: getRichTextFull(
-          props.Beskrivelse || props.Content || props.Description,
-          "",
-        ),
+        title: getTitleProperty(props[m.title], "Uten tittel"),
+        content: getRichTextFull(props[m.content], ""),
         dateStr,
       };
     })
@@ -1130,18 +1105,12 @@ async function loadFlags(env: Env): Promise<Record<string, boolean>> {
 
   for (const page of pages) {
     const props = page.properties;
-    const flagIdProp =
-      props["Flagg Id"] ||
-      props["Flagg ID"] ||
-      props["flagg id"] ||
-      props["Flag id"] ||
-      props["Flag ID"] ||
-      props["flag id"] ||
-      props.Name;
-    const flagKey = getTitleProperty(flagIdProp, "").trim().toLowerCase();
+    const flagKey = getTitleProperty(props[notionConfig.mappings.flags.id], "")
+      .trim()
+      .toLowerCase();
     if (!flagKey) continue;
 
-    const activeProp = props.Aktivert as any;
+    const activeProp = props[notionConfig.mappings.flags.enabled] as any;
     let isEnabled = false;
     if (activeProp?.type === "select") {
       isEnabled = activeProp.select?.name === "Ja";
