@@ -2,9 +2,34 @@ import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import { notionConfig } from "../config/notion";
 import notionFallback from "../config/notion-fallback.json";
-import { cloudflareEnv, getEnvVar, requireEnvVar } from "./env";
+import {
+  cachedSWR,
+  getDataSourceId,
+  invalidateCache,
+  queryAll,
+  type WaitUntilContext,
+} from "./cache";
 
-// Helper interfaces for Notion API JSON properties
+export type { WaitUntilContext } from "./cache";
+
+/** KV cache keys — kept stable across refactors (tests and ops rely on them). */
+export const CACHE_KEYS = {
+  schedule: "notion_schedule",
+  locations: "notion_locations",
+  egentid: "notion_egentid_contributors",
+  toastmasters: "notion_toastmaster",
+  faq: "notion_faq",
+  story: "notion_story",
+  flags: "notion_flags",
+  seating: "seating_data",
+  contributorsRaw: "notion_contributors_raw",
+  egentidRaw: "notion_egentid_raw",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Property helpers
+// ---------------------------------------------------------------------------
+
 interface NotionRichTextItem {
   plain_text: string;
 }
@@ -13,7 +38,6 @@ interface NotionSelectItem {
   name: string;
 }
 
-// Property extraction helpers to eliminate inline null-coalescing and type assertions
 function getTitleProperty(prop: any, fallback = ""): string {
   return prop?.type === "title"
     ? prop.title?.[0]?.plain_text || fallback
@@ -32,6 +56,16 @@ function getRichTextFull(prop: any, fallback = ""): string {
     : fallback;
 }
 
+/** Escape text for safe interpolation into HTML text nodes and attributes. */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function notionRichTextToHtml(prop: any, fallback = ""): string {
   if (prop?.type !== "rich_text" || !Array.isArray(prop.rich_text)) {
     return fallback;
@@ -39,15 +73,7 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
 
   // 1. Convert each rich text item into HTML with annotations, keeping \n intact
   const htmlParts = prop.rich_text.map((item: any) => {
-    let text = item.plain_text || "";
-
-    // Escape HTML entities to prevent XSS
-    text = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    let text = escapeHtml(item.plain_text || "");
 
     const ann = item.annotations || {};
     if (ann.bold) text = `<strong>${text}</strong>`;
@@ -57,9 +83,9 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
     if (ann.code) text = `<code>${text}</code>`;
 
     if (item.href) {
-      const url = item.href;
+      const url = String(item.href);
       if (/^https?:\/\/|^mailto:/i.test(url)) {
-        text = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline hover:text-brand-title/80 transition-colors">${text}</a>`;
+        text = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="underline hover:text-brand-title/80 transition-colors">${text}</a>`;
       }
     }
 
@@ -90,7 +116,6 @@ function notionRichTextToHtml(prop: any, fallback = ""): string {
         resultLines.push("</ul>");
       }
       if (trimmed === "") {
-        // Empty line becomes a paragraph break/spacing
         resultLines.push('<div class="h-2"></div>');
       } else {
         resultLines.push(`<p>${line}</p>`);
@@ -183,30 +208,33 @@ function getNumberProperty(
     : fallback;
 }
 
-// Cache for Data Source IDs in memory to avoid repeated metadata queries
-const dataSourceIdCache = new Map<string, string>();
-
-async function getDataSourceId(
-  notion: Client,
-  databaseId: string,
-): Promise<string> {
-  if (dataSourceIdCache.has(databaseId)) {
-    return dataSourceIdCache.get(databaseId) as string;
-  }
-
-  console.log(`Resolving data source ID for database: ${databaseId}`);
-  const db = await notion.databases.retrieve({ database_id: databaseId });
-  if ("data_sources" in db && db.data_sources && db.data_sources.length > 0) {
-    const dsId = db.data_sources[0].id;
-    dataSourceIdCache.set(databaseId, dsId);
-    return dsId;
-  }
-  throw new Error(`No data source found for database container: ${databaseId}`);
+function getRelationIds(prop: any): string[] {
+  return prop?.type === "relation" && Array.isArray(prop.relation)
+    ? prop.relation.map((r: any) => r.id)
+    : [];
 }
 
-// Helper to get Notion client based on environment
-export function getNotionClient(localEnv?: Env) {
-  const apiKey = getEnvVar("NOTION_API_KEY", localEnv);
+function getPageEmoji(page: any): string | null {
+  const icon = page?.icon;
+  return icon?.type === "emoji" && icon.emoji ? icon.emoji : null;
+}
+
+function requireDatabaseId(env: Env, key: keyof Env & string): string {
+  const value = env?.[key];
+  if (!value || typeof value !== "string") {
+    throw new Error(
+      `${key} is not configured. Please check your environment configuration or .env file.`,
+    );
+  }
+  return value;
+}
+
+// ---------------------------------------------------------------------------
+// Client
+// ---------------------------------------------------------------------------
+
+export function getNotionClient(env: Env) {
+  const apiKey = env?.NOTION_API_KEY;
   if (!apiKey) {
     throw new Error(
       "NOTION_API_KEY is not defined. Please add it to your .env file or Cloudflare environment variables.",
@@ -218,11 +246,36 @@ export function getNotionClient(localEnv?: Env) {
   });
 }
 
+/** Query every row of the database referenced by `envKey`, following pagination. */
+async function queryDatabase(
+  env: Env,
+  envKey: keyof Env & string,
+  filter?: any,
+): Promise<PageObjectResponse[]> {
+  const notion = getNotionClient(env);
+  const dsId = await getDataSourceId(
+    notion,
+    requireDatabaseId(env, envKey),
+    env,
+  );
+  const rows = await queryAll(notion, {
+    data_source_id: dsId,
+    ...(filter ? { filter } : {}),
+  });
+  return (rows as PageObjectResponse[]).filter(
+    (page): page is PageObjectResponse => "properties" in page,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invites & guests (live, never cached)
+// ---------------------------------------------------------------------------
+
 export interface Guest {
   id: string;
   name: string;
   rsvp: string; // "Venter" | "Kommer" | "Kommer ikke"
-  allergies: string[];
+  allergies: string[]; // multi_select option names
   tableId?: string | null;
   tableName?: string | null;
 }
@@ -234,25 +287,24 @@ export interface Invite {
   guests: Guest[];
 }
 
-// 1. Fetch Invite by Code
 export async function fetchInviteByCode(
   code: string,
-  localEnv?: Env,
+  env: Env,
 ): Promise<Invite | null> {
-  const notion = getNotionClient(localEnv);
+  const notion = getNotionClient(env);
 
   try {
-    const invitesDbId = requireEnvVar("NOTION_INVITES_DATABASE_ID", localEnv);
-    const invitesDsId = await getDataSourceId(notion, invitesDbId);
+    const invitesDsId = await getDataSourceId(
+      notion,
+      requireDatabaseId(env, "NOTION_INVITES_DATABASE_ID"),
+      env,
+    );
 
-    // Query Invites database for matching code
     const invitesResponse = await notion.dataSources.query({
       data_source_id: invitesDsId,
       filter: {
         property: notionConfig.mappings.invites.code,
-        rich_text: {
-          equals: code.trim(),
-        },
+        rich_text: { equals: code.trim() },
       },
     });
 
@@ -265,7 +317,6 @@ export async function fetchInviteByCode(
       return null;
     }
 
-    // Get basic invite details
     const inviteName = getTitleProperty(
       invitePage.properties[notionConfig.mappings.invites.name],
       "Invitasjon",
@@ -273,72 +324,48 @@ export async function fetchInviteByCode(
     const inviteCode = getRichTextProperty(
       invitePage.properties[notionConfig.mappings.invites.code],
     );
+    const guestIds = getRelationIds(
+      invitePage.properties[notionConfig.mappings.invites.guests],
+    );
 
-    // Fetch related guests
-    const guestsRelation =
-      invitePage.properties[notionConfig.mappings.invites.guests];
-    const guestIds: string[] = [];
-    if (
-      guestsRelation?.type === "relation" &&
-      Array.isArray(guestsRelation.relation)
-    ) {
-      guestIds.push(...guestsRelation.relation.map((r: any) => r.id));
-    }
-
-    // Fetch each guest in parallel
-    const guests: Guest[] = [];
-    if (guestIds.length > 0) {
-      const guestPromises = guestIds.map(async (id) => {
+    const guestResults = await Promise.all(
+      guestIds.map(async (id): Promise<Guest | null> => {
         try {
           const guestPage = (await notion.pages.retrieve({
             page_id: id,
           })) as PageObjectResponse;
-          if ("properties" in guestPage) {
-            const guestName = getTitleProperty(
-              guestPage.properties[notionConfig.mappings.guests.name],
-            );
+          if (!("properties" in guestPage)) return null;
 
-            const guestRsvpProp =
-              guestPage.properties[notionConfig.mappings.guests.rsvp];
-            const guestRsvp =
-              guestRsvpProp?.type === "status"
-                ? guestRsvpProp.status?.name || notionConfig.rsvpStatus.pending
-                : notionConfig.rsvpStatus.pending;
+          const props = guestPage.properties;
+          const guestRsvpProp = props[notionConfig.mappings.guests.rsvp];
+          const guestRsvp =
+            guestRsvpProp?.type === "status"
+              ? guestRsvpProp.status?.name || notionConfig.rsvpStatus.pending
+              : notionConfig.rsvpStatus.pending;
 
-            const guestAllergies = getAllergyItems(
-              guestPage.properties[notionConfig.mappings.guests.allergies],
-            );
-
-            const guestTableProp =
-              guestPage.properties[notionConfig.mappings.guests.table];
-            const guestTableId =
-              (guestTableProp?.type === "relation" &&
-                guestTableProp.relation?.[0]?.id) ||
-              null;
-
-            return {
-              id: guestPage.id,
-              name: guestName,
-              rsvp: guestRsvp,
-              allergies: guestAllergies,
-              tableId: guestTableId,
-            } as Guest;
-          }
+          return {
+            id: guestPage.id,
+            name: getTitleProperty(props[notionConfig.mappings.guests.name]),
+            rsvp: guestRsvp,
+            allergies: getAllergyItems(
+              props[notionConfig.mappings.guests.allergies],
+            ),
+            tableId:
+              getRelationIds(props[notionConfig.mappings.guests.table])[0] ??
+              null,
+          };
         } catch (err) {
           console.error(`Error fetching guest ${id}:`, err);
+          return null;
         }
-        return null;
-      });
-
-      const guestResults = await Promise.all(guestPromises);
-      guests.push(...(guestResults.filter(Boolean) as Guest[]));
-    }
+      }),
+    );
 
     return {
       id: invitePage.id,
       code: inviteCode,
       name: inviteName,
-      guests,
+      guests: guestResults.filter((g): g is Guest => g !== null),
     };
   } catch (error) {
     console.error("Error in fetchInviteByCode:", error);
@@ -346,30 +373,30 @@ export async function fetchInviteByCode(
   }
 }
 
-// 2. Update Guest RSVP & Allergies
+/**
+ * Update a guest's RSVP status and allergies.
+ * `allergies` are Notion multi_select option names; unknown names are created
+ * by Notion on write (the couple reviews them before they go to the kitchen).
+ */
 export async function updateGuestRSVP(
   guestId: string,
   rsvp: string,
   allergies: string[],
-  localEnv?: Env,
+  env: Env,
 ): Promise<void> {
-  const notion = getNotionClient(localEnv);
+  const notion = getNotionClient(env);
 
   try {
-    const properties: Record<string, any> = {
-      [notionConfig.mappings.guests.rsvp]: {
-        status: {
-          name: rsvp,
-        },
-      },
-      [notionConfig.mappings.guests.allergies]: {
-        multi_select: sanitizeAllergyItems(allergies).map((name) => ({ name })),
-      },
-    };
-
     await notion.pages.update({
       page_id: guestId,
-      properties,
+      properties: {
+        [notionConfig.mappings.guests.rsvp]: { status: { name: rsvp } },
+        [notionConfig.mappings.guests.allergies]: {
+          multi_select: sanitizeAllergyItems(allergies).map((name) => ({
+            name,
+          })),
+        },
+      } as any,
     });
   } catch (error) {
     console.error(`Error updating guest RSVP for ${guestId}:`, error);
@@ -386,11 +413,14 @@ export async function updateGuestRSVP(
  * not on the database container. Returns [] on any failure — the chip input
  * still works without suggestions, and this must never break the RSVP page.
  */
-export async function fetchAllergyOptions(localEnv?: Env): Promise<string[]> {
+export async function fetchAllergyOptions(env: Env): Promise<string[]> {
   try {
-    const notion = getNotionClient(localEnv);
-    const guestsDbId = requireEnvVar("NOTION_GUESTS_DATABASE_ID", localEnv);
-    const guestsDsId = await getDataSourceId(notion, guestsDbId);
+    const notion = getNotionClient(env);
+    const guestsDsId = await getDataSourceId(
+      notion,
+      requireDatabaseId(env, "NOTION_GUESTS_DATABASE_ID"),
+      env,
+    );
 
     const dataSource: any = await notion.dataSources.retrieve({
       data_source_id: guestsDsId,
@@ -412,101 +442,90 @@ export async function fetchAllergyOptions(localEnv?: Env): Promise<string[]> {
   }
 }
 
-// 3. Fetch All Seating Data (for Tables and Seating Chart)
+// ---------------------------------------------------------------------------
+// Seating
+// ---------------------------------------------------------------------------
+
 export interface TableWithGuests {
   id: string;
   name: string;
-  guests: {
-    id: string;
-    name: string;
-  }[];
+  guests: { id: string; name: string }[];
 }
 
-export async function fetchAllSeatingData(
-  localEnv?: Env,
-): Promise<TableWithGuests[]> {
-  const notion = getNotionClient(localEnv);
+async function loadSeating(env: Env): Promise<TableWithGuests[]> {
+  const [tablePages, guestPages] = await Promise.all([
+    queryDatabase(env, "NOTION_TABLES_DATABASE_ID"),
+    queryDatabase(env, "NOTION_GUESTS_DATABASE_ID"),
+  ]);
 
-  try {
-    const tablesDbId = requireEnvVar("NOTION_TABLES_DATABASE_ID", localEnv);
-    const tablesDsId = await getDataSourceId(notion, tablesDbId);
-
-    // A. Query all tables
-    const tablesResponse = await notion.dataSources.query({
-      data_source_id: tablesDsId,
+  const tablesMap = new Map<string, TableWithGuests>();
+  for (const page of tablePages) {
+    tablesMap.set(page.id, {
+      id: page.id,
+      name: getTitleProperty(
+        page.properties[notionConfig.mappings.tables.name],
+        "Bord",
+      ),
+      guests: [],
     });
-
-    const tablesMap = new Map<string, TableWithGuests>();
-
-    for (const page of tablesResponse.results as PageObjectResponse[]) {
-      if ("properties" in page) {
-        const tableName = getTitleProperty(
-          page.properties[notionConfig.mappings.tables.name],
-          "Bord",
-        );
-
-        tablesMap.set(page.id, {
-          id: page.id,
-          name: tableName,
-          guests: [],
-        });
-      }
-    }
-
-    const guestsDbId = requireEnvVar("NOTION_GUESTS_DATABASE_ID", localEnv);
-    const guestsDsId = await getDataSourceId(notion, guestsDbId);
-
-    // B. Query all guests
-    const guestsResponse = await notion.dataSources.query({
-      data_source_id: guestsDsId,
-      page_size: 100, // Adjust as necessary
-    });
-
-    // C. Map guests to their respective tables
-    for (const page of guestsResponse.results as PageObjectResponse[]) {
-      if ("properties" in page) {
-        const guestName = getTitleProperty(
-          page.properties[notionConfig.mappings.guests.name],
-        );
-
-        const tableProp = page.properties[notionConfig.mappings.guests.table];
-        if (
-          tableProp?.type === "relation" &&
-          tableProp.relation &&
-          tableProp.relation.length > 0
-        ) {
-          const tableId = tableProp.relation[0].id;
-          const table = tablesMap.get(tableId);
-          if (table) {
-            table.guests.push({
-              id: page.id,
-              name: guestName,
-            });
-          }
-        }
-      }
-    }
-
-    // Sort guests alphabetically within each table so seating layout looks neat and searchable
-    const tables = Array.from(tablesMap.values());
-    for (const table of tables) {
-      table.guests.sort((a, b) => a.name.localeCompare(b.name, "nb"));
-    }
-
-    // Sort tables by name (e.g. Bord 1, Bord 2...)
-    tables.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }),
-    );
-
-    return tables;
-  } catch (error) {
-    console.error("Error in fetchAllSeatingData:", error);
-    throw error;
   }
+
+  for (const page of guestPages) {
+    const tableId = getRelationIds(
+      page.properties[notionConfig.mappings.guests.table],
+    )[0];
+    const table = tableId ? tablesMap.get(tableId) : undefined;
+    if (table) {
+      table.guests.push({
+        id: page.id,
+        name: getTitleProperty(
+          page.properties[notionConfig.mappings.guests.name],
+        ),
+      });
+    }
+  }
+
+  const tables = Array.from(tablesMap.values());
+  for (const table of tables) {
+    table.guests.sort((a, b) => a.name.localeCompare(b.name, "nb"));
+  }
+  tables.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+  return tables;
 }
+
+/**
+ * Tables with their guests, cached in KV (SWR, 60 s). Falls back to the
+ * prebuild snapshot if Notion is unreachable and nothing is cached.
+ */
+export async function fetchAllSeatingData(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<TableWithGuests[]> {
+  return cachedSWR(
+    env,
+    ctx,
+    {
+      key: CACHE_KEYS.seating,
+      fallback: () =>
+        ((notionFallback as any).seating || []) as TableWithGuests[],
+    },
+    () => loadSeating(env),
+  );
+}
+
+/** Invalidate the seating cache (call after RSVP/table changes). */
+export async function invalidateSeatingCache(env: Env): Promise<void> {
+  await invalidateCache(env, CACHE_KEYS.seating);
+}
+
+// ---------------------------------------------------------------------------
+// Schedule / program
+// ---------------------------------------------------------------------------
 
 export interface ScheduleEvent {
   time: string;
@@ -516,175 +535,290 @@ export interface ScheduleEvent {
   locationId?: string;
 }
 
-/**
- * Retrieves the wedding schedule timeline from the Notion program database,
- * cached in Cloudflare KV with Stale-While-Revalidate (SWR) logic.
- */
-export async function fetchScheduleFromNotion(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<ScheduleEvent[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_schedule";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `Schedule cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateScheduleCache(currentEnv).catch((err) => {
-            console.error("Error in background schedule sync:", err);
-          });
-
-          // If running under Cloudflare Workers, register the background promise
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
-          }
-        }
-
-        return data;
-      }
-    } catch (err) {
-      console.error("KV read error for Notion schedule:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Schedule cache miss, performing synchronous fetch...");
-  return await updateScheduleCache(currentEnv);
-}
-
-interface RawScheduleEvent {
-  title: string;
-  timeIso: string | null;
-  description: string;
-  emoji: string;
-  locationId?: string;
-}
-
-async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_schedule";
-
-  const programDbId = getEnvVar("NOTION_PROGRAM_DATABASE_ID", localEnv);
-  if (!programDbId) {
-    throw new Error("NOTION_PROGRAM_DATABASE_ID is not configured.");
-  }
-
-  const programDsId = await getDataSourceId(notion, programDbId);
-
-  // Query database: Webside = Ja
-  const response = await notion.dataSources.query({
-    data_source_id: programDsId,
-    filter: {
-      property: "Webside",
-      select: {
-        equals: "Ja",
-      },
-    },
+async function loadSchedule(env: Env): Promise<ScheduleEvent[]> {
+  const pages = await queryDatabase(env, "NOTION_PROGRAM_DATABASE_ID", {
+    property: "Webside",
+    select: { equals: "Ja" },
   });
 
-  const rawEvents = (response.results as PageObjectResponse[])
-    .filter((page): page is PageObjectResponse => "properties" in page)
-    .map((page): RawScheduleEvent => {
+  const formatter = new Intl.DateTimeFormat("nb-NO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Oslo",
+  });
+
+  return pages
+    .map((page) => {
       const props = page.properties;
-
-      // Title
-      const title = getTitleProperty(props.Tittel, "Uten tittel");
-
-      // Time ISO (for sorting)
-      const timeIso = getDateProperty(props.Tidspunkt);
-
-      // Description (safe fallback to multiple possible names)
       const descProp =
         props.Beskrivelse ||
         props.beskrivelse ||
         props.description ||
         props.Info ||
         props.Detaljer;
-      const description = getRichTextFull(descProp);
-
-      // Page emoji icon (top-level property, not inside properties)
-      const pageIcon = (page as any).icon;
-      const emoji =
-        pageIcon?.type === "emoji" && pageIcon.emoji ? pageIcon.emoji : "💛";
-
-      // Sted (relation)
-      const stedProp = props.Sted;
-      const locationId =
-        stedProp?.type === "relation" &&
-        Array.isArray(stedProp.relation) &&
-        stedProp.relation.length > 0
-          ? stedProp.relation[0].id
-          : undefined;
-
       return {
-        title,
-        timeIso,
-        description,
-        emoji,
-        locationId,
+        title: getTitleProperty(props.Tittel, "Uten tittel"),
+        timeIso: getDateProperty(props.Tidspunkt),
+        description: getRichTextFull(descProp),
+        emoji: getPageEmoji(page) ?? "💛",
+        locationId: getRelationIds(props.Sted)[0],
       };
     })
-    // Filter out items with no start time
-    .filter(
-      (e): e is RawScheduleEvent & { timeIso: string } => e.timeIso !== null,
-    );
-
-  // Sort rawEvents ascending by raw ISO time first
-  rawEvents.sort(
-    (a, b) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime(),
-  );
-
-  // Map to formattedEvents
-  const formattedEvents: ScheduleEvent[] = rawEvents.map((e) => {
-    // Format start time to HH:MM in Europe/Oslo timezone
-    const date = new Date(e.timeIso);
-    const time = new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Europe/Oslo",
-    }).format(date);
-
-    // Use the page emoji directly as the icon
-    const icon = e.emoji;
-
-    return {
-      time,
+    .filter((e): e is typeof e & { timeIso: string } => e.timeIso !== null)
+    .sort(
+      (a, b) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime(),
+    )
+    .map((e) => ({
+      time: formatter.format(new Date(e.timeIso)),
       title: e.title,
       description: e.description,
-      icon,
+      icon: e.emoji,
       locationId: e.locationId,
+    }));
+}
+
+export async function fetchScheduleFromNotion(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<ScheduleEvent[]> {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.schedule }, () =>
+    loadSchedule(env),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Contributors (Medvirkende) & Egentid — raw rows, cached and shared
+// ---------------------------------------------------------------------------
+
+interface RawContributor {
+  id: string;
+  name: string;
+  photo: string;
+  role: string;
+  emoji: string;
+  email: string;
+}
+
+interface RawEgentidItem {
+  id: string;
+  title: string;
+  description: string;
+  contributorId: string;
+  locationIds: string[];
+}
+
+/**
+ * Local photo lookup: files in public/images/egentid (by lowercase first name),
+ * public/images/egentid/downloads (by Notion page id, written by prebuild) and
+ * public/images/toastmaster (by lowercase first name). Resolved at build time
+ * via Vite glob so the Worker never needs the filesystem. Falls back to the
+ * (expiring) Notion URL when nothing local exists.
+ */
+// Vite resolves `import.meta.glob` at build time (must be a literal call).
+// Under bun test there is no glob → empty manifest → Notion URL fallback.
+let LOCAL_PHOTO_FILES: string[] = [];
+try {
+  LOCAL_PHOTO_FILES = Object.keys(
+    import.meta.glob([
+      "/public/images/egentid/*.{webp,jpg,jpeg,png,gif}",
+      "/public/images/egentid/downloads/*.{webp,jpg,jpeg,png,gif}",
+      "/public/images/toastmaster/*.{webp,jpg,jpeg,png,gif}",
+    ]),
+  ).map((p) => p.replace(/^\/public/, ""));
+} catch {
+  LOCAL_PHOTO_FILES = [];
+}
+
+export function resolveContributorPhoto(
+  contributor: { id: string; name: string },
+  notionUrl: string,
+  localFiles: string[] = LOCAL_PHOTO_FILES,
+): string {
+  const firstName = contributor.name.split(" ")[0]?.toLowerCase() ?? "";
+  const byId = localFiles.find((f) =>
+    f.startsWith(`/images/egentid/downloads/${contributor.id}.`),
+  );
+  if (byId) return byId;
+  const byName = localFiles.find(
+    (f) =>
+      f.startsWith(`/images/egentid/${firstName}.`) ||
+      f.startsWith(`/images/toastmaster/${firstName}.`),
+  );
+  if (byName) return byName;
+  return notionUrl || `/images/egentid/${firstName}.webp`;
+}
+
+async function loadRawContributors(env: Env): Promise<RawContributor[]> {
+  const pages = await queryDatabase(env, "NOTION_MEDVIRKENDE_DATABASE_ID");
+  return pages.map((page) => {
+    const props = page.properties;
+    const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
+
+    let email = "";
+    const emailProp = props.Email || props.email || props["E-post"];
+    if (emailProp?.type === "email" && emailProp.email) {
+      email = emailProp.email;
+    } else if (emailProp?.type === "rich_text") {
+      email = getRichTextFull(emailProp, "");
+    }
+
+    let notionPhoto = "";
+    const bildeProp = props.Bilde || props.bilde || props.Photo || props.photo;
+    if (bildeProp?.type === "files" && bildeProp.files?.length > 0) {
+      const fileObj = bildeProp.files[0] as any;
+      notionPhoto =
+        fileObj.type === "file"
+          ? fileObj.file?.url || ""
+          : fileObj.type === "external"
+            ? fileObj.external?.url || ""
+            : "";
+    }
+
+    return {
+      id: page.id,
+      name,
+      photo: resolveContributorPhoto({ id: page.id, name }, notionPhoto),
+      role: getRichTextFull(props.Role || props.Rolle, ""),
+      emoji: getRichTextFull(props.Emoji, ""),
+      email,
     };
   });
-
-  // Save to KV cache with current timestamp
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: formattedEvents,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Notion schedule cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Notion schedule:", err);
-    }
-  }
-
-  return formattedEvents;
 }
+
+async function loadRawEgentidItems(env: Env): Promise<RawEgentidItem[]> {
+  const pages = await queryDatabase(env, "NOTION_EGENTID_DATABASE_ID");
+  return pages.map((page) => {
+    const props = page.properties;
+    return {
+      id: page.id,
+      title: getTitleProperty(props.Name || props.Tittel || props.tittel, ""),
+      description: getRichTextFull(
+        props.Beskrivelse || props.Info || props.Details,
+        "",
+      ),
+      contributorId:
+        getRelationIds(
+          props.Medvirkende ||
+            props.medvirkende ||
+            props.Contributor ||
+            props.contributor,
+        )[0] ?? "",
+      locationIds: getRelationIds(
+        props["📍 Sted"] ||
+          props.Sted ||
+          props.sted ||
+          props.Location ||
+          props.location,
+      ),
+    };
+  });
+}
+
+function fetchRawContributors(env: Env, ctx?: WaitUntilContext) {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.contributorsRaw }, () =>
+    loadRawContributors(env),
+  );
+}
+
+function fetchRawEgentidItems(env: Env, ctx?: WaitUntilContext) {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.egentidRaw }, () =>
+    loadRawEgentidItems(env),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Egentid (recommendations) & toastmasters
+// ---------------------------------------------------------------------------
+
+export interface EgentidSuggestion {
+  text: string;
+  locationId?: string;
+}
+
+export interface Contributor {
+  id: string;
+  name: string;
+  photo: string;
+  role: string;
+  description: string;
+  emoji?: string;
+  email?: string;
+  suggestions: EgentidSuggestion[];
+}
+
+const CONTRIBUTOR_DESCRIPTIONS: Record<string, string> = {
+  kristine: "Drinker, drinker, drinker",
+  anders: "Kaffe og øl",
+  nora: "Enkel mat og avslapping",
+  lilo: "Tur og mat",
+};
+
+async function loadEgentid(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<Contributor[]> {
+  const [rawContributors, rawEgentidItems] = await Promise.all([
+    fetchRawContributors(env, ctx),
+    fetchRawEgentidItems(env, ctx),
+  ]);
+
+  return rawContributors
+    .map((c) => {
+      const suggestions: EgentidSuggestion[] = rawEgentidItems
+        .filter((item) => item.contributorId === c.id)
+        .map((item) => ({
+          text: `<strong>${escapeHtml(item.title)}</strong> &mdash; ${escapeHtml(item.description)}`,
+          locationId: item.locationIds[0] || undefined,
+        }));
+
+      return {
+        id: c.id,
+        name: c.name,
+        photo: c.photo,
+        role: c.role || `${c.name}s favoritter`,
+        description:
+          CONTRIBUTOR_DESCRIPTIONS[c.name.toLowerCase()] ??
+          `Anbefalinger fra ${c.name}.`,
+        emoji: c.emoji,
+        email: c.email || undefined,
+        suggestions,
+      };
+    })
+    .filter((c) => c.suggestions.length > 0);
+}
+
+/** Contributors with at least one Egentid suggestion (KV SWR cached). */
+export async function fetchEgentidData(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<Contributor[]> {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.egentid }, () =>
+    loadEgentid(env, ctx),
+  );
+}
+
+export interface Toastmaster {
+  name: string;
+  email: string;
+  photo: string;
+}
+
+/** Contributors whose role contains "toastmaster" (KV SWR cached). */
+export async function fetchToastmasters(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<Toastmaster[]> {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.toastmasters }, async () => {
+    const rawContributors = await fetchRawContributors(env, ctx);
+    return rawContributors
+      .filter((c) => c.role.toLowerCase().includes("toastmaster"))
+      .map(({ name, email, photo }) => ({ name, email, photo }));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Locations
+// ---------------------------------------------------------------------------
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -707,168 +841,59 @@ export interface WeddingLocation {
   zoneColor?: string;
 }
 
-// Locations fallback: sourced from prebuild-generated notion-fallback.json
-const fallbackLocations: WeddingLocation[] =
-  (notionFallback as any).locations || [];
-
-export async function fetchLocationsFromNotion(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<WeddingLocation[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_locations";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `Locations cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateLocationsCache(currentEnv).catch(
-            (err) => {
-              console.error("Error in background locations sync:", err);
-            },
-          );
-
-          // If running under Cloudflare Workers, register the background promise
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
-          }
+function parseZone(raw: string): [number, number][] | undefined {
+  if (!raw.trim()) return undefined;
+  const parsed = raw
+    .split(";")
+    .map((segment) => {
+      const parts = segment.trim().split(",");
+      if (parts.length >= 2) {
+        const lat = Number.parseFloat(parts[0].trim());
+        const lng = Number.parseFloat(parts[1].trim());
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          return [lat, lng] as [number, number];
         }
-
-        return data;
       }
-    } catch (err) {
-      console.error("KV read error for Notion locations:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Locations cache miss, performing synchronous fetch...");
-  try {
-    return await updateLocationsCache(currentEnv);
-  } catch (err) {
-    console.error(
-      "Error fetching locations from Notion, falling back to static list:",
-      err,
-    );
-    return fallbackLocations;
-  }
+      return null;
+    })
+    .filter((pair): pair is [number, number] => pair !== null);
+  return parsed.length >= 3 ? parsed : undefined;
 }
 
-async function updateLocationsCache(
-  localEnv?: Env,
+async function loadLocations(
+  env: Env,
+  ctx?: WaitUntilContext,
 ): Promise<WeddingLocation[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_locations";
-
-  const locationsDbId = getEnvVar("NOTION_LOCATIONS_DATABASE_ID", localEnv);
-  if (!locationsDbId) {
-    throw new Error("NOTION_LOCATIONS_DATABASE_ID is not configured.");
-  }
-
-  const locationsDsId = await getDataSourceId(notion, locationsDbId);
-
-  // Fetch locations, schedule, contributors, and egentid items in parallel
-  const [response, scheduleEvents, rawContributors, rawEgentidItems] =
+  // Compose from the cached fetchers so a cold start shares work with the
+  // homepage instead of re-querying Notion for schedule/contributors/egentid.
+  const [pages, scheduleEvents, rawContributors, rawEgentidItems] =
     await Promise.all([
-      notion.dataSources.query({ data_source_id: locationsDsId }),
-      fetchScheduleFromNotion(localEnv),
-      fetchRawContributors(localEnv),
-      fetchRawEgentidItems(localEnv),
+      queryDatabase(env, "NOTION_LOCATIONS_DATABASE_ID"),
+      fetchScheduleFromNotion(env, ctx),
+      fetchRawContributors(env, ctx),
+      fetchRawEgentidItems(env, ctx),
     ]);
 
-  const locations: WeddingLocation[] = (
-    response.results as PageObjectResponse[]
-  )
-    .filter((page): page is PageObjectResponse => "properties" in page)
+  return pages
     .map((page) => {
       const props = page.properties;
-
-      // Name (title)
       const name = getTitleProperty(props.Name, "Ukjent sted");
-
-      // Lat (number)
       const lat = getNumberProperty(props.Lat, null);
-
-      // Long / Lng (number)
       const lng =
         getNumberProperty(props.Long, null) ??
         getNumberProperty(props.Lng, null);
-
-      // Google Maps (url)
       const googleMapsUrl =
         props["Google Maps"]?.type === "url" && props["Google Maps"].url
           ? props["Google Maps"].url
           : undefined;
 
-      // Sone (zone polygon coordinates from rich_text)
-      let zone: [number, number][] | undefined;
-      const soneRaw = getRichTextFull(props.Sone || props.sone).trim();
-      if (soneRaw) {
-        const parsed = soneRaw
-          .split(";")
-          .map((segment) => {
-            const parts = segment.trim().split(",");
-            if (parts.length >= 2) {
-              const lat = parseFloat(parts[0].trim());
-              const lng = parseFloat(parts[1].trim());
-              if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-                return [lat, lng] as [number, number];
-              }
-            }
-            return null;
-          })
-          .filter((pair): pair is [number, number] => pair !== null);
-        if (parsed.length >= 3) {
-          zone = parsed;
-        }
-      }
-
-      // Sone-farge (zone color from select)
-      const zoneColor =
-        getSelectProperty(props["Sone-farge"] || props["sone-farge"]) ||
-        undefined;
-
-      // Try to get page icon emoji
-      const pageIcon = (page as any).icon;
-      const pageEmoji =
-        pageIcon?.type === "emoji" && pageIcon.emoji ? pageIcon.emoji : null;
-
-      // Map name/page emoji to dynamic fallback emojis
-      const ikon = getEmojiForLocation(name, pageEmoji);
-
-      // Map program schedule events for this location
-      const locationSchedule = scheduleEvents.filter(
-        (e) => e.locationId === page.id,
-      );
-
-      // Map Egentid recommendations for this location
-      const locationEgentids = rawEgentidItems.filter((item) =>
-        item.locationIds.includes(page.id),
-      );
-
       const activities: LocationActivity[] = [];
-
-      for (const e of locationSchedule) {
-        activities.push({
-          type: "program",
-          title: e.title,
-          time: e.time,
-        });
+      for (const e of scheduleEvents.filter((e) => e.locationId === page.id)) {
+        activities.push({ type: "program", title: e.title, time: e.time });
       }
-
-      for (const item of locationEgentids) {
+      for (const item of rawEgentidItems.filter((i) =>
+        i.locationIds.includes(page.id),
+      )) {
         const contributor = rawContributors.find(
           (c) => c.id === item.contributorId,
         );
@@ -887,40 +912,38 @@ async function updateLocationsCache(
         lat,
         lng,
         googleMapsUrl,
-        ikon,
+        ikon: getEmojiForLocation(name, getPageEmoji(page)),
         activities,
-        zone,
-        zoneColor,
+        zone: parseZone(getRichTextFull(props.Sone || props.sone)),
+        zoneColor:
+          getSelectProperty(props["Sone-farge"] || props["sone-farge"]) ||
+          undefined,
       };
     })
     .filter((loc) => loc.lat !== null && loc.lng !== null) as WeddingLocation[];
+}
 
-  // Save to KV cache with current timestamp
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: locations,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Notion locations cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Notion locations:", err);
-    }
-  }
-
-  return locations;
+export async function fetchLocationsFromNotion(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<WeddingLocation[]> {
+  return cachedSWR(
+    env,
+    ctx,
+    {
+      key: CACHE_KEYS.locations,
+      fallback: () =>
+        ((notionFallback as any).locations || []) as WeddingLocation[],
+    },
+    () => loadLocations(env, ctx),
+  );
 }
 
 function getEmojiForLocation(name: string, pageEmoji: string | null): string {
-  if (pageEmoji) {
-    return pageEmoji;
-  }
+  if (pageEmoji) return pageEmoji;
 
   const lowerName = name.toLowerCase();
-  if (lowerName.includes("kirke")) {
-    return "⛪";
-  }
+  if (lowerName.includes("kirke")) return "⛪";
   if (
     lowerName.includes("tårnet") ||
     lowerName.includes("fest") ||
@@ -952,27 +975,20 @@ function getEmojiForLocation(name: string, pageEmoji: string | null): string {
   ) {
     return "🍻";
   }
-  if (lowerName.includes("buss")) {
-    return "🚌";
-  }
-  if (lowerName.includes("trikk")) {
-    return "🚃";
-  }
+  if (lowerName.includes("buss")) return "🚌";
+  if (lowerName.includes("trikk")) return "🚃";
   if (lowerName.includes("parkering") || lowerName.includes("parking")) {
     return "🅿️";
   }
-
   return "📍";
 }
 
-/**
- * Bulk updates location coordinates in the Notion database.
- */
+/** Bulk update location coordinates (used by scripts/update_locations.ts). */
 export async function bulkUpdateLocations(
   updates: Array<{ id: string; lat: number; lng: number }>,
-  localEnv?: Env,
+  env: Env,
 ): Promise<void> {
-  const notion = getNotionClient(localEnv);
+  const notion = getNotionClient(env);
   for (const update of updates) {
     console.log(
       `Updating location ${update.id} to (${update.lat}, ${update.lng})…`,
@@ -980,500 +996,51 @@ export async function bulkUpdateLocations(
     await notion.pages.update({
       page_id: update.id,
       properties: {
-        Lat: {
-          number: update.lat,
-        },
-        Long: {
-          number: update.lng,
-        },
+        Lat: { number: update.lat },
+        Long: { number: update.lng },
       } as any,
     });
   }
 }
 
-interface RawContributor {
-  id: string;
-  name: string;
-  photo: string;
-  role: string;
-  emoji: string;
-  email: string;
-}
-
-interface RawEgentidItem {
-  id: string;
-  title: string;
-  description: string;
-  contributorId: string;
-  locationIds: string[];
-}
-
-export interface EgentidSuggestion {
-  text: string;
-  locationId?: string;
-}
-
-export interface Contributor {
-  id: string;
-  name: string;
-  photo: string;
-  role: string;
-  description: string;
-  emoji?: string;
-  email?: string;
-  suggestions: EgentidSuggestion[];
-}
-
-// Helper to fetch raw contributors from Notion
-async function fetchRawContributors(localEnv?: Env): Promise<RawContributor[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const medvirkendeDbId = getEnvVar("NOTION_MEDVIRKENDE_DATABASE_ID", localEnv);
-  if (!medvirkendeDbId) {
-    throw new Error("NOTION_MEDVIRKENDE_DATABASE_ID is not configured.");
-  }
-
-  const dsId = await getDataSourceId(notion, medvirkendeDbId);
-  const response = await notion.dataSources.query({
-    data_source_id: dsId,
-  });
-
-  return (response.results as PageObjectResponse[])
-    .filter((page): page is PageObjectResponse => "properties" in page)
-    .map((page) => {
-      const props = page.properties;
-      const name = getTitleProperty(props.Name || props.Navn, "Ukjent");
-      const role = getRichTextFull(props.Role || props.Rolle, "");
-      const emoji = getRichTextFull(props.Emoji, "");
-
-      // Handle email property
-      let email = "";
-      const emailProp = props.Email || props.email || props["E-post"];
-      if (emailProp?.type === "email" && emailProp.email) {
-        email = emailProp.email;
-      } else if (emailProp?.type === "rich_text") {
-        email = getRichTextFull(emailProp, "");
-      }
-
-      // Handle photo (Bilde files property)
-      let photo = "";
-      const bildeProp =
-        props.Bilde || props.bilde || props.Photo || props.photo;
-      if (
-        bildeProp?.type === "files" &&
-        Array.isArray(bildeProp.files) &&
-        bildeProp.files.length > 0
-      ) {
-        const fileObj = bildeProp.files[0];
-        if (fileObj.type === "file") {
-          photo = fileObj.file?.url || "";
-        } else if (fileObj.type === "external") {
-          photo = fileObj.external?.url || "";
-        }
-      }
-
-      // Fallback photo
-      if (!photo) {
-        photo = `/images/egentid/${name.toLowerCase()}.webp`;
-      }
-
-      return {
-        id: page.id,
-        name,
-        photo,
-        role,
-        emoji,
-        email,
-      };
-    });
-}
-
-// Helper to fetch raw Egentid suggestions from Notion
-async function fetchRawEgentidItems(localEnv?: Env): Promise<RawEgentidItem[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const egentidDbId = getEnvVar("NOTION_EGENTID_DATABASE_ID", localEnv);
-  if (!egentidDbId) {
-    throw new Error("NOTION_EGENTID_DATABASE_ID is not configured.");
-  }
-
-  const dsId = await getDataSourceId(notion, egentidDbId);
-  const response = await notion.dataSources.query({
-    data_source_id: dsId,
-  });
-
-  return (response.results as PageObjectResponse[])
-    .filter((page): page is PageObjectResponse => "properties" in page)
-    .map((page) => {
-      const props = page.properties;
-      const title = getTitleProperty(
-        props.Name || props.Tittel || props.tittel,
-        "",
-      );
-      const description = getRichTextFull(
-        props.Beskrivelse || props.Info || props.Details,
-        "",
-      );
-
-      // Medvirkende (relation)
-      const medvirkendeProp =
-        props.Medvirkende ||
-        props.medvirkende ||
-        props.Contributor ||
-        props.contributor;
-      const contributorId =
-        medvirkendeProp?.type === "relation" &&
-        Array.isArray(medvirkendeProp.relation) &&
-        medvirkendeProp.relation.length > 0
-          ? medvirkendeProp.relation[0].id
-          : "";
-
-      // Sted (relation)
-      const stedProp =
-        props["📍 Sted"] ||
-        props.Sted ||
-        props.sted ||
-        props.Location ||
-        props.location;
-      const locationIds: string[] = [];
-      if (stedProp?.type === "relation" && Array.isArray(stedProp.relation)) {
-        locationIds.push(...stedProp.relation.map((r: any) => r.id));
-      }
-
-      return {
-        id: page.id,
-        title,
-        description,
-        contributorId,
-        locationIds,
-      };
-    });
-}
-
-/**
- * Retrieves the Egentid contributors and suggestions from Notion,
- * cached in Cloudflare KV with SWR logic. Only returns contributors
- * who have at least one active suggestion.
- */
-export async function fetchEgentidData(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<Contributor[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_egentid_contributors";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // Notion S3 URLs expire after 1 hour.
-        // If the cache is older than 45 minutes, force a synchronous fetch
-        // to avoid serving expired image links to the user.
-        if (age > 45 * 60 * 1000) {
-          console.log(
-            "Egentid cache is too old (S3 URLs may be expired), forcing synchronous fetch...",
-          );
-        } else {
-          // If cache is stale (> 1 minute), trigger background update (SWR)
-          if (age > 60 * 1000) {
-            console.log(
-              `Egentid cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-            );
-            const updatePromise = updateEgentidCache(currentEnv).catch(
-              (err) => {
-                console.error("Error in background Egentid sync:", err);
-              },
-            );
-
-            if (context?.waitUntil) {
-              context.waitUntil(updatePromise);
-            }
-          }
-
-          return data;
-        }
-      }
-    } catch (err) {
-      console.error("KV read error for Egentid contributors:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Egentid cache miss, performing synchronous fetch...");
-  return await updateEgentidCache(currentEnv);
-}
-
-/**
- * Fetches the toastmasters from the Medvirkende database.
- * Identifies toastmasters by filtering for contributors whose
- * role contains "Toastmaster" (case-insensitive).
- * Cached in Cloudflare KV with SWR logic.
- */
-export async function fetchToastmasters(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<{ name: string; email: string; photo: string }[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_toastmaster";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // Notion S3 URLs expire after 1 hour.
-        // If cache is older than 45 minutes, force synchronous fetch.
-        if (age > 45 * 60 * 1000) {
-          console.log(
-            "Toastmasters cache is too old (S3 URLs may be expired), forcing synchronous fetch...",
-          );
-        } else {
-          // If cache is stale (> 1 minute), trigger background update (SWR)
-          if (age > 60 * 1000) {
-            console.log(
-              `Toastmasters cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-            );
-            const updatePromise = updateToastmastersCache(currentEnv).catch(
-              (err) => {
-                console.error("Error in background Toastmasters sync:", err);
-              },
-            );
-
-            if (context?.waitUntil) {
-              context.waitUntil(updatePromise);
-            }
-          }
-
-          return data;
-        }
-      }
-    } catch (err) {
-      console.error("KV read error for Toastmasters:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Toastmasters cache miss, performing synchronous fetch...");
-  return await updateToastmastersCache(currentEnv);
-}
-
-async function updateToastmastersCache(
-  localEnv?: Env,
-): Promise<{ name: string; email: string; photo: string }[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_toastmaster";
-
-  const rawContributors = await fetchRawContributors(localEnv);
-  const toastmasters = rawContributors.filter((c) =>
-    c.role.toLowerCase().includes("toastmaster"),
-  );
-
-  const result = toastmasters.map((tm) => ({
-    name: tm.name,
-    email: tm.email,
-    photo: tm.photo,
-  }));
-
-  // Save to KV cache
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: result,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Toastmasters KV cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Toastmasters:", err);
-    }
-  }
-
-  return result;
-}
-
-async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_egentid_contributors";
-
-  console.log("Updating Egentid KV cache...");
-  const [rawContributors, rawEgentidItems] = await Promise.all([
-    fetchRawContributors(localEnv),
-    fetchRawEgentidItems(localEnv),
-  ]);
-
-  const contributorsList: Contributor[] = rawContributors
-    .map((c) => {
-      // Find suggestions for this contributor
-      const contributorItems = rawEgentidItems.filter(
-        (item) => item.contributorId === c.id,
-      );
-
-      const suggestions: EgentidSuggestion[] = contributorItems.map((item) => {
-        return {
-          text: `<strong>${item.title}</strong> &mdash; ${item.description}`,
-          locationId: item.locationIds?.[0] || undefined,
-        };
-      });
-
-      // Maintain static copy fallback for description if none exists in DB
-      let description = `Anbefalinger fra ${c.name}.`;
-      if (c.name.toLowerCase() === "kristine") {
-        description = "Drinker, drinker, drinker";
-      } else if (c.name.toLowerCase() === "anders") {
-        description = "Kaffe og øl";
-      } else if (c.name.toLowerCase() === "nora") {
-        description = "Enkel mat og avslapping";
-      } else if (c.name.toLowerCase() === "lilo") {
-        description = "Tur og mat";
-      }
-
-      return {
-        id: c.id,
-        name: c.name,
-        photo: c.photo,
-        role: c.role || `${c.name}s favoritter`,
-        description,
-        emoji: c.emoji,
-        email: c.email || undefined,
-        suggestions,
-      };
-    })
-    // Only keep contributors who actually have Egentid suggestions
-    .filter((c) => c.suggestions.length > 0);
-
-  // Save to KV cache
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: contributorsList,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Egentid KV cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Egentid:", err);
-    }
-  }
-
-  return contributorsList;
-}
+// ---------------------------------------------------------------------------
+// FAQ
+// ---------------------------------------------------------------------------
 
 export interface FaqItem {
   question: string;
   answer: string;
 }
 
-/**
- * Retrieves the FAQs from the Notion FAQ database,
- * cached in Cloudflare KV with SWR logic.
- */
-export async function fetchFaqFromNotion(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<FaqItem[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_faq";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `FAQ cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateFaqCache(currentEnv).catch((err) => {
-            console.error("Error in background FAQ sync:", err);
-          });
-
-          // Register background promise if context is available
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
-          }
-        }
-
-        return data;
-      }
-    } catch (err) {
-      console.error("KV read error for Notion FAQs:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("FAQ cache miss, performing synchronous fetch...");
-  return await updateFaqCache(currentEnv);
-}
-
-async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_faq";
-
-  const faqDbId = getEnvVar("NOTION_FAQ_DATABASE_ID", localEnv);
-  if (!faqDbId) {
-    throw new Error("NOTION_FAQ_DATABASE_ID is not configured.");
-  }
-
-  const dsId = await getDataSourceId(notion, faqDbId);
-  const response = await notion.dataSources.query({
-    data_source_id: dsId,
-  });
-
-  const faqs: FaqItem[] = (response.results as PageObjectResponse[])
-    .filter((page): page is PageObjectResponse => "properties" in page)
+async function loadFaq(env: Env): Promise<FaqItem[]> {
+  const pages = await queryDatabase(env, "NOTION_FAQ_DATABASE_ID");
+  return pages
     .map((page) => {
       const props = page.properties;
-      const question = getTitleProperty(
-        props.Spørsmål || props.Sporsmal || props.Question || props.Name,
-        "Uten spørsmål",
-      );
-      const answer = notionRichTextToHtml(
-        props.Svar || props.Answer || props.Description,
-        "",
-      );
-
       return {
-        question,
-        answer,
+        question: getTitleProperty(
+          props.Spørsmål || props.Sporsmal || props.Question || props.Name,
+          "Uten spørsmål",
+        ),
+        answer: notionRichTextToHtml(
+          props.Svar || props.Answer || props.Description,
+          "",
+        ),
       };
     })
-    // Filter out items that have no question
     .filter((faq) => faq.question && faq.question.trim() !== "Uten spørsmål");
-
-  // Save to KV cache
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: faqs,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Notion FAQ cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Notion FAQs:", err);
-    }
-  }
-
-  return faqs;
 }
+
+export async function fetchFaqFromNotion(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<FaqItem[]> {
+  return cachedSWR(env, ctx, { key: CACHE_KEYS.faq }, () => loadFaq(env));
+}
+
+// ---------------------------------------------------------------------------
+// Our story
+// ---------------------------------------------------------------------------
 
 export interface StoryItem {
   year: string;
@@ -1481,240 +1048,104 @@ export interface StoryItem {
   content: string;
 }
 
-/**
- * Retrieves the story timeline items from the Notion story database,
- * cached in Cloudflare KV with SWR logic.
- */
-export async function fetchStoryFromNotion(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<StoryItem[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_story";
-  const fallback = (notionFallback as any).story || [];
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `Story cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateStoryCache(currentEnv).catch((err) => {
-            console.error("Error in background story sync:", err);
-          });
-
-          // Register background promise if context is available
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
-          }
-        }
-
-        return data;
-      }
-    } catch (err) {
-      console.error("KV read error for Notion story:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Story cache miss, performing synchronous fetch...");
-  try {
-    return await updateStoryCache(currentEnv);
-  } catch (err) {
-    console.error("Error fetching story from Notion, using fallback:", err);
-    return fallback;
-  }
-}
-
-async function updateStoryCache(localEnv?: Env): Promise<StoryItem[]> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_story";
-
-  const storyDbId = getEnvVar("NOTION_STORY_DATABASE_ID", localEnv);
-  if (!storyDbId) {
-    throw new Error("NOTION_STORY_DATABASE_ID is not configured.");
-  }
-
-  const dsId = await getDataSourceId(notion, storyDbId);
-  const response = await notion.dataSources.query({
-    data_source_id: dsId,
-  });
-
-  const storyItems: StoryItem[] = (response.results as PageObjectResponse[])
-    .filter((page): page is PageObjectResponse => "properties" in page)
+async function loadStory(env: Env): Promise<StoryItem[]> {
+  const pages = await queryDatabase(env, "NOTION_STORY_DATABASE_ID");
+  return pages
     .map((page) => {
       const props = page.properties;
-      const title = getTitleProperty(
-        props.Tittel || props.Title || props.Name,
-        "Uten tittel",
-      );
-      const content = getRichTextFull(
-        props.Beskrivelse || props.Content || props.Description,
-        "",
-      );
-
-      const dateStr = getDateProperty(props.Dato || props.Date);
-      const year = dateStr ? dateStr.split("-")[0] : "";
-
+      const dateStr = getDateProperty(props.Dato || props.Date) || "";
       return {
-        year,
-        title,
-        content,
-        dateStr: dateStr || "",
+        year: dateStr ? dateStr.split("-")[0] : "",
+        title: getTitleProperty(
+          props.Tittel || props.Title || props.Name,
+          "Uten tittel",
+        ),
+        content: getRichTextFull(
+          props.Beskrivelse || props.Content || props.Description,
+          "",
+        ),
+        dateStr,
       };
     })
     .filter((item) => item.year)
     .sort((a, b) => a.dateStr.localeCompare(b.dateStr))
     .map(({ year, title, content }) => ({ year, title, content }));
-
-  if (kv) {
-    try {
-      const cacheValue = JSON.stringify({
-        data: storyItems,
-        timestamp: Date.now(),
-      });
-      await kv.put(cacheKey, cacheValue);
-      console.log("Notion Story cache updated successfully.");
-    } catch (err) {
-      console.error("KV write error for Notion Story:", err);
-    }
-  }
-
-  return storyItems;
 }
 
-// Feature flags fallback: sourced from prebuild-generated notion-fallback.json
-const DEFAULT_FLAGS: Record<string, boolean> =
-  (notionFallback as any).flags || {};
-
-/**
- * Retrieves the feature flags from the Notion flags database,
- * cached in Cloudflare KV with SWR logic.
- */
-export async function fetchFeatureFlags(
-  localEnv?: Env,
-  context?: { waitUntil(promise: Promise<any>): void },
-): Promise<Record<string, boolean>> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_flags";
-
-  // 1. Try to read from KV cache
-  if (kv) {
-    try {
-      const cached = await kv.get(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        // If cache is stale (> 1 minute), trigger background update (SWR)
-        if (age > 60 * 1000) {
-          console.log(
-            `Flags cache is stale (${Math.round(age / 1000)}s), triggering background refresh...`,
-          );
-          const updatePromise = updateFlagsCache(currentEnv).catch((err) => {
-            console.error("Error in background flags sync:", err);
-          });
-
-          // Register background promise if context is available
-          if (context?.waitUntil) {
-            context.waitUntil(updatePromise);
-          }
-        }
-
-        return data;
-      }
-    } catch (err) {
-      console.error("KV read error for Notion feature flags:", err);
-    }
-  }
-
-  // 2. Cache miss: Fetch and update synchronously
-  console.log("Flags cache miss, performing synchronous fetch...");
-  return await updateFlagsCache(currentEnv);
+export async function fetchStoryFromNotion(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<StoryItem[]> {
+  return cachedSWR(
+    env,
+    ctx,
+    {
+      key: CACHE_KEYS.story,
+      fallback: () => ((notionFallback as any).story || []) as StoryItem[],
+    },
+    () => loadStory(env),
+  );
 }
 
-async function updateFlagsCache(
-  localEnv?: Env,
-): Promise<Record<string, boolean>> {
-  const currentEnv = localEnv || cloudflareEnv;
-  const notion = getNotionClient(currentEnv);
-  const kv = currentEnv?.CACHE;
-  const cacheKey = "notion_flags";
+// ---------------------------------------------------------------------------
+// Feature flags
+// ---------------------------------------------------------------------------
 
-  const flagsDbId = getEnvVar("NOTION_FLAGS_DATABASE_ID", localEnv);
-  if (!flagsDbId) {
-    throw new Error("NOTION_FLAGS_DATABASE_ID is not configured.");
-  }
+/** Defaults come from the prebuild snapshot; missing → everything enabled. */
+export const DEFAULT_FLAGS: Record<string, boolean> = {
+  rsvp: true,
+  seating: true,
+  music: true,
+  map: true,
+  egentid: true,
+  program: true,
+  ...((notionFallback as any).flags || {}),
+};
 
+async function loadFlags(env: Env): Promise<Record<string, boolean>> {
+  const pages = await queryDatabase(env, "NOTION_FLAGS_DATABASE_ID");
   const flags = { ...DEFAULT_FLAGS };
 
-  try {
-    const dsId = await getDataSourceId(notion, flagsDbId);
-    const response = await notion.dataSources.query({
-      data_source_id: dsId,
-    });
+  for (const page of pages) {
+    const props = page.properties;
+    const flagIdProp =
+      props["Flagg Id"] ||
+      props["Flagg ID"] ||
+      props["flagg id"] ||
+      props["Flag id"] ||
+      props["Flag ID"] ||
+      props["flag id"] ||
+      props.Name;
+    const flagKey = getTitleProperty(flagIdProp, "").trim().toLowerCase();
+    if (!flagKey) continue;
 
-    for (const page of response.results as PageObjectResponse[]) {
-      if (!("properties" in page)) continue;
-      const props = page.properties;
-
-      const flagIdProp =
-        props["Flagg Id"] ||
-        props["Flagg ID"] ||
-        props["flagg id"] ||
-        props["Flag id"] ||
-        props["Flag ID"] ||
-        props["flag id"] ||
-        props.Name;
-      const flagKey = getTitleProperty(flagIdProp, "").trim().toLowerCase();
-
-      if (!flagKey) continue;
-
-      const activeProp = props.Aktivert;
-      let isEnabled = false;
-      if (activeProp) {
-        if (activeProp.type === "select") {
-          isEnabled = activeProp.select?.name === "Ja";
-        } else if (activeProp.type === "status") {
-          isEnabled = activeProp.status?.name === "Ja";
-        } else if (activeProp.type === "rich_text") {
-          isEnabled = getRichTextFull(activeProp).trim() === "Ja";
-        }
-      }
-
-      flags[flagKey] = isEnabled;
+    const activeProp = props.Aktivert as any;
+    let isEnabled = false;
+    if (activeProp?.type === "select") {
+      isEnabled = activeProp.select?.name === "Ja";
+    } else if (activeProp?.type === "status") {
+      isEnabled = activeProp.status?.name === "Ja";
+    } else if (activeProp?.type === "rich_text") {
+      isEnabled = getRichTextFull(activeProp).trim() === "Ja";
     }
-
-    // Save to KV cache
-    if (kv) {
-      try {
-        const cacheValue = JSON.stringify({
-          data: flags,
-          timestamp: Date.now(),
-        });
-        await kv.put(cacheKey, cacheValue);
-        console.log("Notion flags cache updated successfully.");
-      } catch (err) {
-        console.error("KV write error for Notion flags:", err);
-      }
-    }
-  } catch (error) {
-    console.error(
-      "Failed to query Notion feature flags, falling back to defaults:",
-      error,
-    );
+    flags[flagKey] = isEnabled;
   }
 
   return flags;
+}
+
+/**
+ * Feature flags from Notion (KV SWR cached). If Notion cannot be reached and
+ * nothing is cached, the prebuild defaults are returned (and not cached).
+ */
+export async function fetchFeatureFlags(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<Record<string, boolean>> {
+  return cachedSWR(
+    env,
+    ctx,
+    { key: CACHE_KEYS.flags, fallback: () => ({ ...DEFAULT_FLAGS }) },
+    () => loadFlags(env),
+  );
 }

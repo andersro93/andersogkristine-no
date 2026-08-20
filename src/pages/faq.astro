@@ -1,19 +1,10 @@
 ---
-import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import Faq from "../components/Faq.astro";
-import { fetchFeatureFlags } from '../services/notion';
+import { DEFAULT_FLAGS } from '../services/notion';
 
-const context = Astro.locals?.cfContext;
-let flags = { rsvp: true, seating: true, music: true, map: true, egentid: true, program: true };
-try {
-  const fetchedFlags = await fetchFeatureFlags(env as Env, context);
-  if (fetchedFlags) {
-    flags = fetchedFlags;
-  }
-} catch (err) {
-  console.error("Failed to load feature flags in FAQ page:", err);
-}
+// Feature flags are resolved once per request by the middleware
+const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
 ---
 
 <Layout title="Praktisk Informasjon - Kristine og Anders">

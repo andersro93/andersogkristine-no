@@ -38,7 +38,7 @@ async function main() {
   }
 
   console.log(`🚀 Updating ${updates.length} location(s) in Notion…`);
-  await bulkUpdateLocations(updates);
+  await bulkUpdateLocations(updates, process.env as unknown as Env);
   console.log("✅ Done.");
 }
 
