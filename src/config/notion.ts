@@ -9,7 +9,7 @@ export const notionConfig = {
     guests: {
       name: "Navn", // title
       rsvp: "RSVP", // status (options: "Venter", "Kommer", "Kommer ikke")
-      allergies: "Allergener", // select
+      allergies: "Allergener", // multi_select
       table: "Bord", // relation to Tables database
       invite: "Invitasjon", // relation to Invites database
     },

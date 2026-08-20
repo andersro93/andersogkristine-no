@@ -1,10 +1,11 @@
 import { useState } from "react";
+import AllergyInput from "./AllergyInput";
 
 interface Guest {
   id: string;
   name: string;
   rsvp?: string;
-  allergies?: string;
+  allergies?: string[];
 }
 
 interface Invite {
@@ -15,7 +16,7 @@ interface Invite {
 
 interface GuestFormState {
   rsvp: string;
-  allergies: string;
+  allergies: string[];
 }
 
 type FormState = Record<string, GuestFormState>;
@@ -24,16 +25,22 @@ type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 interface Props {
   invite: Invite;
+  allergySuggestions?: string[];
   seatingEnabled?: boolean;
   musicEnabled?: boolean;
 }
 
-export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled = false }: Props) {
+export default function RSVPForm({
+  invite,
+  allergySuggestions = [],
+  seatingEnabled = false,
+  musicEnabled = false,
+}: Props) {
   const [formState, setFormState] = useState<FormState>(() =>
     Object.fromEntries(
       invite.guests.map((g) => [
         g.id,
-        { rsvp: g.rsvp ?? "", allergies: g.allergies ?? "" },
+        { rsvp: g.rsvp ?? "", allergies: g.allergies ?? [] },
       ]),
     ),
   );
@@ -41,11 +48,12 @@ export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled 
   const [errorMsg, setErrorMsg] = useState("");
   const [allDeclined, setAllDeclined] = useState(false);
 
-  function updateGuest(id: string, field: keyof GuestFormState, value: string) {
-    setFormState((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value },
-    }));
+  function setRsvp(id: string, rsvp: string) {
+    setFormState((prev) => ({ ...prev, [id]: { ...prev[id], rsvp } }));
+  }
+
+  function setAllergies(id: string, allergies: string[]) {
+    setFormState((prev) => ({ ...prev, [id]: { ...prev[id], allergies } }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,11 +61,16 @@ export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled 
     setSubmitStatus("loading");
     setErrorMsg("");
 
-    const guests = invite.guests.map((g) => ({
-      id: g.id,
-      rsvp: formState[g.id]?.rsvp ?? "",
-      allergies: formState[g.id]?.allergies ?? "",
-    }));
+    const guests = invite.guests.map((g) => {
+      const rsvp = formState[g.id]?.rsvp ?? "";
+      return {
+        id: g.id,
+        rsvp,
+        // Clear allergies for guests who are not coming, so a changed answer
+        // does not leave stale tags behind in Notion.
+        allergies: rsvp === "Kommer" ? (formState[g.id]?.allergies ?? []) : [],
+      };
+    });
 
     const declined = guests.every((g) => g.rsvp !== "Kommer");
     setAllDeclined(declined);
@@ -199,7 +212,7 @@ export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled 
                           value={option}
                           required
                           checked={state?.rsvp === option}
-                          onChange={() => updateGuest(guest.id, "rsvp", option)}
+                          onChange={() => setRsvp(guest.id, option)}
                           className="w-4 h-4 text-brand-title focus:ring-brand-title border-brand-title/20"
                         />
                         <span className="text-sm font-medium text-brand-title">
@@ -216,7 +229,7 @@ export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled 
                 <div
                   className={`space-y-2 transition-all duration-300 overflow-hidden ${
                     isAttending
-                      ? "max-h-40 opacity-100"
+                      ? "max-h-[32rem] opacity-100"
                       : "max-h-0 opacity-0 pointer-events-none"
                   }`}
                 >
@@ -226,15 +239,14 @@ export default function RSVPForm({ invite, seatingEnabled = false, musicEnabled 
                   >
                     Allergier / Mathensyn
                   </label>
-                  <input
-                    type="text"
-                    id={`allergies-${guest.id}`}
-                    placeholder="F.eks. Gluten, vegetar, ingen"
-                    value={state?.allergies ?? ""}
-                    onChange={(e) =>
-                      updateGuest(guest.id, "allergies", e.target.value)
-                    }
-                    className="w-full px-4 py-2.5 rounded-lg border border-brand-title/15 bg-white text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-sm"
+                  <p className="text-xs text-brand-title/60">
+                    Legg til én ting om gangen.
+                  </p>
+                  <AllergyInput
+                    inputId={`allergies-${guest.id}`}
+                    value={state?.allergies ?? []}
+                    onChange={(items) => setAllergies(guest.id, items)}
+                    suggestions={allergySuggestions}
                   />
                 </div>
               </div>
