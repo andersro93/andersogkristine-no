@@ -7,6 +7,7 @@ import {
   fetchInviteByCode,
   fetchScheduleFromNotion,
   fetchStoryFromNotion,
+  resolveContributorPhoto,
   sanitizeAllergyItems,
   updateGuestRSVP,
 } from "./notion";
@@ -560,5 +561,39 @@ describe("Notion Service Integration & Fallbacks", () => {
       mockGuestsSchema = {};
       expect(await fetchAllergyOptions(mockEnv)).toEqual([]);
     });
+  });
+});
+
+describe("resolveContributorPhoto", () => {
+  const files = [
+    "/images/egentid/anders.webp",
+    "/images/egentid/downloads/page-123.jpg",
+    "/images/toastmaster/marte.webp",
+  ];
+  test("prefers the prebuild download by page id", () => {
+    expect(
+      resolveContributorPhoto(
+        { id: "page-123", name: "Anders Olsen" },
+        "https://s3/expiring",
+        files,
+      ),
+    ).toBe("/images/egentid/downloads/page-123.jpg");
+  });
+  test("falls back to first-name match in egentid or toastmaster folders", () => {
+    expect(
+      resolveContributorPhoto({ id: "x", name: "Anders" }, "", files),
+    ).toBe("/images/egentid/anders.webp");
+    expect(
+      resolveContributorPhoto({ id: "x", name: "Marte Hansen" }, "", files),
+    ).toBe("/images/toastmaster/marte.webp");
+  });
+  test("uses the Notion URL when nothing local matches", () => {
+    expect(
+      resolveContributorPhoto(
+        { id: "x", name: "Ukjent" },
+        "https://s3/expiring",
+        files,
+      ),
+    ).toBe("https://s3/expiring");
   });
 });

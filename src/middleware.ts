@@ -3,7 +3,11 @@ import { env as rawEnv } from "cloudflare:workers";
 
 const env = rawEnv as Env;
 
-import { fetchFeatureFlags, fetchInviteByCode } from "./services/notion";
+import {
+  DEFAULT_FLAGS,
+  fetchFeatureFlags,
+  fetchInviteByCode,
+} from "./services/notion";
 import {
   checkRateLimit,
   generateSessionCookie,
@@ -35,13 +39,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(pathname, 302);
   }
 
-  if (
-    isPinPage ||
-    isValidatePinApi ||
-    isRsvpPage ||
-    isRsvpApi ||
-    isStaticAsset
-  ) {
+  const loadFlags = async (): Promise<Record<string, boolean>> => {
+    try {
+      return await fetchFeatureFlags(env, context.locals?.cfContext);
+    } catch (err) {
+      console.error("Failed to load feature flags in middleware:", err);
+      return { ...DEFAULT_FLAGS };
+    }
+  };
+
+  if (isPinPage || isValidatePinApi || isRsvpApi || isStaticAsset) {
+    return next();
+  }
+
+  // The RSVP page is reachable without the PIN but still renders flag-gated links
+  if (isRsvpPage) {
+    context.locals.flags = await loadFlags();
     return next();
   }
 
@@ -93,24 +106,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirectToPin();
   }
 
-  // Retrieve feature flags
-  let flags: Record<string, boolean> = {
-    rsvp: true,
-    seating: true,
-    music: true,
-    map: true,
-  };
-  try {
-    const fetchedFlags = await fetchFeatureFlags(
-      env,
-      context.locals?.cfContext,
-    );
-    if (fetchedFlags) {
-      flags = fetchedFlags;
-    }
-  } catch (err) {
-    console.error("Failed to load feature flags in middleware:", err);
-  }
+  // Retrieve feature flags once per request; pages read them from locals
+  const flags = await loadFlags();
+  context.locals.flags = flags;
 
   // Block direct route access if features are disabled
   if (pathname === "/rsvp" && !flags.rsvp) {

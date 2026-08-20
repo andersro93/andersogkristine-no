@@ -3,7 +3,11 @@ import { env as rawEnv } from "cloudflare:workers";
 const env = rawEnv as Env;
 
 import type { APIRoute } from "astro";
-import { fetchInviteByCode, updateGuestRSVP } from "../../services/notion";
+import {
+  fetchInviteByCode,
+  invalidateSeatingCache,
+  updateGuestRSVP,
+} from "../../services/notion";
 import {
   checkRateLimit,
   LOCKOUT_MINUTES,
@@ -77,13 +81,7 @@ export const POST: APIRoute = async (context) => {
     }
 
     // 5. Invalidate the seating cache in Cloudflare KV
-    if (kv) {
-      try {
-        await kv.delete("seating_data");
-      } catch (cacheErr) {
-        console.error("Failed to delete KV cache:", cacheErr);
-      }
-    }
+    await invalidateSeatingCache(env);
 
     if (failed.length > 0) {
       return json(

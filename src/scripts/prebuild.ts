@@ -116,6 +116,9 @@ async function run() {
     fetchStoryFromNotion,
   } = await import("../services/notion");
 
+  // Scripts run under Bun; the services take an explicit env object.
+  const env = process.env as unknown as Env;
+
   // 1. Load existing data if available
   let existingData: FallbackData = {
     schedule: [],
@@ -147,7 +150,7 @@ async function run() {
 
   try {
     console.log("Syncing schedule timeline...");
-    const schedule = await fetchScheduleFromNotion();
+    const schedule = await fetchScheduleFromNotion(env);
     if (schedule && schedule.length > 0) {
       existingData.schedule = schedule;
       console.log(`Fetched ${schedule.length} schedule items.`);
@@ -161,7 +164,7 @@ async function run() {
 
   try {
     console.log("Syncing Egentid recommendations...");
-    const contributors = await fetchEgentidData();
+    const contributors = await fetchEgentidData(env);
     if (contributors && contributors.length > 0) {
       const localizedContributors = [];
       for (const contributor of contributors) {
@@ -188,7 +191,7 @@ async function run() {
 
   try {
     console.log("Syncing FAQs...");
-    const faqs = await fetchFaqFromNotion();
+    const faqs = await fetchFaqFromNotion(env);
     if (faqs && faqs.length > 0) {
       existingData.faqs = faqs;
       console.log(`Fetched ${faqs.length} FAQ items.`);
@@ -199,7 +202,7 @@ async function run() {
 
   try {
     console.log("Syncing Locations (Steder)...");
-    const locations = await fetchLocationsFromNotion();
+    const locations = await fetchLocationsFromNotion(env);
     if (locations && locations.length > 0) {
       existingData.locations = locations;
       console.log(`Fetched ${locations.length} locations.`);
@@ -213,7 +216,7 @@ async function run() {
 
   try {
     console.log("Syncing Seating (Bord)...");
-    const seating = await fetchAllSeatingData();
+    const seating = await fetchAllSeatingData(env);
     if (seating && seating.length > 0) {
       existingData.seating = seating;
       console.log(`Fetched ${seating.length} tables with guests.`);
@@ -227,7 +230,7 @@ async function run() {
 
   try {
     console.log("Syncing Feature Flags...");
-    const flags = await fetchFeatureFlags();
+    const flags = await fetchFeatureFlags(env);
     if (flags && Object.keys(flags).length > 0) {
       existingData.flags = flags;
       console.log(`Fetched ${Object.keys(flags).length} feature flags.`);
@@ -241,7 +244,7 @@ async function run() {
 
   try {
     console.log("Syncing Our Story (Historie)...");
-    const story = await fetchStoryFromNotion();
+    const story = await fetchStoryFromNotion(env);
     if (story && story.length > 0) {
       existingData.story = story;
       console.log(`Fetched ${story.length} story items.`);

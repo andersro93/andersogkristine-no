@@ -1,4 +1,5 @@
 ---
+import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import SeatingChart from '../components/SeatingChart';
 import { fetchAllSeatingData, type TableWithGuests } from '../services/notion';
@@ -7,7 +8,7 @@ let tables: TableWithGuests[] = [];
 let errorMsg: string | null = null;
 
 try {
-  tables = await fetchAllSeatingData();
+  tables = await fetchAllSeatingData(env as Env, Astro.locals?.cfContext);
 } catch (err) {
   console.error("Error loading seating in page:", err);
   errorMsg = "Det oppstod en feil ved lasting av bordoppsettet. Vennligst prøv igjen senere.";

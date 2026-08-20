@@ -33,5 +33,7 @@ declare namespace App {
     cfContext?: {
       waitUntil(promise: Promise<any>): void;
     };
+    /** Feature flags resolved once per request by the middleware. */
+    flags?: Record<string, boolean>;
   }
 }
