@@ -14,7 +14,7 @@
     "lint": "biome lint .",
     "check": "tsc --noEmit",
     "test": "bun test",
-    "ci": "biome ci . && bun run check && bun test && bun run build",
+    "ci": "bun run src/scripts/prebuild.ts && biome ci . && bun run check && bun test && bun run build",
     "format": "biome format .",
     "astro": "astro",
     "dev:clean": "rm -rf .wrangler/state/v3 .astro"
