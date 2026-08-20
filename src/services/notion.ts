@@ -115,6 +115,61 @@ function getMultiSelectProperty(prop: any): string[] {
     : [];
 }
 
+/**
+ * Reads the allergy property as a list of items. Accepts both the current
+ * multi_select type and the legacy select type, so guests who answered before
+ * the Notion column was converted still see their answer.
+ */
+function getAllergyItems(prop: any): string[] {
+  if (prop?.type === "multi_select") {
+    return getMultiSelectProperty(prop);
+  }
+  const legacy = getSelectProperty(prop);
+  return legacy ? [legacy] : [];
+}
+
+// Notion rejects commas in select/multi_select option names, and caps the name
+// at 100 characters.
+const ALLERGY_ITEM_MAX_LENGTH = 100;
+const ALLERGY_ITEM_MAX_COUNT = 20;
+
+/**
+ * Normalises untrusted allergy input into names Notion will accept: splits on
+ * commas, trims, drops empties, truncates, and removes case-insensitive
+ * duplicates while keeping the first spelling.
+ */
+export function sanitizeAllergyItems(items: unknown): string[] {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const raw of items) {
+    if (typeof raw !== "string") {
+      continue;
+    }
+    for (const part of raw.split(",")) {
+      const name = part.trim().slice(0, ALLERGY_ITEM_MAX_LENGTH);
+      if (!name) {
+        continue;
+      }
+      const key = name.toLocaleLowerCase("nb");
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      result.push(name);
+      if (result.length >= ALLERGY_ITEM_MAX_COUNT) {
+        return result;
+      }
+    }
+  }
+
+  return result;
+}
+
 function getDateProperty(prop: any): string | null {
   return prop?.type === "date" ? prop.date?.start || null : null;
 }
@@ -167,7 +222,7 @@ export interface Guest {
   id: string;
   name: string;
   rsvp: string; // "Venter" | "Kommer" | "Kommer ikke"
-  allergies: string;
+  allergies: string[];
   tableId?: string | null;
   tableName?: string | null;
 }
@@ -250,7 +305,7 @@ export async function fetchInviteByCode(
                 ? guestRsvpProp.status?.name || notionConfig.rsvpStatus.pending
                 : notionConfig.rsvpStatus.pending;
 
-            const guestAllergies = getSelectProperty(
+            const guestAllergies = getAllergyItems(
               guestPage.properties[notionConfig.mappings.guests.allergies],
             );
 
@@ -295,7 +350,7 @@ export async function fetchInviteByCode(
 export async function updateGuestRSVP(
   guestId: string,
   rsvp: string,
-  allergies: string,
+  allergies: string[],
   localEnv?: Env,
 ): Promise<void> {
   const notion = getNotionClient(localEnv);
@@ -307,9 +362,9 @@ export async function updateGuestRSVP(
           name: rsvp,
         },
       },
-      [notionConfig.mappings.guests.allergies]: allergies.trim()
-        ? { select: { name: allergies.trim() } }
-        : { select: null },
+      [notionConfig.mappings.guests.allergies]: {
+        multi_select: sanitizeAllergyItems(allergies).map((name) => ({ name })),
+      },
     };
 
     await notion.pages.update({
@@ -319,6 +374,41 @@ export async function updateGuestRSVP(
   } catch (error) {
     console.error(`Error updating guest RSVP for ${guestId}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Reads the existing option names off the allergy property so the RSVP form can
+ * offer them back as suggestions. Keeping guests on the existing spellings is
+ * what stops the option list from fragmenting.
+ *
+ * Under notionVersion 2025-09-03 the property schema lives on the data source,
+ * not on the database container. Returns [] on any failure — the chip input
+ * still works without suggestions, and this must never break the RSVP page.
+ */
+export async function fetchAllergyOptions(localEnv?: Env): Promise<string[]> {
+  try {
+    const notion = getNotionClient(localEnv);
+    const guestsDbId = requireEnvVar("NOTION_GUESTS_DATABASE_ID", localEnv);
+    const guestsDsId = await getDataSourceId(notion, guestsDbId);
+
+    const dataSource: any = await notion.dataSources.retrieve({
+      data_source_id: guestsDsId,
+    });
+
+    const prop =
+      dataSource?.properties?.[notionConfig.mappings.guests.allergies];
+    // Accept the legacy select type so suggestions work before the conversion.
+    const options: NotionSelectItem[] =
+      prop?.multi_select?.options ?? prop?.select?.options ?? [];
+
+    return options
+      .map((option) => option.name)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "nb"));
+  } catch (error) {
+    console.error("Error fetching allergy options:", error);
+    return [];
   }
 }
 

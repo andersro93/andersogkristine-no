@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
+  fetchAllergyOptions,
   fetchEgentidData,
   fetchFaqFromNotion,
   fetchFeatureFlags,
+  fetchInviteByCode,
   fetchScheduleFromNotion,
   fetchStoryFromNotion,
+  sanitizeAllergyItems,
+  updateGuestRSVP,
 } from "./notion";
 
 // Setup mocks for @notionhq/client
@@ -15,6 +19,10 @@ let mockMedvirkendeResults: any[] = [];
 let mockEgentidResults: any[] = [];
 let mockLocationsResults: any[] = [];
 let mockStoryResults: any[] = [];
+let mockInvitesResults: any[] = [];
+let mockGuestPages: Record<string, any> = {};
+let mockGuestsSchema: any = {};
+let mockPageUpdates: any[] = [];
 
 mock.module("@notionhq/client", () => {
   return {
@@ -47,14 +55,26 @@ mock.module("@notionhq/client", () => {
           if (data_source_id.includes("story-db")) {
             return { results: mockStoryResults };
           }
+          if (data_source_id.includes("invites-db")) {
+            return { results: mockInvitesResults };
+          }
           return { results: [] };
+        },
+        retrieve: async ({ data_source_id }: { data_source_id: string }) => {
+          if (data_source_id.includes("guests-db")) {
+            return { properties: mockGuestsSchema };
+          }
+          return { properties: {} };
         },
       };
       pages = {
         retrieve: async ({ page_id }: { page_id: string }) => {
-          return { id: page_id, properties: {} };
+          return mockGuestPages[page_id] ?? { id: page_id, properties: {} };
         },
-        update: async () => ({}),
+        update: async (args: any) => {
+          mockPageUpdates.push(args);
+          return {};
+        },
       };
     },
   };
@@ -73,6 +93,10 @@ describe("Notion Service Integration & Fallbacks", () => {
     mockEgentidResults = [];
     mockLocationsResults = [];
     mockStoryResults = [];
+    mockInvitesResults = [];
+    mockGuestPages = {};
+    mockGuestsSchema = {};
+    mockPageUpdates = [];
 
     // Reset mock KV cache
     const store = new Map<string, string>();
@@ -95,6 +119,8 @@ describe("Notion Service Integration & Fallbacks", () => {
       NOTION_EGENTID_DATABASE_ID: "egentid-db",
       NOTION_LOCATIONS_DATABASE_ID: "locations-db",
       NOTION_STORY_DATABASE_ID: "story-db",
+      NOTION_INVITES_DATABASE_ID: "invites-db",
+      NOTION_GUESTS_DATABASE_ID: "guests-db",
       CACHE: mockKV,
     };
   });
@@ -377,6 +403,162 @@ describe("Notion Service Integration & Fallbacks", () => {
       const schedule = await fetchScheduleFromNotion(mockEnv);
       expect(schedule).toHaveLength(1);
       expect(schedule[0].title).toBe("Cached Event");
+    });
+  });
+  describe("sanitizeAllergyItems", () => {
+    test("should trim, drop empties and reject non-arrays", () => {
+      expect(sanitizeAllergyItems(["  Gluten  ", "", "   "])).toEqual([
+        "Gluten",
+      ]);
+      expect(sanitizeAllergyItems([])).toEqual([]);
+      expect(sanitizeAllergyItems("Gluten")).toEqual([]);
+      expect(sanitizeAllergyItems(undefined)).toEqual([]);
+    });
+
+    test("should split on commas since Notion rejects them in option names", () => {
+      expect(sanitizeAllergyItems(["nøtter, egg", "Gluten"])).toEqual([
+        "nøtter",
+        "egg",
+        "Gluten",
+      ]);
+    });
+
+    test("should dedupe case-insensitively keeping the first spelling", () => {
+      expect(sanitizeAllergyItems(["Gluten", "gluten", "GLUTEN"])).toEqual([
+        "Gluten",
+      ]);
+    });
+
+    test("should truncate names to Notion's 100 character limit", () => {
+      const [name] = sanitizeAllergyItems(["a".repeat(150)]);
+      expect(name).toHaveLength(100);
+    });
+
+    test("should cap the number of items", () => {
+      const many = Array.from({ length: 40 }, (_, i) => `allergi-${i}`);
+      expect(sanitizeAllergyItems(many)).toHaveLength(20);
+    });
+  });
+
+  describe("updateGuestRSVP", () => {
+    test("should write allergies as a multi_select list", async () => {
+      await updateGuestRSVP("guest-1", "Kommer", ["Gluten", "nøtter"], mockEnv);
+
+      expect(mockPageUpdates).toHaveLength(1);
+      const { page_id, properties } = mockPageUpdates[0];
+      expect(page_id).toBe("guest-1");
+      expect(properties.RSVP).toEqual({ status: { name: "Kommer" } });
+      expect(properties.Allergener).toEqual({
+        multi_select: [{ name: "Gluten" }, { name: "nøtter" }],
+      });
+    });
+
+    test("should clear the field with an empty multi_select", async () => {
+      await updateGuestRSVP("guest-1", "Kommer ikke", [], mockEnv);
+
+      expect(mockPageUpdates[0].properties.Allergener).toEqual({
+        multi_select: [],
+      });
+    });
+
+    test("should sanitize untrusted input before writing", async () => {
+      await updateGuestRSVP(
+        "guest-1",
+        "Kommer",
+        ["  gluten, Gluten  "],
+        mockEnv,
+      );
+
+      expect(mockPageUpdates[0].properties.Allergener).toEqual({
+        multi_select: [{ name: "gluten" }],
+      });
+    });
+  });
+
+  describe("fetchInviteByCode allergies", () => {
+    function setupInvite(allergyProperty: any) {
+      mockInvitesResults = [
+        {
+          id: "invite-1",
+          properties: {
+            Name: { type: "title", title: [{ plain_text: "Familien Test" }] },
+            Kode: {
+              type: "rich_text",
+              rich_text: [{ plain_text: "TEST2026" }],
+            },
+            "🧑‍🤝‍🧑 Gjester": {
+              type: "relation",
+              relation: [{ id: "guest-1" }],
+            },
+          },
+        },
+      ];
+      mockGuestPages = {
+        "guest-1": {
+          id: "guest-1",
+          properties: {
+            Navn: { type: "title", title: [{ plain_text: "Test Testesen" }] },
+            RSVP: { type: "status", status: { name: "Kommer" } },
+            Allergener: allergyProperty,
+          },
+        },
+      };
+    }
+
+    test("should read a multi_select property as a list", async () => {
+      setupInvite({
+        type: "multi_select",
+        multi_select: [{ name: "Gluten" }, { name: "Nøtter" }],
+      });
+
+      const invite = await fetchInviteByCode("TEST2026", mockEnv);
+      expect(invite?.guests[0].allergies).toEqual(["Gluten", "Nøtter"]);
+    });
+
+    test("should read a legacy select property as a single-item list", async () => {
+      setupInvite({ type: "select", select: { name: "Gluten" } });
+
+      const invite = await fetchInviteByCode("TEST2026", mockEnv);
+      expect(invite?.guests[0].allergies).toEqual(["Gluten"]);
+    });
+
+    test("should return an empty list when the property is unset", async () => {
+      setupInvite({ type: "select", select: null });
+
+      const invite = await fetchInviteByCode("TEST2026", mockEnv);
+      expect(invite?.guests[0].allergies).toEqual([]);
+    });
+  });
+
+  describe("fetchAllergyOptions", () => {
+    test("should return multi_select option names sorted", async () => {
+      mockGuestsSchema = {
+        Allergener: {
+          type: "multi_select",
+          multi_select: {
+            options: [{ name: "Nøtter" }, { name: "Gluten" }, { name: "Egg" }],
+          },
+        },
+      };
+
+      const options = await fetchAllergyOptions(mockEnv);
+      expect(options).toEqual(["Egg", "Gluten", "Nøtter"]);
+    });
+
+    test("should fall back to legacy select options", async () => {
+      mockGuestsSchema = {
+        Allergener: {
+          type: "select",
+          select: { options: [{ name: "Gluten" }] },
+        },
+      };
+
+      expect(await fetchAllergyOptions(mockEnv)).toEqual(["Gluten"]);
+    });
+
+    test("should return an empty list when the property is missing", async () => {
+      mockGuestsSchema = {};
+      expect(await fetchAllergyOptions(mockEnv)).toEqual([]);
     });
   });
 });

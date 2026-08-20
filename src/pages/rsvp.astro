@@ -2,7 +2,7 @@
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import RSVPForm from '../components/RSVPForm';
-import { fetchInviteByCode, fetchFeatureFlags, type Invite } from '../services/notion';
+import { fetchInviteByCode, fetchFeatureFlags, fetchAllergyOptions, type Invite } from '../services/notion';
 import { generateSessionCookie } from '../services/pin';
 import { weddingConfig } from '../config';
 
@@ -10,11 +10,16 @@ import { weddingConfig } from '../config';
 const code = Astro.url.searchParams.get('code');
 let invite: Invite | null = null;
 let errorMsg: string | null = null;
+let allergySuggestions: string[] = [];
 
 if (code) {
   try {
     invite = await fetchInviteByCode(code, env as Env);
     if (invite) {
+      // Existing options are offered back as suggestions so guests reuse the
+      // same spelling instead of creating a new option each time.
+      allergySuggestions = await fetchAllergyOptions(env as Env);
+
       // Valid invite: grant a site-wide session so guests can browse other pages
       const cookieValue = generateSessionCookie(env as Env);
       Astro.cookies.set('wedding_access', cookieValue, {
@@ -99,7 +104,7 @@ try {
         </div>
       ) : (
         /* State B: React island handles all the interactive form logic */
-        <RSVPForm invite={invite} seatingEnabled={flags.seating} musicEnabled={flags.music} client:load />
+        <RSVPForm invite={invite} allergySuggestions={allergySuggestions} seatingEnabled={flags.seating} musicEnabled={flags.music} client:load />
       )}
 
     </div>
