@@ -651,7 +651,7 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
   const formattedEvents: ScheduleEvent[] = rawEvents.map((e) => {
     // Format start time to HH:MM in Europe/Oslo timezone
     const date = new Date(e.timeIso);
-    const time = new Intl.DateTimeFormat("no-NB", {
+    const time = new Intl.DateTimeFormat("nb-NO", {
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "Europe/Oslo",
@@ -1446,7 +1446,7 @@ async function updateFaqCache(localEnv?: Env): Promise<FaqItem[]> {
         "Uten spørsmål",
       );
       const answer = notionRichTextToHtml(
-        props.Svar || props.Svar || props.Answer || props.Description,
+        props.Svar || props.Answer || props.Description,
         "",
       );
 

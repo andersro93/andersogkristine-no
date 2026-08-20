@@ -1,0 +1,9 @@
+# Runtime versions — single source of truth for local dev and CI.
+#   mise install      # installs exactly these versions
+#   mise trust        # first time only, to trust this file
+#
+# Cloudflare Workers Builds does not read this file; keep the BUN_VERSION /
+# NODE_VERSION build variables in the Workers dashboard in sync with it.
+[tools]
+bun = "1.4.0"
+node = "24"
