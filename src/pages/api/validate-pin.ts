@@ -15,16 +15,10 @@ import {
   SESSION_COOKIE_OPTIONS,
   secureCompare,
 } from "../../services/pin";
+import { json } from "../../utils/http";
 
 interface ValidatePinRequestBody {
   pin?: string;
-}
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
 /** Exponential backoff on failures to slow down brute force (capped at 8s). */
