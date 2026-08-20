@@ -1,69 +1,6 @@
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-interface LeafletLatLngBounds {
-  _northEast: { lat: number; lng: number };
-  _southWest: { lat: number; lng: number };
-}
-
-interface LeafletLayer {
-  _layerType?: string;
-}
-
-interface LeafletIcon {
-  _iconType?: string;
-}
-
-interface LeafletMap {
-  remove(): void;
-  setView(latlng: [number, number], zoom: number): LeafletMap;
-  fitBounds(
-    bounds: LeafletLatLngBounds,
-    options?: Record<string, unknown>,
-  ): LeafletMap;
-  removeLayer(layer: LeafletLayer): LeafletMap;
-}
-
-interface LeafletMarker extends LeafletLayer {
-  addTo(map: LeafletMap): LeafletMarker;
-  bindPopup(content: string, options?: Record<string, unknown>): LeafletMarker;
-  openPopup(): LeafletMarker;
-}
-
-interface LeafletPolygon extends LeafletLayer {
-  addTo(map: LeafletMap): LeafletPolygon;
-  bindPopup(content: string, options?: Record<string, unknown>): LeafletPolygon;
-}
-
-interface LeafletLayerGroup extends LeafletLayer {
-  addTo(map: LeafletMap): LeafletLayerGroup;
-  addLayer(layer: LeafletLayer): LeafletLayerGroup;
-  clearLayers(): LeafletLayerGroup;
-}
-
-interface LeafletStatic {
-  map(
-    element: HTMLDivElement | string,
-    options?: Record<string, unknown>,
-  ): LeafletMap;
-  control: {
-    zoom(options?: Record<string, unknown>): { addTo(map: LeafletMap): void };
-  };
-  tileLayer(
-    url: string,
-    options?: Record<string, unknown>,
-  ): { addTo(map: LeafletMap): void };
-  layerGroup(): LeafletLayerGroup;
-  divIcon(options?: Record<string, unknown>): LeafletIcon;
-  marker(
-    latlng: [number, number],
-    options?: Record<string, unknown>,
-  ): LeafletMarker;
-  latLngBounds(bounds: [number, number][]): LeafletLatLngBounds;
-  polygon(
-    latlngs: [number, number][],
-    options?: Record<string, unknown>,
-  ): LeafletPolygon;
-}
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -140,10 +77,10 @@ export default function InteractiveMap() {
   }, []);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
-  const markersGroupRef = useRef<LeafletLayerGroup | null>(null);
-  const userMarkerRef = useRef<LeafletMarker | null>(null);
-  const markerInstancesRef = useRef<Map<string, LeafletMarker>>(new Map());
+  const mapRef = useRef<L.Map | null>(null);
+  const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map());
 
   // 1. Fetch locations on mount
   useEffect(() => {
@@ -177,14 +114,6 @@ export default function InteractiveMap() {
   useEffect(() => {
     if (isLoading || error || !mapContainerRef.current || mapRef.current)
       return;
-
-    const L = (window as unknown as { L?: LeafletStatic }).L;
-    if (!L) {
-      setError(
-        "Leaflet.js ble ikke lastet inn. Vennligst prøv å oppdatere siden.",
-      );
-      return;
-    }
 
     // Initialize map centered around Grünerløkka, Oslo
     const map = L.map(mapContainerRef.current, {
@@ -230,8 +159,7 @@ export default function InteractiveMap() {
 
   // 3. Update markers when locations or search query changes
   useEffect(() => {
-    const L = (window as unknown as { L?: LeafletStatic }).L;
-    if (!mapRef.current || !markersGroupRef.current || !L) return;
+    if (!mapRef.current || !markersGroupRef.current) return;
     const map = mapRef.current;
     const markersGroup = markersGroupRef.current;
 
@@ -444,9 +372,8 @@ export default function InteractiveMap() {
       return;
     }
 
-    const L = (window as unknown as { L?: LeafletStatic }).L;
     const map = mapRef.current;
-    if (!L || !map) return;
+    if (!map) return;
 
     setUserLocationActive(true);
 
@@ -553,8 +480,10 @@ export default function InteractiveMap() {
         {/* Search Header */}
         <div className="p-3 border-b border-brand-title/10 bg-brand-bg/20 flex flex-col gap-2 shrink-0">
           {/* Decorative Drag/Grab Handle (mobile only) */}
-          <div
-            className="lg:hidden w-10 h-1 bg-brand-title/20 rounded-full mx-auto cursor-pointer"
+          <button
+            type="button"
+            aria-label={isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
+            className="lg:hidden block w-10 h-1 bg-brand-title/20 rounded-full mx-auto cursor-pointer border-0 p-0"
             onClick={() => setIsSidebarOpen((prev) => !prev)}
           />
 
@@ -587,6 +516,9 @@ export default function InteractiveMap() {
                   isSidebarOpen ? "rotate-180" : ""
                 }`}
               >
+                <title>
+                  {isSidebarOpen ? "Kollaps panel" : "Ekspander panel"}
+                </title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
