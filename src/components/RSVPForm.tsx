@@ -10,6 +10,7 @@ interface Guest {
 
 interface Invite {
   id: string;
+  code: string;
   name: string;
   guests: Guest[];
 }
@@ -79,7 +80,7 @@ export default function RSVPForm({
       const res = await fetch("/api/rsvp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guests }),
+        body: JSON.stringify({ code: invite.code, guests }),
       });
       const result = (await res.json()) as { success: boolean; error?: string };
       if (res.ok && result.success) {

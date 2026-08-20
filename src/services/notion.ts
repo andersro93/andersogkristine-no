@@ -618,9 +618,7 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
       // Page emoji icon (top-level property, not inside properties)
       const pageIcon = (page as any).icon;
       const emoji =
-        pageIcon?.type === "emoji" && pageIcon.emoji
-          ? pageIcon.emoji
-          : "💛";
+        pageIcon?.type === "emoji" && pageIcon.emoji ? pageIcon.emoji : "💛";
 
       // Sted (relation)
       const stedProp = props.Sted;
@@ -687,7 +685,6 @@ async function updateScheduleCache(localEnv?: Env): Promise<ScheduleEvent[]> {
 
   return formattedEvents;
 }
-
 
 export interface LocationActivity {
   type: "program" | "egentid";
@@ -826,7 +823,7 @@ async function updateLocationsCache(
             if (parts.length >= 2) {
               const lat = parseFloat(parts[0].trim());
               const lng = parseFloat(parts[1].trim());
-              if (!isNaN(lat) && !isNaN(lng)) {
+              if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
                 return [lat, lng] as [number, number];
               }
             }
@@ -846,9 +843,7 @@ async function updateLocationsCache(
       // Try to get page icon emoji
       const pageIcon = (page as any).icon;
       const pageEmoji =
-        pageIcon?.type === "emoji" && pageIcon.emoji
-          ? pageIcon.emoji
-          : null;
+        pageIcon?.type === "emoji" && pageIcon.emoji ? pageIcon.emoji : null;
 
       // Map name/page emoji to dynamic fallback emojis
       const ikon = getEmojiForLocation(name, pageEmoji);
@@ -917,10 +912,7 @@ async function updateLocationsCache(
   return locations;
 }
 
-function getEmojiForLocation(
-  name: string,
-  pageEmoji: string | null,
-): string {
+function getEmojiForLocation(name: string, pageEmoji: string | null): string {
   if (pageEmoji) {
     return pageEmoji;
   }
@@ -1308,7 +1300,6 @@ async function updateToastmastersCache(
 
   return result;
 }
-
 
 async function updateEgentidCache(localEnv?: Env): Promise<Contributor[]> {
   const currentEnv = localEnv || cloudflareEnv;

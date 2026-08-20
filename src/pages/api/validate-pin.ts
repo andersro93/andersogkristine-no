@@ -6,13 +6,30 @@ import type { APIRoute } from "astro";
 import {
   checkRateLimit,
   generateSessionCookie,
+  getSitePin,
+  LOCKOUT_MINUTES,
+  MAX_ATTEMPTS,
   recordFailedAttempt,
   resetRateLimit,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_OPTIONS,
   secureCompare,
 } from "../../services/pin";
 
 interface ValidatePinRequestBody {
   pin?: string;
+}
+
+function json(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** Exponential backoff on failures to slow down brute force (capped at 8s). */
+export function backoffDelayMs(failedAttempts: number): number {
+  return Math.min(1000 * 2 ** failedAttempts, 8000);
 }
 
 export const POST: APIRoute = async (context) => {
@@ -21,104 +38,81 @@ export const POST: APIRoute = async (context) => {
 
   try {
     // 1. Check rate limit
-    const limitStatus = await checkRateLimit(ip, kv);
+    const limitStatus = await checkRateLimit(ip, kv, "pin");
     if (!limitStatus.allowed) {
-      const remainingTime = Math.ceil(
-        (limitStatus.lockedUntil - Date.now()) / 1000 / 60,
+      const remainingTime = Math.max(
+        1,
+        Math.ceil((limitStatus.lockedUntil - Date.now()) / 1000 / 60),
       );
-      return new Response(
-        JSON.stringify({
+      return json(
+        {
           error: `For mange forsøk. Prøv igjen om ${remainingTime} minutter.`,
           locked: true,
           lockedUntil: limitStatus.lockedUntil,
-        }),
-        {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
         },
+        429,
       );
     }
 
     // 2. Parse request body
-    const body = (await context.request.json()) as ValidatePinRequestBody;
+    let body: ValidatePinRequestBody;
+    try {
+      body = (await context.request.json()) as ValidatePinRequestBody;
+    } catch {
+      return json({ error: "PIN-kode mangler." }, 400);
+    }
     const pin = body?.pin;
 
     if (!pin || typeof pin !== "string") {
-      return new Response(JSON.stringify({ error: "PIN-kode mangler." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ error: "PIN-kode mangler." }, 400);
     }
 
-    // 3. Compare with correct PIN
-    const expectedPin = env?.SITE_PIN || process.env.SITE_PIN || "1234";
+    // 3. Compare with correct PIN (getSitePin throws in prod if unset)
+    const expectedPin = getSitePin(env);
     const isCorrect = secureCompare(pin.trim(), expectedPin.trim());
 
     if (isCorrect) {
-      // Clear rate limiting on success
-      await resetRateLimit(ip, kv);
-
-      // Generate signed session cookie
+      await resetRateLimit(ip, kv, "pin");
       const cookieValue = generateSessionCookie(env);
+      context.cookies.set(
+        SESSION_COOKIE_NAME,
+        cookieValue,
+        SESSION_COOKIE_OPTIONS,
+      );
+      return json({ success: true }, 200);
+    }
 
-      // Set cookie in Astro context
-      context.cookies.set("wedding_access", cookieValue, {
-        path: "/",
-        httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      });
+    // 4. Handle failure
+    const failStatus = await recordFailedAttempt(ip, kv, "pin");
+    const failedAttempts = MAX_ATTEMPTS - failStatus.attemptsRemaining;
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } else {
-      // 4. Handle failure
-      const failStatus = await recordFailedAttempt(ip, kv);
-
-      // Calculate delay based on failed attempts to slow down brute force (exponential backoff)
-      const failedAttempts = 5 - failStatus.attemptsRemaining;
-      const delayMs = Math.min(1000 * 2 ** failedAttempts, 8000);
-
-      // Wait to delay responses (exponential backoff)
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-      if (!failStatus.allowed) {
-        return new Response(
-          JSON.stringify({
-            error: "Feil PIN. Du har blitt midlertidig blokkert i 15 minutter.",
-            locked: true,
-            attemptsRemaining: 0,
-          }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          error: `Feil PIN-kode. Du har ${failStatus.attemptsRemaining} forsøk igjen.`,
-          locked: false,
-          attemptsRemaining: failStatus.attemptsRemaining,
-        }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        },
+    if (process.env.NODE_ENV !== "test") {
+      await new Promise((resolve) =>
+        setTimeout(resolve, backoffDelayMs(failedAttempts)),
       );
     }
+
+    if (!failStatus.allowed) {
+      return json(
+        {
+          error: `Feil PIN. Du har blitt midlertidig blokkert i ${LOCKOUT_MINUTES} minutter.`,
+          locked: true,
+          attemptsRemaining: 0,
+        },
+        403,
+      );
+    }
+
+    return json(
+      {
+        error: `Feil PIN-kode. Du har ${failStatus.attemptsRemaining} forsøk igjen.`,
+        locked: false,
+        attemptsRemaining: failStatus.attemptsRemaining,
+      },
+      401,
+    );
   } catch (error) {
     console.error("Error validating PIN:", error);
-    return new Response(
-      JSON.stringify({ error: "Det oppstod en intern feil." }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return json({ error: "Det oppstod en intern feil." }, 500);
   }
 };

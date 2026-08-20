@@ -163,7 +163,10 @@ describe("Astro Middleware & Invite Code Bypass", () => {
 
     const apiRsvpContext = createMockContext("/api/rsvp");
     const apiRsvpNext = mock(async () => new Response("API_RSVP"));
-    response = (await onRequest(apiRsvpContext as any, apiRsvpNext)) as Response;
+    response = (await onRequest(
+      apiRsvpContext as any,
+      apiRsvpNext,
+    )) as Response;
     expect(await response.text()).toBe("API_RSVP");
     expect(apiRsvpNext).toHaveBeenCalled();
   });
@@ -173,7 +176,10 @@ describe("Astro Middleware & Invite Code Bypass", () => {
       const context = createMockContext("/rsvp?code=evig-troskap");
       const nextCalled = mock(async () => new Response("RSVP_PAGE"));
 
-      const response = (await onRequest(context as any, nextCalled)) as Response;
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
       expect(response.status).toBe(302);
       expect(response.headers.get("Location")).toBe("/rsvp");
       expect(nextCalled).not.toHaveBeenCalled();
@@ -183,7 +189,10 @@ describe("Astro Middleware & Invite Code Bypass", () => {
       const context = createMockContext("/rsvp?code=valid-code");
       const nextCalled = mock(async () => new Response("RSVP_WITH_CODE"));
 
-      const response = (await onRequest(context as any, nextCalled)) as Response;
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
       expect(await response.text()).toBe("RSVP_WITH_CODE");
       expect(nextCalled).toHaveBeenCalled();
     });
@@ -201,7 +210,9 @@ describe("Astro Middleware & Invite Code Bypass", () => {
 
   test("should allow authenticated users to pass through without re-checking notion", async () => {
     const validCookie = generateSessionCookie(mockEnv as any);
-    const context = createMockContext("/musikk", { wedding_access: validCookie });
+    const context = createMockContext("/musikk", {
+      wedding_access: validCookie,
+    });
     const nextCalled = mock(async () => new Response("OK"));
 
     const response = (await onRequest(context as any, nextCalled)) as Response;
