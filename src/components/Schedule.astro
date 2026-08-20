@@ -1,6 +1,5 @@
 ---
 import { env } from 'cloudflare:workers';
-import { weddingConfig } from '../config';
 import { fetchScheduleFromNotion } from '../services/notion';
 
 interface Props {
@@ -8,20 +7,8 @@ interface Props {
 }
 
 const { flags } = Astro.props;
-let schedule = weddingConfig.schedule;
-
-// Retrieve Cloudflare runtime context
-const cloudflareContext = Astro.locals?.cfContext;
-
-try {
-  const notionSchedule = await fetchScheduleFromNotion(env as Env, cloudflareContext);
-  if (notionSchedule && notionSchedule.length > 0) {
-    schedule = notionSchedule;
-  }
-} catch (err) {
-  console.error("Failed to load program from Notion, falling back to static config:", err);
-}
-
+// Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
+const schedule = await fetchScheduleFromNotion(env as Env, Astro.locals?.cfContext);
 ---
 
 <section id="schedule" class="py-20 px-4 md:px-8 bg-brand-bg max-w-5xl mx-auto border-b border-brand-title/5">

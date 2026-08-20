@@ -12,6 +12,17 @@ import {
 
 export type { WaitUntilContext } from "./cache";
 
+/** Prebuild snapshot (src/config/notion-fallback.json) used when Notion is unreachable and nothing is cached. */
+const fallback = notionFallback as unknown as {
+  schedule?: ScheduleEvent[];
+  faqs?: FaqItem[];
+  egentid?: { contributors?: Contributor[] };
+  locations?: WeddingLocation[];
+  seating?: TableWithGuests[];
+  story?: StoryItem[];
+  flags?: Record<string, boolean>;
+};
+
 import { escapeHtml } from "../utils/html";
 
 export { escapeHtml };
@@ -505,8 +516,7 @@ export async function fetchAllSeatingData(
     ctx,
     {
       key: CACHE_KEYS.seating,
-      fallback: () =>
-        ((notionFallback as any).seating || []) as TableWithGuests[],
+      fallback: () => fallback.seating ?? [],
     },
     () => loadSeating(env),
   );
@@ -575,8 +585,11 @@ export async function fetchScheduleFromNotion(
   env: Env,
   ctx?: WaitUntilContext,
 ): Promise<ScheduleEvent[]> {
-  return cachedSWR(env, ctx, { key: CACHE_KEYS.schedule }, () =>
-    loadSchedule(env),
+  return cachedSWR(
+    env,
+    ctx,
+    { key: CACHE_KEYS.schedule, fallback: () => fallback.schedule ?? [] },
+    () => loadSchedule(env),
   );
 }
 
@@ -786,8 +799,14 @@ export async function fetchEgentidData(
   env: Env,
   ctx?: WaitUntilContext,
 ): Promise<Contributor[]> {
-  return cachedSWR(env, ctx, { key: CACHE_KEYS.egentid }, () =>
-    loadEgentid(env, ctx),
+  return cachedSWR(
+    env,
+    ctx,
+    {
+      key: CACHE_KEYS.egentid,
+      fallback: () => fallback.egentid?.contributors ?? [],
+    },
+    () => loadEgentid(env, ctx),
   );
 }
 
@@ -802,12 +821,17 @@ export async function fetchToastmasters(
   env: Env,
   ctx?: WaitUntilContext,
 ): Promise<Toastmaster[]> {
-  return cachedSWR(env, ctx, { key: CACHE_KEYS.toastmasters }, async () => {
-    const rawContributors = await fetchRawContributors(env, ctx);
-    return rawContributors
-      .filter((c) => c.role.toLowerCase().includes("toastmaster"))
-      .map(({ name, email, photo }) => ({ name, email, photo }));
-  });
+  return cachedSWR(
+    env,
+    ctx,
+    { key: CACHE_KEYS.toastmasters, fallback: () => [] },
+    async () => {
+      const rawContributors = await fetchRawContributors(env, ctx);
+      return rawContributors
+        .filter((c) => c.role.toLowerCase().includes("toastmaster"))
+        .map(({ name, email, photo }) => ({ name, email, photo }));
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -926,8 +950,7 @@ export async function fetchLocationsFromNotion(
     ctx,
     {
       key: CACHE_KEYS.locations,
-      fallback: () =>
-        ((notionFallback as any).locations || []) as WeddingLocation[],
+      fallback: () => fallback.locations ?? [],
     },
     () => loadLocations(env, ctx),
   );
@@ -1029,7 +1052,12 @@ export async function fetchFaqFromNotion(
   env: Env,
   ctx?: WaitUntilContext,
 ): Promise<FaqItem[]> {
-  return cachedSWR(env, ctx, { key: CACHE_KEYS.faq }, () => loadFaq(env));
+  return cachedSWR(
+    env,
+    ctx,
+    { key: CACHE_KEYS.faq, fallback: () => fallback.faqs ?? [] },
+    () => loadFaq(env),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1075,7 +1103,7 @@ export async function fetchStoryFromNotion(
     ctx,
     {
       key: CACHE_KEYS.story,
-      fallback: () => ((notionFallback as any).story || []) as StoryItem[],
+      fallback: () => fallback.story ?? [],
     },
     () => loadStory(env),
   );
@@ -1093,7 +1121,7 @@ export const DEFAULT_FLAGS: Record<string, boolean> = {
   map: true,
   egentid: true,
   program: true,
-  ...((notionFallback as any).flags || {}),
+  ...(fallback.flags ?? {}),
 };
 
 async function loadFlags(env: Env): Promise<Record<string, boolean>> {

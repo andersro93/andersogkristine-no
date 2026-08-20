@@ -1,6 +1,5 @@
 ---
 import { env } from 'cloudflare:workers';
-import { weddingConfig } from '../config';
 import { fetchFaqFromNotion } from '../services/notion';
 
 interface Props {
@@ -8,20 +7,8 @@ interface Props {
 }
 
 const { flags } = Astro.props;
-const context = Astro.locals?.cfContext;
-
-let faqs = weddingConfig.faqs;
-
-try {
-  const [notionFaqs] = await Promise.all([
-    fetchFaqFromNotion(env as Env, context),
-  ]);
-  if (notionFaqs && notionFaqs.length > 0) {
-    faqs = notionFaqs;
-  }
-} catch (err) {
-  console.error("Error loading FAQs from Notion:", err);
-}
+// Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
+const faqs = await fetchFaqFromNotion(env as Env, Astro.locals?.cfContext);
 ---
 
 <section id="practical" class="py-20 px-4 md:px-8 bg-brand-bg max-w-6xl mx-auto border-b border-brand-title/5">

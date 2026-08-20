@@ -1,20 +1,12 @@
 ---
 import { env } from 'cloudflare:workers';
 import { weddingConfig } from '../config';
-import { fetchEgentidData, type Contributor } from '../services/notion';
+import { fetchEgentidData } from '../services/notion';
 
-const context = Astro.locals?.cfContext;
-
-let contributors: Contributor[] = [];
-try {
-  contributors = await fetchEgentidData(env as Env, context);
-} catch (err) {
-  console.error("Error loading egentid from Notion:", err);
-  contributors = weddingConfig.egentid.contributors;
-}
-
+// Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
+const contributors = await fetchEgentidData(env as Env, Astro.locals?.cfContext);
 const { egentid } = weddingConfig;
-const initialContributor = contributors[0] || egentid.contributors[0];
+const initialContributor = contributors[0];
 ---
 
 <section id="egentid" class="py-20 px-4 md:px-8 bg-brand-bg/40 border-b border-brand-title/5 scroll-mt-6" data-contributors={JSON.stringify(contributors)}>
@@ -78,17 +70,17 @@ const initialContributor = contributors[0] || egentid.contributors[0];
       <div id="egentid-content-container" class="opacity-100 transition-opacity duration-200 ease-in-out space-y-6">
         <div>
           <h3 id="egentid-role" class="mb-2">
-            {initialContributor.role}
+            {initialContributor?.role}
           </h3>
           <p id="egentid-desc" class="text-lead text-brand-text/75 font-semibold">
-            {initialContributor.description}
+            {initialContributor?.description}
           </p>
         </div>
 
         <div class="w-full h-[1px] bg-brand-title/10"></div>
 
         <ul id="egentid-list" class="space-y-3">
-          {initialContributor.suggestions.map((s) => (
+          {(initialContributor?.suggestions ?? []).map((s) => (
             <li class="flex items-start gap-3 text-brand-text/90 text-sm leading-relaxed font-light">
               <span class="text-brand-title text-sm mt-0.5 select-none">&#9670;</span>
               <div class="flex-1">
