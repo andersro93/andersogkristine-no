@@ -7,9 +7,9 @@ import {
   fetchInviteByCode,
   fetchScheduleFromNotion,
   fetchStoryFromNotion,
+  resolveContributorPhoto,
   sanitizeAllergyItems,
   updateGuestRSVP,
-  resolveContributorPhoto,
 } from "./notion";
 
 // Setup mocks for @notionhq/client
