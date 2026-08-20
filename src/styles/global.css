@@ -89,3 +89,19 @@ html {
     @apply font-sans text-xs text-brand-text/70 italic font-light;
   }
 }
+
+/* Shared component utilities (Tailwind v4 @utility). Sizing (px-*, py-*,
+   w-*, text-*) and timing (duration-*) stay in the markup; these carry the
+   look. Later single-property utilities in the markup override these. */
+@utility btn-primary {
+  @apply bg-brand-title text-brand-bg hover:bg-brand-title/90 rounded-lg font-sans font-medium transition focus:outline-none focus:ring-2 focus:ring-brand-title;
+}
+@utility btn-secondary {
+  @apply border border-brand-title/20 text-brand-title hover:bg-brand-title/5 rounded-lg font-sans font-medium transition;
+}
+@utility input-base {
+  @apply rounded-lg border border-brand-title/20 bg-white font-sans text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50;
+}
+@utility alert-error {
+  @apply bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-sans;
+}

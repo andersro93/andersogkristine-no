@@ -55,7 +55,7 @@ const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
         /* State A: Code entry form (no JS needed — plain HTML form GET) */
         <div class="text-center py-6">
           {errorMsg && (
-            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans">
+            <div class="alert-error mb-6">
               {errorMsg}
             </div>
           )}
@@ -71,12 +71,12 @@ const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
               name="code" 
               required
               placeholder="F.eks. LILO2026" 
-              class="flex-1 px-4 py-3 rounded-lg border border-brand-title/20 bg-white font-sans text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-center uppercase tracking-widest text-lg font-medium"
+              class="input-base flex-1 px-4 py-3 text-center uppercase tracking-widest text-lg font-medium"
               value={code || ""}
             />
             <button 
               type="submit" 
-              class="bg-brand-title text-brand-bg hover:bg-brand-title/90 px-8 py-3 rounded-lg font-sans font-medium transition duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-title"
+              class="btn-primary px-8 py-3 duration-300 hover:shadow-lg"
             >
               Finn invitasjon
             </button>

@@ -122,16 +122,13 @@ export default function RSVPForm({
           siden med din kode.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-          <a
-            href="/"
-            className="bg-brand-title text-brand-bg hover:bg-brand-title/90 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
-          >
+          <a href="/" className="btn-primary px-6 py-2.5 text-sm duration-200">
             Til hovedsiden
           </a>
           {seatingEnabled && (
             <a
               href="/bordoppsett"
-              className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
+              className="btn-secondary px-6 py-2.5 text-sm duration-200"
             >
               Se bordoppsett
             </a>
@@ -139,7 +136,7 @@ export default function RSVPForm({
           {musicEnabled && (
             <a
               href="/musikk"
-              className="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg text-sm font-sans font-medium transition duration-200"
+              className="btn-secondary px-6 py-2.5 text-sm duration-200"
             >
               Foreslå musikk
             </a>
@@ -245,9 +242,7 @@ export default function RSVPForm({
 
         {/* Error */}
         {submitStatus === "error" && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {errorMsg}
-          </div>
+          <div className="alert-error">{errorMsg}</div>
         )}
 
         {/* Submit */}

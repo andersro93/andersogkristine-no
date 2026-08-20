@@ -498,7 +498,7 @@ export default function InteractiveMap() {
                 setSearchQuery(e.target.value);
                 if (!isSidebarOpen) setIsSidebarOpen(true); // Auto-expand when typing
               }}
-              className="flex-1 px-3 py-2 rounded-lg border border-brand-title/20 bg-white font-sans text-sm text-brand-title placeholder-brand-text/50 focus:outline-none focus:ring-2 focus:ring-brand-title/50 shadow-inner"
+              className="input-base flex-1 px-3 py-2 text-sm placeholder-brand-text/50 shadow-inner"
             />
 
             {/* Collapse/Expand Button (mobile only) */}

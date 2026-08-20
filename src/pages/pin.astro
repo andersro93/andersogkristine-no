@@ -36,7 +36,7 @@ if (errorParam === 'invalid_invite') {
         </p>
 
         <!-- Error Container -->
-        <div id="error-message" class={initialError ? "bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans transition-all duration-300" : "hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans transition-all duration-300"}>
+        <div id="error-message" class:list={["alert-error mb-6 transition-all duration-300", !initialError && "hidden"]}>
           {initialError}
         </div>
 
@@ -50,14 +50,14 @@ if (errorParam === 'invalid_invite') {
               required
               maxlength="32"
               placeholder="••••" 
-              class="w-full px-4 py-3 rounded-lg border border-brand-title/20 bg-white font-sans text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-center tracking-widest text-xl font-semibold"
+              class="input-base w-full px-4 py-3 text-center tracking-widest text-xl font-semibold"
             />
           </div>
 
           <button 
             type="submit" 
             id="submit-btn"
-            class="w-full bg-brand-title text-brand-bg hover:bg-brand-title/90 px-8 py-3 rounded-lg font-sans font-medium transition duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-title flex items-center justify-center gap-2"
+            class="btn-primary w-full px-8 py-3 duration-300 hover:shadow-lg flex items-center justify-center gap-2"
           >
             <span id="btn-text">Åpne bryllupsside</span>
             <Spinner class="hidden h-5 w-5 text-brand-bg" id="loading-spinner" />
