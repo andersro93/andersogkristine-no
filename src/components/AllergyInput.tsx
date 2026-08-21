@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
+
+/** How long a freshly-added chip keeps its "pop" animation. */
+const JUST_ADDED_MS = 450;
 
 interface Props {
   inputId: string;
@@ -20,6 +23,18 @@ export default function AllergyInput({
   suggestions,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [justAdded, setJustAdded] = useState<Set<string>>(new Set());
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  // Clear any pending "pop" timers on unmount so they don't fire setState
+  // after the component is gone.
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
 
   const chosen = new Set(value.map((item) => item.toLocaleLowerCase("nb")));
 
@@ -29,6 +44,7 @@ export default function AllergyInput({
     const parts = raw.split(",");
     const next = [...value];
     const seen = new Set(chosen);
+    const added: string[] = [];
 
     for (const part of parts) {
       const trimmed = part.trim();
@@ -43,10 +59,28 @@ export default function AllergyInput({
 
       seen.add(key);
       next.push(canonical);
+      added.push(canonical);
     }
 
     if (next.length !== value.length) {
       onChange(next);
+      setJustAdded((prev) => {
+        const merged = new Set(prev);
+        for (const item of added) merged.add(item);
+        return merged;
+      });
+      for (const item of added) {
+        const timer = setTimeout(() => {
+          setJustAdded((prev) => {
+            if (!prev.has(item)) return prev;
+            const nextSet = new Set(prev);
+            nextSet.delete(item);
+            return nextSet;
+          });
+          timersRef.current.delete(timer);
+        }, JUST_ADDED_MS);
+        timersRef.current.add(timer);
+      }
     }
     setDraft("");
   }
@@ -74,7 +108,10 @@ export default function AllergyInput({
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
           {value.map((item) => (
-            <li key={item}>
+            <li
+              key={item}
+              className={justAdded.has(item) ? "motion-safe:animate-pop" : ""}
+            >
               <span className="inline-flex items-center gap-1.5 text-xs tracking-wider uppercase pl-2.5 pr-1.5 py-1 rounded bg-brand-title/10 text-brand-title font-medium">
                 {item}
                 <button

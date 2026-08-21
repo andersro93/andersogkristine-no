@@ -29,7 +29,7 @@ const faqs = await fetchFaqFromNotion(env, Astro.locals?.cfContext);
             <Icon name="chevronDown" class="w-5 h-5" />
           </span>
         </summary>
-        <div class="mt-4 text-body max-w-2xl transition-all duration-300" set:html={faq.answer}>
+        <div class="mt-4 text-body max-w-2xl group-open:motion-safe:animate-fade-in" set:html={faq.answer}>
         </div>
       </details>
     ))}

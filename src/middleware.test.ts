@@ -360,6 +360,7 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     });
 
     test("lets /galleri through when the gallery flag is on", async () => {
+      mockFlagsResponse = [{ key: "gallery", enabled: true }];
       const context = createMockContext("/galleri", authed());
       const next = mock(async () => new Response("OK"));
       const res = (await onRequest(context as any, next)) as Response;

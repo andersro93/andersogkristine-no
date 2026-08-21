@@ -16,8 +16,8 @@ if (errorParam === 'invalid_invite') {
 }
 ---
 
-<SubpageLayout title="Adgangskontroll - Kristine & Anders" width="max-w-xl" backLink={false} mainClass="select-none" cardClass="animate-fade-in">
-  <div slot="header" class="text-center mb-10 animate-fade-in">
+<SubpageLayout title="Adgangskontroll - Kristine & Anders" width="max-w-xl" backLink={false} mainClass="select-none" cardClass="motion-safe:animate-fade-in">
+  <div slot="header" class="text-center mb-10 motion-safe:animate-fade-in">
     <h1 class="mb-2">
       {weddingConfig.names.bride} <span class="font-sans text-2xl font-light italic opacity-95">{weddingConfig.names.ampersand}</span> {weddingConfig.names.groom}
     </h1>
@@ -105,7 +105,11 @@ if (errorParam === 'invalid_invite') {
           const urlParams = new URLSearchParams(window.location.search);
           const rawNext = urlParams.get('next') || '/';
           const next = /^\/(?![/\\])/.test(rawNext) ? rawNext : '/';
-          window.location.href = next;
+          if (btnText) btnText.innerText = '✓';
+          if (spinner) spinner.classList.add('hidden');
+          setTimeout(() => {
+            window.location.href = next;
+          }, 400);
         } else {
           // Error response
           throw new Error(data.error || 'Ugyldig PIN-kode.');
@@ -121,7 +125,9 @@ if (errorParam === 'invalid_invite') {
 
         if (errorDiv) {
           errorDiv.innerText = err.message;
-          errorDiv.classList.remove('hidden');
+          errorDiv.classList.remove('hidden', 'motion-safe:animate-shake');
+          void errorDiv.offsetWidth;
+          errorDiv.classList.add('motion-safe:animate-shake');
         }
       }
     });

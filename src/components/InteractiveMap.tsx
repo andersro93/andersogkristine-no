@@ -9,6 +9,7 @@ import {
   createZonePolygon,
 } from "./map/markers";
 import type { WeddingLocation } from "./map/types";
+import { Toast, useToast } from "./ui/useToast";
 
 export type { LocationActivity, WeddingLocation } from "./map/types";
 
@@ -25,6 +26,7 @@ export default function InteractiveMap() {
     null,
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { toast, showToast } = useToast();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -130,7 +132,7 @@ export default function InteractiveMap() {
   // 5. Geolocation
   const handleLocateUser = () => {
     if (!navigator.geolocation) {
-      alert("Nettleseren din støtter ikke deling av posisjon.");
+      showToast("Nettleseren din støtter ikke deling av posisjon.", "error");
       return;
     }
     const map = mapRef.current;
@@ -148,8 +150,9 @@ export default function InteractiveMap() {
       },
       (err) => {
         console.error(err);
-        alert(
+        showToast(
           "Klarte ikke å hente posisjonen din. Vennligst sjekk stedstjenester.",
+          "error",
         );
         setIsLocating(false);
       },
@@ -218,6 +221,8 @@ export default function InteractiveMap() {
 
       {/* Map Element */}
       <div ref={mapContainerRef} className="w-full h-full lg:flex-1 z-10" />
+
+      <Toast toast={toast} />
     </div>
   );
 }

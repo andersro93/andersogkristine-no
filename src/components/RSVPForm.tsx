@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AllergyInput from "./AllergyInput";
+import { fireConfetti } from "./ui/confetti";
 import { Icon, Spinner } from "./ui/Icon";
 
 interface Guest {
@@ -85,6 +86,7 @@ export default function RSVPForm({
       });
       const result = (await res.json()) as { success: boolean; error?: string };
       if (res.ok && result.success) {
+        if (!declined) fireConfetti();
         setSubmitStatus("success");
       } else {
         throw new Error(result.error || "Noe gikk galt under lagring.");
@@ -102,8 +104,8 @@ export default function RSVPForm({
   /* ── Success screen ─────────────────────────────────────────── */
   if (submitStatus === "success") {
     return (
-      <div className="text-center py-10 space-y-6 animate-fade-in">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-title/10 text-brand-title mx-auto mb-4">
+      <div className="text-center py-10 space-y-6 motion-safe:animate-fade-in">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-title/10 text-brand-title mx-auto mb-4 motion-safe:animate-pop">
           <Icon name="check" className="w-8 h-8" title="Success Icon" />
         </div>
 
@@ -187,7 +189,7 @@ export default function RSVPForm({
                         key={option}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition select-none ${
                           state?.rsvp === option
-                            ? "border-brand-title/40 bg-brand-title/5"
+                            ? "border-brand-title/40 bg-brand-title/5 motion-safe:animate-pop"
                             : "border-brand-title/10 bg-white hover:bg-brand-bg/30"
                         }`}
                       >
@@ -201,7 +203,10 @@ export default function RSVPForm({
                           onChange={() => setRsvp(guest.id, option)}
                           className="w-4 h-4 text-brand-title focus:ring-brand-title border-brand-title/20"
                         />
-                        <span className="text-sm font-medium text-brand-title">
+                        <span
+                          key={`${option}-${state?.rsvp}`}
+                          className={`inline-block text-sm font-medium text-brand-title ${state?.rsvp === option ? "motion-safe:animate-pop" : ""}`}
+                        >
                           {option === "Kommer"
                             ? "Ja, jeg gleder meg!"
                             : "Nei, jeg kan dessverre ikke"}
@@ -242,7 +247,9 @@ export default function RSVPForm({
 
         {/* Error */}
         {submitStatus === "error" && (
-          <div className="alert-error">{errorMsg}</div>
+          <div key={errorMsg} className="alert-error motion-safe:animate-shake">
+            {errorMsg}
+          </div>
         )}
 
         {/* Submit */}
