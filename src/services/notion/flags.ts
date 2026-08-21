@@ -16,6 +16,8 @@ export const DEFAULT_FLAGS: Record<string, boolean> = {
   map: true,
   egentid: true,
   program: true,
+  gallery: true,
+  gallery_upload: true,
   ...(fallback.flags ?? {}),
 };
 

@@ -13,6 +13,7 @@ import {
   SESSION_COOKIE_OPTIONS,
   verifySessionCookie,
 } from "./services/pin";
+import { json } from "./utils/http";
 
 const invalidCodes = ["evig-troskap"];
 
@@ -139,8 +140,12 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
     }
   }
 
+  // API callers (fetch/XHR) cannot act on an HTML redirect — give them JSON.
+  const isApiRequest = pathname.startsWith("/api/");
   if (!isAuthed) {
-    return redirectToPin();
+    return isApiRequest
+      ? json({ error: "Logg inn på nytt." }, 401)
+      : redirectToPin();
   }
 
   // Retrieve feature flags once per request; pages read them from locals
@@ -159,6 +164,13 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
   }
   if (pathname === "/kart" && !flags.map) {
     return context.redirect("/");
+  }
+  if (pathname === "/galleri" && !flags.gallery) {
+    return context.redirect("/");
+  }
+  // A null-body 404 from middleware would be rerouted to Astro's error page; JSON keeps it an API answer.
+  if (pathname.startsWith("/api/galleri") && !flags.gallery) {
+    return json({ error: "Ikke funnet." }, 404);
   }
 
   return next();

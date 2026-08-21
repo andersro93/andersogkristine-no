@@ -131,5 +131,7 @@ Toggle components and subpages from a Notion database.
 | `map` | Map | Hides map sections/links; `/kart` redirects to `/`. |
 | `egentid` | Recommendations | Hides the section on the homepage. |
 | `program` | Timeline | Hides the section on the homepage. |
+| `gallery` | Guest gallery | Hides gallery links; `/galleri` redirects to `/`; `/api/galleri/*` answers 404. |
+| `gallery_upload` | Gallery uploads | Upload UI hidden; `POST /api/galleri/media` answers 403 ("Opplasting er stengt."). Close uploads after the wedding without hiding the gallery. |
 
 Flags are resolved once per request in the middleware (`Astro.locals.flags`), cached in KV like everything else, and default to **enabled** if the database cannot be read.

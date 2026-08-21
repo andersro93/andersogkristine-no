@@ -353,4 +353,55 @@ describe("Astro Middleware & Invite Code Bypass", () => {
       expect(nextCalled).not.toHaveBeenCalled();
     });
   });
+
+  describe("gallery", () => {
+    const authed = () => ({
+      wedding_access: generateSessionCookie(mockEnv as any),
+    });
+
+    test("lets /galleri through when the gallery flag is on", async () => {
+      const context = createMockContext("/galleri", authed());
+      const next = mock(async () => new Response("OK"));
+      const res = (await onRequest(context as any, next)) as Response;
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalled();
+    });
+
+    test("redirects /galleri to / when the gallery flag is off", async () => {
+      mockFlagsResponse = [{ key: "gallery", enabled: false }];
+      const context = createMockContext("/galleri", authed());
+      const res = (await onRequest(
+        context as any,
+        async () => new Response("OK"),
+      )) as Response;
+      expect(res.status).toBe(302);
+      expect(res.headers.get("Location")).toBe("/");
+    });
+
+    test("answers /api/galleri/* with JSON 404 when the gallery flag is off", async () => {
+      mockFlagsResponse = [{ key: "gallery", enabled: false }];
+      const context = createMockContext("/api/galleri/media", authed());
+      const res = (await onRequest(
+        context as any,
+        async () => new Response("OK"),
+      )) as Response;
+      expect(res.status).toBe(404);
+      expect(await (res.json() as Promise<any>)).toEqual({
+        error: "Ikke funnet.",
+      });
+    });
+
+    test("answers unauthenticated /api/* with JSON 401 instead of a redirect", async () => {
+      const context = createMockContext("/api/galleri/media");
+      const res = (await onRequest(
+        context as any,
+        async () => new Response("OK"),
+      )) as Response;
+      expect(res.status).toBe(401);
+      expect(res.headers.get("Content-Type")).toContain("application/json");
+      expect(await (res.json() as Promise<any>)).toEqual({
+        error: "Logg inn på nytt.",
+      });
+    });
+  });
 });
