@@ -86,15 +86,24 @@ function draw(
   return canvas;
 }
 
+/** iOS Safari enforces a process-wide canvas memory budget — zero the backing store once we're done. */
+function release(canvas: HTMLCanvasElement | null): void {
+  if (!canvas) return;
+  canvas.width = 0;
+  canvas.height = 0;
+}
+
 export async function makeImageDerivatives(
   file: File,
 ): Promise<{ thumb: Blob; display: Blob; width: number; height: number }> {
   const decoded = await decodeImage(file);
+  let displayCanvas: HTMLCanvasElement | null = null;
+  let thumbCanvas: HTMLCanvasElement | null = null;
   try {
     const d = fit(decoded.width, decoded.height, DISPLAY_EDGE);
-    const displayCanvas = draw(decoded.source, d.w, d.h);
+    displayCanvas = draw(decoded.source, d.w, d.h);
     const t = fit(d.w, d.h, THUMB_EDGE);
-    const thumbCanvas = draw(displayCanvas, t.w, t.h);
+    thumbCanvas = draw(displayCanvas, t.w, t.h);
     const [display, thumb] = await Promise.all([
       encode(displayCanvas),
       encode(thumbCanvas),
@@ -102,6 +111,8 @@ export async function makeImageDerivatives(
     return { thumb, display, width: decoded.width, height: decoded.height };
   } finally {
     decoded.close();
+    release(displayCanvas);
+    release(thumbCanvas);
   }
 }
 
@@ -134,6 +145,7 @@ export async function makeVideoPoster(file: File): Promise<{
       ? Math.round(video.duration * 1000)
       : null;
     let poster: Blob | null = null;
+    let posterCanvas: HTMLCanvasElement | null = null;
     try {
       await new Promise<void>((resolve, reject) => {
         video.onseeked = () => resolve();
@@ -143,10 +155,13 @@ export async function makeVideoPoster(file: File): Promise<{
       });
       if (width && height) {
         const t = fit(width, height, THUMB_EDGE);
-        poster = await encode(draw(video, t.w, t.h));
+        posterCanvas = draw(video, t.w, t.h);
+        poster = await encode(posterCanvas);
       }
     } catch {
       poster = null;
+    } finally {
+      release(posterCanvas);
     }
     return { poster, width, height, durationMs };
   } catch {

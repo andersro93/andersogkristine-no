@@ -67,11 +67,16 @@ export function putVariant(
     xhr.open("PUT", `/api/galleri/media/${id}/${variant}`);
     xhr.setRequestHeader("Content-Type", contentType);
     xhr.setRequestHeader("X-Device-Id", deviceId);
+    xhr.timeout = 120_000;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total);
     };
     xhr.onload = () => {
-      if (xhr.status === 401) return expired();
+      if (xhr.status === 401) {
+        window.location.reload();
+        reject(new ApiError(401, "Logg inn på nytt."));
+        return;
+      }
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress(1);
         resolve();
@@ -88,6 +93,8 @@ export function putVariant(
     xhr.onerror = () =>
       reject(new ApiError(0, "Nettverksfeil under opplasting."));
     xhr.onabort = () => reject(new ApiError(0, "Opplastingen ble avbrutt."));
+    xhr.ontimeout = () =>
+      reject(new ApiError(0, "Opplastingen tok for lang tid. Prøv igjen."));
     xhr.send(blob);
   });
 }
