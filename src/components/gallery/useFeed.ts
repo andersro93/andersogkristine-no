@@ -34,6 +34,10 @@ export function useFeed(o: {
   const [stuckCount, setStuckCount] = useState<number | null>(null);
   const latest = useRef<number>(0); // newest ready_at we know of
   const busy = useRef(false);
+  const generation = useRef(0); // bumped on every filter/admin change; invalidates stale loadMore responses
+  const pageLoadedAt = useRef(Date.now()); // fallback `since` for polling an empty feed
+  const itemsRef = useRef<GalleryItem[]>(items);
+  const pendingRef = useRef<GalleryItem[]>(pendingNew);
 
   const params = useCallback(
     () => ({ mine: filter === "mine", all: admin }),
@@ -46,8 +50,18 @@ export function useFeed(o: {
         latest.current = it.readyAt;
   }, []);
 
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    pendingRef.current = pendingNew;
+  }, [pendingNew]);
+
   // First page (and on filter/admin change)
   useEffect(() => {
+    generation.current += 1;
+    busy.current = false;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -75,36 +89,40 @@ export function useFeed(o: {
     if (!nextCursor || busy.current) return;
     busy.current = true;
     setLoading(true);
+    const gen = generation.current;
     fetchFeed({ limit: PAGE, cursor: nextCursor, ...params() }, deviceId)
       .then((res) => {
+        if (gen !== generation.current) return; // filter/admin changed mid-flight; drop this page
         setItems((cur) => dedupe([...cur, ...res.items]));
         setNextCursor(res.nextCursor);
       })
-      .catch((err) => setError(err.message ?? "Kunne ikke hente mer."))
+      .catch((err) => {
+        if (gen === generation.current)
+          setError(err.message ?? "Kunne ikke hente mer.");
+      })
       .finally(() => {
-        busy.current = false;
-        setLoading(false);
+        if (gen === generation.current) {
+          busy.current = false;
+          setLoading(false);
+        }
       });
   }, [nextCursor, params, deviceId]);
 
   // Poll for new arrivals while visible
   useEffect(() => {
     const tick = async () => {
-      if (document.visibilityState !== "visible" || latest.current === 0)
-        return;
+      if (document.visibilityState !== "visible") return;
       try {
+        const since = latest.current || pageLoadedAt.current;
         const res = await fetchFeed(
-          { since: latest.current, limit: 100, ...params() },
+          { since, limit: 100, ...params() },
           deviceId,
         );
         if (res.items.length === 0) return;
         track(res.items);
-        setItems((cur) => {
-          const known = new Set(cur.map((i) => i.id));
-          const fresh = res.items.filter((i) => !known.has(i.id));
-          if (fresh.length) setPendingNew((p) => dedupe([...fresh, ...p]));
-          return cur;
-        });
+        const known = new Set(itemsRef.current.map((i) => i.id));
+        const fresh = res.items.filter((i) => !known.has(i.id));
+        if (fresh.length) setPendingNew((p) => dedupe([...fresh, ...p]));
       } catch {
         /* transient; try again next tick */
       }
@@ -119,10 +137,9 @@ export function useFeed(o: {
   }, [deviceId, params, track]);
 
   const mergeNew = useCallback(() => {
-    setPendingNew((p) => {
-      if (p.length) setItems((cur) => dedupe([...p, ...cur]));
-      return [];
-    });
+    const p = pendingRef.current;
+    if (p.length) setItems((cur) => dedupe([...p, ...cur]));
+    setPendingNew([]);
   }, []);
 
   const prepend = useCallback(

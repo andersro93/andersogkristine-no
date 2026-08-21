@@ -15,6 +15,15 @@ interface Props {
 
 const SWIPE_PX = 48;
 
+/** True when the event originated on native video/button/link/input controls —
+ * their own gestures (seek-bar drag, clicks) must not also drive swipe-nav. */
+function isControlTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.closest("video, button, a, input") !== null
+  );
+}
+
 function when(ms: number): string {
   return new Date(ms).toLocaleString("nb-NO", {
     day: "numeric",
@@ -63,6 +72,7 @@ export function Lightbox({
 
   const onKey = useCallback(
     (e: React.KeyboardEvent) => {
+      if (isControlTarget(e.target)) return;
       if (e.key === "ArrowLeft" && hasPrev) onNavigate(index - 1);
       if (e.key === "ArrowRight" && hasNext) onNavigate(index + 1);
     },
@@ -84,9 +94,17 @@ export function Lightbox({
       <div
         className="relative w-full h-full flex flex-col"
         onPointerDown={(e) => {
+          if (isControlTarget(e.target)) {
+            startX.current = null;
+            return;
+          }
           startX.current = e.clientX;
         }}
         onPointerUp={(e) => {
+          if (isControlTarget(e.target)) {
+            startX.current = null;
+            return;
+          }
           if (startX.current === null) return;
           const dx = e.clientX - startX.current;
           startX.current = null;
