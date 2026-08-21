@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { env } from "../../../../../runtime";
 import {
   allowedMimeFor,
+  clearVariant,
   GALLERY_UNAVAILABLE,
   getDeviceId,
   getGalleryBindings,
@@ -73,6 +74,19 @@ export const PUT: APIRoute = async (context) => {
         : request.body.pipeThrough(new FixedLengthStream(length));
     const key = variantKey(id, variant, ext);
 
+    // Undo a rejected put: delete the R2 object and null the D1 column so
+    // D1 never references a missing object (the key is deterministic, so a
+    // retried PUT would otherwise leave a dangling reference to whatever
+    // succeeded before).
+    const discard = async () => {
+      try {
+        await bucket.delete(key);
+        await clearVariant(db, id, variant);
+      } catch (err) {
+        console.error("Gallery discard failed:", err);
+      }
+    };
+
     let stored: R2Object | null = null;
     try {
       stored = await bucket.put(key, stream, { httpMetadata: { contentType } });
@@ -80,7 +94,7 @@ export const PUT: APIRoute = async (context) => {
       console.error("Gallery R2 put failed:", err);
     }
     if (!stored || stored.size !== length) {
-      await bucket.delete(key);
+      await discard();
       return json(ABORTED, 400);
     }
 
@@ -90,7 +104,7 @@ export const PUT: APIRoute = async (context) => {
         ? sniffMime(new Uint8Array(await head.arrayBuffer()))
         : null;
     if (!mimeMatchesSniff(contentType, sniffed)) {
-      await bucket.delete(key);
+      await discard();
       return json(
         {
           error: "Filen ser ikke ut som et gyldig bilde eller en gyldig video.",

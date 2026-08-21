@@ -263,6 +263,30 @@ describe("PUT /api/galleri/media/:id/:variant", () => {
     expect(res.status).toBe(415);
     expect((mockEnv.GALLERY as any)._objects.size).toBe(0);
   });
+  test("a rejected re-PUT clears the previously stored key, not just the object", async () => {
+    const id = await createImage();
+    expect((await put(id, "thumb", WEBP, "image/webp")).status).toBe(200);
+    let row = await (mockEnv.DB as D1Database)
+      .prepare("SELECT * FROM media WHERE id = ?")
+      .bind(id)
+      .first<any>();
+    expect(row.thumb_key).toBe(`media/${id}/thumb.webp`);
+
+    const res = await put(id, "thumb", JPEG, "image/webp");
+    expect(res.status).toBe(415);
+    row = await (mockEnv.DB as D1Database)
+      .prepare("SELECT * FROM media WHERE id = ?")
+      .bind(id)
+      .first<any>();
+    expect(row.thumb_key).toBeNull();
+    expect(
+      (mockEnv.GALLERY as any)._objects.has(`media/${id}/thumb.webp`),
+    ).toBe(false);
+
+    const finished = await finish(id);
+    expect(finished.status).toBe(409);
+    expect(((await finished.json()) as any).missing).toContain("thumb");
+  });
   test("stores thumb/display/original under media/<id>/ and records keys", async () => {
     const id = await createImage();
     expect((await put(id, "thumb", WEBP, "image/webp")).status).toBe(200);

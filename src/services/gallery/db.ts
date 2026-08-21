@@ -88,6 +88,33 @@ export async function setVariant(
     .run();
 }
 
+/**
+ * Undo `setVariant`: null out the column for a variant that was stored and
+ * then rejected (put failed, size mismatch, sniff mismatch), so D1 never
+ * references an R2 object that was deleted.
+ */
+export async function clearVariant(
+  db: D1Database,
+  id: string,
+  variant: Variant,
+): Promise<void> {
+  if (variant === "original") {
+    await db
+      .prepare(
+        "UPDATE media SET original_key = NULL, original_bytes = NULL WHERE id = ?",
+      )
+      .bind(id)
+      .run();
+    return;
+  }
+  // `variant` is an enum, so the column name is safe to interpolate.
+  const column = variant === "thumb" ? "thumb_key" : "display_key";
+  await db
+    .prepare(`UPDATE media SET ${column} = NULL WHERE id = ?`)
+    .bind(id)
+    .run();
+}
+
 /** Flip to ready exactly once; later calls are no-ops (ready_at is the feed key). */
 export async function markReady(
   db: D1Database,

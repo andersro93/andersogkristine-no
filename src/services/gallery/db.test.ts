@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { createFakeD1, readMigration } from "../../tests/fakes/d1";
 import {
   clearHidden,
+  clearVariant,
   countRecent,
   countStuck,
   createItem,
@@ -135,6 +136,25 @@ describe("gallery db", () => {
       const rows = await listFeed(db, { limit: 10, deviceId: "dev-a" });
       expect(rows.map((r) => r.id)).toEqual([ids[2], ids[0]]);
     });
+  });
+
+  test("clearVariant nulls the column (and original_bytes for original)", async () => {
+    await createItem(db, input(0));
+    await setVariant(db, ids[0], "thumb", "media/x/thumb.webp", 10);
+    await setVariant(db, ids[0], "display", "media/x/display.webp", 20);
+    await setVariant(db, ids[0], "original", "media/x/original.jpg", 999);
+
+    await clearVariant(db, ids[0], "thumb");
+    let row = await getItem(db, ids[0]);
+    expect(row?.thumb_key).toBeNull();
+    expect(row?.display_key).toBe("media/x/display.webp");
+    expect(row?.original_key).toBe("media/x/original.jpg");
+
+    await clearVariant(db, ids[0], "original");
+    row = await getItem(db, ids[0]);
+    expect(row?.original_key).toBeNull();
+    expect(row?.original_bytes).toBeNull();
+    expect(row?.display_key).toBe("media/x/display.webp");
   });
 
   test("setHidden / clearHidden", async () => {
