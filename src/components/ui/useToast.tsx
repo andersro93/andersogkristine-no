@@ -23,7 +23,7 @@ export function Toast({ toast }: { toast: ToastState | null }) {
   if (!toast) return null;
   return (
     <div
-      className={`fixed bottom-5 right-5 z-50 px-6 py-4 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 transform translate-y-0 animate-fade-in flex items-center gap-3 ${
+      className={`fixed bottom-5 right-5 z-50 px-6 py-4 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 transform translate-y-0 motion-safe:animate-fade-in flex items-center gap-3 ${
         toast.type === "success"
           ? "bg-emerald-50 border-emerald-200 text-emerald-800"
           : "bg-red-50 border-red-200 text-red-800"

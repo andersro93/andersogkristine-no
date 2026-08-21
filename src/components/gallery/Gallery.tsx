@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fireConfetti } from "../ui/confetti";
 import { Toast, useToast } from "../ui/useToast";
 import { deleteMedia, unhideMedia } from "./api";
-import { fireConfetti } from "./confetti";
 import { getDeviceId, getSavedName, saveName } from "./device";
 import { Feed } from "./Feed";
 import { Lightbox } from "./Lightbox";
