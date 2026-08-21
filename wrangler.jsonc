@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "andersogkristine-no",
+  "account_id": "cfef229176e71ea694c259a238556c0e",
   "compatibility_date": "2026-05-25",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -23,7 +24,7 @@
     {
       "binding": "DB",
       "database_name": "andersogkristine-gallery",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "086663bd-4edf-41a3-92d8-77dcafb97b6d",
       "migrations_dir": "migrations"
     }
   ],
