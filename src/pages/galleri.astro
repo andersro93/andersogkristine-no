@@ -1,0 +1,43 @@
+---
+/**
+ * Guest gallery. PIN-gated by the middleware like every other subpage.
+ * `?admin=<GALLERY_ADMIN_KEY>` (or `?admin=logout`) is handled here and then
+ * redirected away so the key never stays in the address bar.
+ */
+import SubpageLayout from '../layouts/SubpageLayout.astro';
+import Gallery from '../components/gallery/Gallery.tsx';
+import { env } from '../runtime';
+import { getGalleryBindings, isGalleryAdmin, tryAdminBootstrap } from '../services/gallery';
+
+let clientAddress: string | undefined;
+try {
+  clientAddress = Astro.clientAddress;
+} catch {
+  clientAddress = undefined;
+}
+
+const outcome = await tryAdminBootstrap(
+  { url: Astro.url, cookies: Astro.cookies, clientAddress },
+  env,
+);
+if (outcome !== 'none') return Astro.redirect('/galleri');
+
+const isAdmin = isGalleryAdmin(Astro.cookies, env);
+const available = getGalleryBindings(env) !== null;
+const uploadOpen = Astro.locals.flags?.gallery_upload !== false;
+---
+
+<SubpageLayout
+  title="Galleri - Kristine og Anders"
+  heading="Galleri"
+  subtitle="Del bildene og videoene dine fra dagen"
+  width="max-w-6xl"
+  card={false}
+  center={false}
+>
+  {available ? (
+    <Gallery client:load isAdmin={isAdmin} uploadOpen={uploadOpen} />
+  ) : (
+    <p class="alert-error text-center">Galleriet er ikke tilgjengelig akkurat nå.</p>
+  )}
+</SubpageLayout>

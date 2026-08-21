@@ -37,6 +37,7 @@ Useful scripts:
 | `bun run dev:clean` | Clear local Wrangler KV state and the Astro cache |
 | `bun run src/scripts/spotify-auth.ts` | One-off: obtain a Spotify refresh token |
 | `bun run src/scripts/update_locations.ts` | One-off: bulk-update location coordinates in Notion |
+| `bun run db:migrate:local` / `bun run db:migrate:remote` | Apply D1 migrations (`migrations/`) locally / in production. `dev` runs the local one automatically; the remote one is manual (Workers Builds does not run migrations). |
 
 ### Environment variables
 
@@ -61,6 +62,7 @@ Secrets in production live in Cloudflare (Workers → Settings → Variables & S
 | `SPOTIFY_CLIENT_SECRET` | optional | — " — |
 | `SPOTIFY_REFRESH_TOKEN` | optional | — " — (generate with `src/scripts/spotify-auth.ts`) |
 | `SPOTIFY_PLAYLIST_ID` | optional | — " — |
+| `GALLERY_ADMIN_KEY` | optional | Unlocks gallery admin mode via `/galleri?admin=<key>` (hide/unhide uploads). Without it admin mode is simply unavailable. |
 
 Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace) and `ASSETS`.
 
@@ -93,6 +95,18 @@ Deployments run through **Cloudflare Workers Builds**, connected to this GitHub 
 ### KV cache
 
 One KV namespace, `CACHE`. Notion data is cached with stale-while-revalidate semantics (`src/services/cache.ts`): entries are refreshed in the background after 60 s and served indefinitely if Notion is unreachable — by design, so a Notion outage does not take the site down. Seating is invalidated on every RSVP. Rate-limit counters (`pin_limit:*`, `invite_limit:*`) expire after one hour. To force a refresh, delete the `notion_*` keys in the Cloudflare dashboard.
+
+### Gallery (R2 + D1)
+
+Guest uploads go to the R2 bucket `andersogkristine-gallery` (`media/<id>/{thumb,display,original}.<ext>`) and one row per item in the D1 database `andersogkristine-gallery` (`media` table, see `migrations/`). One-time setup:
+
+1. `bunx wrangler r2 bucket create andersogkristine-gallery`
+2. `bunx wrangler d1 create andersogkristine-gallery` → paste the `database_id` into `wrangler.jsonc`
+3. `bun run db:migrate:remote`
+4. `bunx wrangler secret put GALLERY_ADMIN_KEY`
+5. Add the `gallery` and `gallery_upload` flag rows in Notion (optional — missing flags mean enabled)
+
+Admin mode: open `/galleri?admin=<GALLERY_ADMIN_KEY>` once on your phone (30-day cookie); `/galleri?admin=logout` clears it. Hidden items are soft-hidden (R2 objects stay). Export afterwards with `rclone sync` (R2 S3 credentials) + `bunx wrangler d1 export andersogkristine-gallery --remote --output gallery.sql`. Purge stuck uploads: `bunx wrangler d1 execute andersogkristine-gallery --remote --command "DELETE FROM media WHERE status='uploading' AND created_at < <epoch-ms>"`.
 
 ---
 

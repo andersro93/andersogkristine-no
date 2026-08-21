@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Icon } from "../ui/Icon";
+import { Icon } from "./Icon";
 
 export interface ToastState {
   message: string;
