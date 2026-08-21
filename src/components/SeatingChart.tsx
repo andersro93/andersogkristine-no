@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Icon } from "./ui/Icon";
 
 interface Guest {
   id: string;
@@ -49,20 +50,11 @@ export default function SeatingChart({ tables }: Props) {
       <div className="max-w-md mx-auto mb-16 relative sticky top-4 z-30">
         <div className="bg-[#fcfbf9]/90 backdrop-blur-md border border-brand-title/15 rounded-xl p-3 shadow-lg shadow-brand-title/5">
           <div className="relative flex items-center">
-            <svg
+            <Icon
+              name="search"
               className="w-5 h-5 text-brand-title/50 absolute left-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <title>Search Icon</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+              title="Search Icon"
+            />
             <input
               type="text"
               id="guest-search"
@@ -78,20 +70,7 @@ export default function SeatingChart({ tables }: Props) {
                 className="text-brand-title/40 hover:text-brand-title absolute right-4 focus:outline-none"
                 aria-label="Tøm søk"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Tøm søk</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Icon name="x" className="w-5 h-5" title="Tøm søk" />
               </button>
             )}
           </div>

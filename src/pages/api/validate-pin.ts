@@ -1,8 +1,5 @@
-import { env as rawEnv } from "cloudflare:workers";
-
-const env = rawEnv as Env;
-
 import type { APIRoute } from "astro";
+import { env } from "../../runtime";
 import {
   checkRateLimit,
   generateSessionCookie,
@@ -15,16 +12,10 @@ import {
   SESSION_COOKIE_OPTIONS,
   secureCompare,
 } from "../../services/pin";
+import { json } from "../../utils/http";
 
 interface ValidatePinRequestBody {
   pin?: string;
-}
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
 /** Exponential backoff on failures to slow down brute force (capped at 8s). */

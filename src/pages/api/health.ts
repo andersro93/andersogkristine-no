@@ -1,9 +1,7 @@
-import { env as rawEnv } from "cloudflare:workers";
-
-const env = rawEnv as Env;
-
 import type { APIRoute } from "astro";
+import { env } from "../../runtime";
 import { getNotionClient } from "../../services/notion";
+import { json } from "../../utils/http";
 
 const NOTION_TIMEOUT_MS = 3000;
 
@@ -38,14 +36,9 @@ async function checkNotion(): Promise<boolean> {
 export const GET: APIRoute = async () => {
   const [kv, notion] = await Promise.all([checkKv(), checkNotion()]);
   const ok = kv && notion;
-  return new Response(
-    JSON.stringify({ ok, kv, notion, ts: new Date().toISOString() }),
-    {
-      status: ok ? 200 : 503,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-      },
-    },
+  return json(
+    { ok, kv, notion, ts: new Date().toISOString() },
+    ok ? 200 : 503,
+    { "Cache-Control": "no-store" },
   );
 };

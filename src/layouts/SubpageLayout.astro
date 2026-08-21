@@ -1,0 +1,88 @@
+---
+/**
+ * Shared chrome for every sub-page: document <title>, optional back link,
+ * centered heading + subtitle + divider, and (optionally) the frosted card
+ * with the four corner ornaments. Pages only provide their content.
+ *
+ *   <SubpageLayout title="Musikkønsker - …" heading="Musikkønsker" subtitle="…" width="max-w-5xl">
+ *     …content inside the card…
+ *   </SubpageLayout>
+ *
+ * Slots: default (card/page content), `header` (replace the standard header).
+ */
+import Layout from './Layout.astro';
+
+interface Props {
+  /** Document title */
+  title: string;
+  description?: string;
+  /** Page heading; omit to render only the back link (e.g. when a component brings its own <h1>) */
+  heading?: string;
+  subtitle?: string;
+  subtitleClass?: string;
+  /** Tailwind max-width class for <main> */
+  width?: string;
+  /** Vertically center the content in the viewport */
+  center?: boolean;
+  /** Wrap the content in the frosted card with corner ornaments */
+  card?: boolean;
+  cardPadding?: string;
+  backLink?: boolean;
+  /** Extra classes for <main> / header / card */
+  mainClass?: string;
+  headerClass?: string;
+  cardClass?: string;
+}
+
+const {
+  title,
+  description,
+  heading,
+  subtitle,
+  subtitleClass = '',
+  width = 'max-w-3xl',
+  center = true,
+  card = true,
+  cardPadding = 'p-8 md:p-12',
+  backLink = true,
+  mainClass = '',
+  headerClass = '',
+  cardClass = '',
+} = Astro.props;
+
+const hasStandardHeader = !Astro.slots.has('header');
+---
+
+<Layout title={title} description={description}>
+  <main class:list={['min-h-screen py-16 px-4 md:px-8 mx-auto', width, center && 'flex flex-col justify-center', mainClass]}>
+
+    <slot name="header">
+      {hasStandardHeader && heading && (
+        <div class:list={['text-center mb-10', headerClass]}>
+          {backLink && <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>}
+          <h1 class="mb-2">{heading}</h1>
+          {subtitle && <p class:list={['text-body-serif', subtitleClass]}>{subtitle}</p>}
+          <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
+        </div>
+      )}
+      {hasStandardHeader && !heading && backLink && (
+        <div class="mb-10 select-none">
+          <a href="/" class="inline-block text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
+        </div>
+      )}
+    </slot>
+
+    {card ? (
+      <div class:list={['bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl shadow-xl shadow-brand-title/5 relative overflow-hidden', cardPadding, cardClass]}>
+        <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
+        <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
+        <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
+        <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
+        <slot />
+      </div>
+    ) : (
+      <slot />
+    )}
+
+  </main>
+</Layout>

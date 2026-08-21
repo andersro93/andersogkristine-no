@@ -1,0 +1,14 @@
+---
+/** Indeterminate spinner. Pass `class` for size/colour (and e.g. `hidden`). */
+import { SPINNER } from './icons';
+
+interface Props extends Omit<astroHTML.JSX.SVGAttributes, 'class'> {
+  class?: string;
+}
+const { class: className, ...rest } = Astro.props;
+---
+
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class:list={['animate-spin', className]} aria-hidden="true" {...rest}>
+  <circle class="opacity-25" cx={SPINNER.circle.cx} cy={SPINNER.circle.cy} r={SPINNER.circle.r} stroke="currentColor" stroke-width={SPINNER.circle.strokeWidth}></circle>
+  <path class="opacity-75" fill="currentColor" d={SPINNER.path}></path>
+</svg>

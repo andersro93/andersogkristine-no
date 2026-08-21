@@ -1,6 +1,6 @@
 ---
-import { env } from 'cloudflare:workers';
-import Layout from '../layouts/Layout.astro';
+import { env } from '../runtime';
+import SubpageLayout from '../layouts/SubpageLayout.astro';
 import SeatingChart from '../components/SeatingChart';
 import { fetchAllSeatingData, type TableWithGuests } from '../services/notion';
 
@@ -8,34 +8,28 @@ let tables: TableWithGuests[] = [];
 let errorMsg: string | null = null;
 
 try {
-  tables = await fetchAllSeatingData(env as Env, Astro.locals?.cfContext);
+  tables = await fetchAllSeatingData(env, Astro.locals?.cfContext);
 } catch (err) {
   console.error("Error loading seating in page:", err);
   errorMsg = "Det oppstod en feil ved lasting av bordoppsettet. Vennligst prøv igjen senere.";
 }
 ---
 
-<Layout title="Bordoppsett & Bordplassering - Kristine og Anders">
-  <main class="min-h-screen py-16 px-4 md:px-8 max-w-7xl mx-auto">
-    
-    <!-- Header -->
-    <div class="text-center mb-12">
-      <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
-      <h1 class="mb-3">Bordplassering</h1>
-      <p class="text-body-serif max-w-xl mx-auto">
-        Finn din plass for kvelden. Skriv inn navnet ditt i søkefeltet under for å finne ditt bord og sete.
-      </p>
-      <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
+<SubpageLayout
+  title="Bordoppsett & Bordplassering - Kristine og Anders"
+  heading="Bordplassering"
+  subtitle="Finn din plass for kvelden. Skriv inn navnet ditt i søkefeltet under for å finne ditt bord og sete."
+  subtitleClass="max-w-xl mx-auto"
+  width="max-w-7xl"
+  center={false}
+  card={false}
+>
+  {errorMsg ? (
+    <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl text-center max-w-lg mx-auto font-sans shadow-md">
+      {errorMsg}
     </div>
-
-    {errorMsg ? (
-      <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl text-center max-w-lg mx-auto font-sans shadow-md">
-        {errorMsg}
-      </div>
-    ) : (
-      /* React island: search bar + interactive table grid */
-      <SeatingChart tables={tables} client:load />
-    )}
-
-  </main>
-</Layout>
+  ) : (
+    /* React island: search bar + interactive table grid */
+    <SeatingChart tables={tables} client:load />
+  )}
+</SubpageLayout>

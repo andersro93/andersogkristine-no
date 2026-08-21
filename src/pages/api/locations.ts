@@ -1,31 +1,17 @@
-import { env } from "cloudflare:workers";
 import type { APIRoute } from "astro";
+import { env } from "../../runtime";
 import { fetchLocationsFromNotion } from "../../services/notion";
+import { json } from "../../utils/http";
 
 export const GET: APIRoute = async (context) => {
   try {
-    const cloudflareContext = context.locals?.cfContext;
-
     const locations = await fetchLocationsFromNotion(
-      env as Env,
-      cloudflareContext,
+      env,
+      context.locals?.cfContext,
     );
-
-    return new Response(JSON.stringify(locations), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "private, max-age=10",
-      },
-    });
+    return json(locations, 200, { "Cache-Control": "private, max-age=10" });
   } catch (error) {
     console.error("Error in Locations API endpoint:", error);
-    return new Response(
-      JSON.stringify({ error: "Klarte ikke å hente lokasjoner." }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return json({ error: "Klarte ikke å hente lokasjoner." }, 500);
   }
 };

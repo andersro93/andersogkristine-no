@@ -1,5 +1,5 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import SubpageLayout from '../layouts/SubpageLayout.astro';
 import Faq from "../components/Faq.astro";
 import { DEFAULT_FLAGS } from '../services/notion';
 
@@ -7,16 +7,6 @@ import { DEFAULT_FLAGS } from '../services/notion';
 const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
 ---
 
-<Layout title="Praktisk Informasjon - Kristine og Anders">
-  <main class="min-h-screen py-16 px-4 md:px-8 max-w-6xl mx-auto">
-    
-    <!-- Header Back Link -->
-    <div class="mb-10 select-none">
-      <a href="/" class="inline-block text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
-    </div>
-
-    <!-- PracticalInfo component directly -->
-    <Faq flags={flags} />
-
-  </main>
-</Layout>
+<SubpageLayout title="Praktisk Informasjon - Kristine og Anders" width="max-w-6xl" center={false} card={false}>
+  <Faq flags={flags} />
+</SubpageLayout>

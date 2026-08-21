@@ -1,19 +1,9 @@
 ---
-import { env } from 'cloudflare:workers';
-import { weddingConfig } from '../config';
+import { env } from '../runtime';
 import { fetchStoryFromNotion } from '../services/notion';
 
-const context = Astro.locals?.cfContext;
-let story = weddingConfig.story;
-
-try {
-  const notionStory = await fetchStoryFromNotion(env as Env, context);
-  if (notionStory && notionStory.length > 0) {
-    story = notionStory;
-  }
-} catch (err) {
-  console.error("Error loading story from Notion:", err);
-}
+// Falls back to the prebuild snapshot inside the fetcher if Notion is unreachable
+const story = await fetchStoryFromNotion(env, Astro.locals?.cfContext);
 ---
 
 <section id="story" class="py-20 px-4 md:px-8 bg-brand-bg/40 max-w-6xl mx-auto border-b border-brand-title/5">

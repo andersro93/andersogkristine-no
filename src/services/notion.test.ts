@@ -283,7 +283,7 @@ describe("Notion Service Integration & Fallbacks", () => {
         {
           id: "contrib-kristine",
           properties: {
-            Name: {
+            Navn: {
               type: "title",
               title: [{ plain_text: "Kristine" }],
             },
@@ -302,7 +302,7 @@ describe("Notion Service Integration & Fallbacks", () => {
       mockEgentidResults = [
         {
           properties: {
-            Name: {
+            Tittel: {
               type: "title",
               title: [{ plain_text: "Liebling" }],
             },
@@ -314,7 +314,7 @@ describe("Notion Service Integration & Fallbacks", () => {
               type: "relation",
               relation: [{ id: "contrib-kristine" }],
             },
-            Sted: {
+            "📍 Sted": {
               type: "relation",
               relation: [{ id: "location-liebling" }],
             },

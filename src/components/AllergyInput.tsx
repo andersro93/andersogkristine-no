@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "./ui/Icon";
 
 interface Props {
   inputId: string;
@@ -82,20 +83,12 @@ export default function AllergyInput({
                   aria-label={`Fjern ${item}`}
                   className="w-4 h-4 inline-flex items-center justify-center rounded-full hover:bg-brand-title/20 transition"
                 >
-                  <svg
+                  <Icon
+                    name="x"
                     className="w-2.5 h-2.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Fjern</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                    strokeWidth={3}
+                    title="Fjern"
+                  />
                 </button>
               </span>
             </li>

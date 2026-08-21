@@ -1,8 +1,5 @@
-import { env as rawEnv } from "cloudflare:workers";
-
-const env = rawEnv as Env;
-
 import type { APIRoute } from "astro";
+import { env } from "../../runtime";
 import {
   fetchInviteByCode,
   invalidateSeatingCache,
@@ -14,17 +11,11 @@ import {
   recordFailedAttempt,
 } from "../../services/pin";
 import { validateRsvpPayload } from "../../services/rsvp";
+import { json } from "../../utils/http";
 
 interface RSVPRequestBody {
   code?: string;
   guests?: unknown;
-}
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
 export const POST: APIRoute = async (context) => {

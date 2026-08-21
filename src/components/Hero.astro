@@ -1,4 +1,5 @@
 ---
+import Icon from './ui/Icon.astro';
 import { weddingConfig } from '../config';
 
 interface Props {
@@ -28,9 +29,7 @@ const { flags } = Astro.props;
     <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 text-center">
       <a href="#intro" class="inline-flex flex-col items-center gap-1.5 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] hover:scale-105 transition-transform group">
         <span class="text-xs uppercase tracking-widest font-semibold font-sans">Scroll ned</span>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 animate-bounce">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+        <Icon name="chevronDown" class="w-5 h-5 animate-bounce" />
       </a>
     </div>
 
@@ -82,12 +81,12 @@ const { flags } = Astro.props;
         </div>
       </div>
 <div class="flex flex-wrap justify-center gap-3 mt-4">
-  {flags.rsvp && <a href="/rsvp" class="bg-brand-title text-brand-bg hover:bg-brand-title/90 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-title px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">RSVP</a>}
-  <a href="/faq" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">FAQ</a>
-  {flags.seating && <a href="/bordoppsett" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">Bordplassering</a>}
-  {flags.map && <a href="/kart" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">Kart</a>}
-  <a href="/toastmaster" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">Toastmaster</a>
-  {flags.music && <a href="/musikk" class="border border-brand-title/20 text-brand-title hover:bg-brand-title/5 px-6 py-2.5 rounded-lg font-sans font-medium transition duration-200">Musikk</a>}
+  {flags.rsvp && <a href="/rsvp" class="btn-primary hover:shadow-lg px-6 py-2.5 duration-200">RSVP</a>}
+  <a href="/faq" class="btn-secondary px-6 py-2.5 duration-200">FAQ</a>
+  {flags.seating && <a href="/bordoppsett" class="btn-secondary px-6 py-2.5 duration-200">Bordplassering</a>}
+  {flags.map && <a href="/kart" class="btn-secondary px-6 py-2.5 duration-200">Kart</a>}
+  <a href="/toastmaster" class="btn-secondary px-6 py-2.5 duration-200">Toastmaster</a>
+  {flags.music && <a href="/musikk" class="btn-secondary px-6 py-2.5 duration-200">Musikk</a>}
 </div>
 
     </div>

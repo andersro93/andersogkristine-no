@@ -1,6 +1,6 @@
 ---
-import { env } from 'cloudflare:workers';
-import Layout from '../layouts/Layout.astro';
+import { env } from '../runtime';
+import SubpageLayout from '../layouts/SubpageLayout.astro';
 import RSVPForm from '../components/RSVPForm';
 import { DEFAULT_FLAGS, fetchAllergyOptions, fetchInviteByCode, type Invite } from '../services/notion';
 import {
@@ -20,20 +20,20 @@ let allergySuggestions: string[] = [];
 
 if (code) {
   const ip = Astro.clientAddress || 'unknown-ip';
-  const kv = (env as Env)?.CACHE;
+  const kv = env?.CACHE;
   try {
     const limit = await checkRateLimit(ip, kv, 'invite');
     if (!limit.allowed) {
       errorMsg = `For mange forsøk. Vennligst prøv igjen om ${LOCKOUT_MINUTES} minutter.`;
     } else {
-      invite = await fetchInviteByCode(code, env as Env);
+      invite = await fetchInviteByCode(code, env);
       if (invite) {
         // Existing options are offered back as suggestions so guests reuse the
         // same spelling instead of creating a new option each time.
-        allergySuggestions = await fetchAllergyOptions(env as Env);
+        allergySuggestions = await fetchAllergyOptionsenv;
 
         // Valid invite: grant a site-wide session so guests can browse other pages
-        const cookieValue = generateSessionCookie(env as Env);
+        const cookieValue = generateSessionCookieenv;
         Astro.cookies.set(SESSION_COOKIE_NAME, cookieValue, SESSION_COOKIE_OPTIONS);
       } else {
         await recordFailedAttempt(ip, kv, 'invite');
@@ -50,31 +50,12 @@ if (code) {
 const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
 ---
 
-<Layout title="Svar på invitasjon - Kristine og Anders">
-  <main class="min-h-screen py-16 px-4 md:px-8 max-w-3xl mx-auto flex flex-col justify-center">
-    
-    <!-- Header -->
-    <div class="text-center mb-10">
-      <a href="/" class="inline-block mb-4 text-sm tracking-wider uppercase text-brand-title hover:underline opacity-80">&larr; Tilbake til forsiden</a>
-      <h1 class="mb-2">Svar på invitasjon</h1>
-      <p class="text-body-serif">Svarfrist: 26. august 2026</p>
-      <div class="w-24 h-px bg-brand-title/20 mx-auto mt-6"></div>
-    </div>
-
-    <!-- MAIN CARD -->
-    <div class="bg-[#fcfbf9]/85 backdrop-blur-md border border-brand-title/10 rounded-2xl p-8 md:p-12 shadow-xl shadow-brand-title/5 relative overflow-hidden">
-      
-      <!-- Corner ornaments -->
-      <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-brand-title/10 rounded-tl-xl"></div>
-      <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-brand-title/10 rounded-tr-xl"></div>
-      <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-brand-title/10 rounded-bl-xl"></div>
-      <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-brand-title/10 rounded-br-xl"></div>
-
-      {!invite ? (
+<SubpageLayout title="Svar på invitasjon - Kristine og Anders" heading="Svar på invitasjon" subtitle="Svarfrist: 26. august 2026">
+  {!invite ? (
         /* State A: Code entry form (no JS needed — plain HTML form GET) */
         <div class="text-center py-6">
           {errorMsg && (
-            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm font-sans">
+            <div class="alert-error mb-6">
               {errorMsg}
             </div>
           )}
@@ -90,12 +71,12 @@ const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
               name="code" 
               required
               placeholder="F.eks. LILO2026" 
-              class="flex-1 px-4 py-3 rounded-lg border border-brand-title/20 bg-white font-sans text-brand-title focus:outline-none focus:ring-2 focus:ring-brand-title/50 text-center uppercase tracking-widest text-lg font-medium"
+              class="input-base flex-1 px-4 py-3 text-center uppercase tracking-widest text-lg font-medium"
               value={code || ""}
             />
             <button 
               type="submit" 
-              class="bg-brand-title text-brand-bg hover:bg-brand-title/90 px-8 py-3 rounded-lg font-sans font-medium transition duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-title"
+              class="btn-primary px-8 py-3 duration-300 hover:shadow-lg"
             >
               Finn invitasjon
             </button>
@@ -105,7 +86,4 @@ const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
         /* State B: React island handles all the interactive form logic */
         <RSVPForm invite={invite} allergySuggestions={allergySuggestions} seatingEnabled={flags.seating} musicEnabled={flags.music} client:load />
       )}
-
-    </div>
-  </main>
-</Layout>
+</SubpageLayout>
