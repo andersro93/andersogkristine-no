@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { celebrateSingleMatch } from "./seatingDelight";
+import { fireConfetti } from "./ui/confetti";
 import { Icon } from "./ui/Icon";
 
 interface Guest {
@@ -44,6 +46,48 @@ export default function SeatingChart({ tables }: Props) {
   const isSearching = query.trim().length >= 2;
   const matchCount = matchedGuestIds.size;
 
+  // Celebrate the first time a search narrows down to exactly one guest.
+  const seenGuestIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const updated = celebrateSingleMatch(
+      Array.from(matchedGuestIds),
+      seenGuestIds.current,
+    );
+    if (updated) {
+      seenGuestIds.current = updated;
+      fireConfetti();
+    }
+  }, [matchedGuestIds]);
+
+  // Scroll the first matched table into view whenever the match set changes.
+  const tableRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const tableRefCallbacks = useRef<
+    Map<string, (el: HTMLDivElement | null) => void>
+  >(new Map());
+  function getTableRef(id: string) {
+    let cb = tableRefCallbacks.current.get(id);
+    if (!cb) {
+      cb = (el) => {
+        if (el) tableRefs.current.set(id, el);
+        else tableRefs.current.delete(id);
+      };
+      tableRefCallbacks.current.set(id, cb);
+    }
+    return cb;
+  }
+  useEffect(() => {
+    if (matchedTableIds.size === 0) return;
+    const firstMatch = tables.find((t) => matchedTableIds.has(t.id));
+    const el = firstMatch && tableRefs.current.get(firstMatch.id);
+    if (!el) return;
+    el.scrollIntoView({
+      block: "center",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [matchedTableIds, tables]);
+
   return (
     <div>
       {/* Search bar */}
@@ -78,7 +122,14 @@ export default function SeatingChart({ tables }: Props) {
 
         {/* Result banner */}
         {isSearching && (
-          <div className="mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md animate-fade-in">
+          <div
+            key={matchCount}
+            className={`mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md motion-safe:animate-fade-in ${
+              matchCount > 0
+                ? "motion-safe:animate-pop"
+                : "motion-safe:animate-shake"
+            }`}
+          >
             {matchCount > 0
               ? `Fant ${matchCount} treff!`
               : "Ingen gjester funnet med det navnet."}
@@ -96,6 +147,8 @@ export default function SeatingChart({ tables }: Props) {
           return (
             <div
               key={table.id}
+              ref={getTableRef(table.id)}
+              data-table-id={table.id}
               className={`bg-[#fcfbf9]/85 backdrop-blur-sm border rounded-2xl p-6 shadow-md transition-all duration-300 relative overflow-hidden flex flex-col ${
                 isHighlighted
                   ? "border-brand-text/50 shadow-lg shadow-brand-text/10 scale-[1.02] bg-[#fffdfa]"

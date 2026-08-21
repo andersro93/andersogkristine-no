@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlaylistTable } from "./spotify/PlaylistTable";
 import { SearchResults } from "./spotify/SearchResults";
 import type { SpotifyTrack } from "./spotify/types";
 import { useSpotifySearch } from "./spotify/useSpotifySearch";
+import { fireConfetti } from "./ui/confetti";
 import { Icon, Spinner } from "./ui/Icon";
 import { Toast, useToast } from "./ui/useToast";
 
@@ -14,6 +15,15 @@ export default function SpotifyPlaylist() {
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(true);
   const [isUnavailable, setIsUnavailable] = useState(false);
   const [addingUri, setAddingUri] = useState<string | null>(null);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const hasCelebrated = useRef(false);
+  const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (justAddedTimer.current) clearTimeout(justAddedTimer.current);
+    };
+  }, []);
 
   const { toast, showToast } = useToast();
   const showError = (message: string) => showToast(message, "error");
@@ -71,7 +81,8 @@ export default function SpotifyPlaylist() {
       if (!data.success)
         throw new Error(data.error || "Kunne ikke legge til sang.");
 
-      setPlaylistTracks(data.tracks || []);
+      const tracks = data.tracks || [];
+      setPlaylistTracks(tracks);
       setSearchResults((prev) =>
         prev.map((t) =>
           t.uri === track.uri ? { ...t, alreadyAdded: true } : t,
@@ -79,6 +90,17 @@ export default function SpotifyPlaylist() {
       );
       showToast(`"${track.name}" ble lagt til i spillelisten!`, "success");
       setQuery(""); // Reset search input on success
+
+      const addedTrack = tracks.find((t) => t.uri === track.uri);
+      const addedId = addedTrack?.id ?? track.id;
+      setJustAddedId(addedId);
+      if (justAddedTimer.current) clearTimeout(justAddedTimer.current);
+      justAddedTimer.current = setTimeout(() => setJustAddedId(null), 700);
+
+      if (!hasCelebrated.current) {
+        hasCelebrated.current = true;
+        fireConfetti();
+      }
     } catch (err: unknown) {
       console.error(err);
       showToast(
@@ -178,12 +200,26 @@ export default function SpotifyPlaylist() {
         <div className="text-center">
           <h2 className="font-serif text-3xl">Ønskede låter</h2>
           <p className="text-lead mt-1">
-            {isLoadingPlaylist
-              ? "Laster spilleliste..."
-              : `${playlistTracks.length} sanger foreslått`}
+            {isLoadingPlaylist ? (
+              "Laster spilleliste..."
+            ) : (
+              <>
+                <span
+                  key={playlistTracks.length}
+                  className="inline-block motion-safe:animate-pop"
+                >
+                  {playlistTracks.length}
+                </span>{" "}
+                sanger foreslått
+              </>
+            )}
           </p>
         </div>
-        <PlaylistTable tracks={playlistTracks} isLoading={isLoadingPlaylist} />
+        <PlaylistTable
+          tracks={playlistTracks}
+          isLoading={isLoadingPlaylist}
+          justAddedId={justAddedId}
+        />
       </div>
     </div>
   );

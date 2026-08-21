@@ -1,12 +1,19 @@
+import { useRef } from "react";
+import { useFlipGrid } from "../gallery/useFlipGrid";
 import { TrackCover, TrackTitle } from "./TrackCells";
 import type { SpotifyTrack } from "./types";
 
 interface Props {
   tracks: SpotifyTrack[];
   isLoading: boolean;
+  justAddedId?: string | null;
 }
 
-export function PlaylistTable({ tracks, isLoading }: Props) {
+export function PlaylistTable({ tracks, isLoading, justAddedId }: Props) {
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  const orderKey = tracks.map((t) => t.id).join("|");
+  useFlipGrid(tbodyRef, orderKey);
+
   if (isLoading) {
     return (
       <div className="space-y-3 max-w-4xl mx-auto">
@@ -44,7 +51,7 @@ export function PlaylistTable({ tracks, isLoading }: Props) {
   }
 
   return (
-    <div className="bg-[#fcfbf9]/60 border border-brand-title/10 rounded-2xl overflow-hidden shadow-md max-w-4xl mx-auto animate-fade-in">
+    <div className="bg-[#fcfbf9]/60 border border-brand-title/10 rounded-2xl overflow-hidden shadow-md max-w-4xl mx-auto motion-safe:animate-fade-in">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -54,11 +61,14 @@ export function PlaylistTable({ tracks, isLoading }: Props) {
               <th className="py-4 px-6 hidden md:table-cell">Album</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-title/5">
+          <tbody ref={tbodyRef} className="divide-y divide-brand-title/5">
             {tracks.map((track, idx) => (
               <tr
                 key={track.id}
-                className="hover:bg-brand-title/1 transition duration-150 text-sm"
+                data-flip-id={track.id}
+                className={`hover:bg-brand-title/1 transition duration-150 text-sm ${
+                  track.id === justAddedId ? "motion-safe:animate-pop" : ""
+                }`}
               >
                 <td className="py-3.5 px-6 text-brand-text/50 font-medium">
                   {idx + 1}

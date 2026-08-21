@@ -11,7 +11,7 @@ interface Props {
 export function SearchResults({ results, addingUri, onAdd }: Props) {
   if (results.length === 0) return null;
   return (
-    <div className="bg-[#fcfbf9]/60 border border-brand-title/10 rounded-xl overflow-hidden divide-y divide-brand-title/5 max-w-2xl mx-auto shadow-md animate-fade-in">
+    <div className="bg-[#fcfbf9]/60 border border-brand-title/10 rounded-xl overflow-hidden divide-y divide-brand-title/5 max-w-2xl mx-auto shadow-md motion-safe:animate-fade-in">
       {results.map((track) => (
         <div
           key={track.id}
@@ -35,7 +35,7 @@ export function SearchResults({ results, addingUri, onAdd }: Props) {
             }`}
           >
             {track.alreadyAdded ? (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 motion-safe:animate-pop">
                 <Icon
                   name="check"
                   className="w-3.5 h-3.5"
