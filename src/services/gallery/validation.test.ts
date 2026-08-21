@@ -83,6 +83,14 @@ describe("sanitizeName", () => {
     expect(sanitizeName(undefined)).toBeNull();
     expect(sanitizeName(42)).toBeNull();
     expect(sanitizeName("x".repeat(100))).toHaveLength(60);
+    const withControls = [
+      "Ola",
+      String.fromCharCode(1),
+      String.fromCharCode(2),
+      " Nordmann",
+      String.fromCharCode(127),
+    ].join("");
+    expect(sanitizeName(withControls)).toBe("Ola Nordmann");
   });
 });
 
