@@ -107,7 +107,10 @@ export function UploadBar({
       {errors.length > 0 && (
         <ul className="flex flex-col gap-2 max-w-xl mx-auto w-full">
           {errors.map((q) => (
-            <li key={q.localId} className="alert-error flex items-center gap-3">
+            <li
+              key={q.localId}
+              className="alert-error flex items-center gap-3 motion-safe:animate-shake"
+            >
               <span className="flex-1 truncate">
                 <span className="font-medium">{q.file.name}</span>: {q.error}
               </span>

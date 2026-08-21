@@ -7,6 +7,8 @@ interface Props {
   items: GalleryItem[];
   index: number;
   admin: boolean;
+  /** Bounding rect of the tile that was tapped, for the lightbox-in zoom origin. */
+  originRect?: DOMRect | null;
   onClose: () => void;
   onNavigate: (index: number) => void;
   onDelete: (item: GalleryItem) => void;
@@ -38,6 +40,7 @@ export function Lightbox({
   items,
   index,
   admin,
+  originRect = null,
   onClose,
   onNavigate,
   onDelete,
@@ -49,6 +52,9 @@ export function Lightbox({
   const item = items[index];
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
+  const origin = originRect
+    ? `${originRect.left + originRect.width / 2}px ${originRect.top + originRect.height / 2}px`
+    : "center";
 
   useEffect(() => {
     const d = dialog.current;
@@ -85,7 +91,7 @@ export function Lightbox({
   return (
     <dialog
       ref={dialog}
-      className="fixed inset-0 m-0 w-screen h-screen max-w-none max-h-none bg-black/95 text-white p-0 backdrop:bg-black/80"
+      className="fixed inset-0 m-0 w-screen h-screen max-w-none max-h-none bg-black/95 text-white p-0 backdrop:bg-black/80 motion-safe:animate-fade-in"
       onClose={onClose}
       onCancel={onClose}
       onKeyDown={onKey}
@@ -129,7 +135,8 @@ export function Lightbox({
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click closes; keyboard users have Esc and the close button */}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: this is the modal backdrop, not interactive content; Esc and the close button remain keyboard-accessible */}
         <div
-          className="flex-1 min-h-0 flex items-center justify-center"
+          className="flex-1 min-h-0 flex items-center justify-center motion-safe:animate-lightbox-in"
+          style={{ transformOrigin: origin }}
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           {item.kind === "image" ? (

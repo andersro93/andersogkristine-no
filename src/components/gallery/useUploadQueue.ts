@@ -193,10 +193,16 @@ export function useUploadQueue(o: UseUploadQueueOptions) {
     );
   }, []);
 
-  const dismiss = useCallback((localId: string) => {
+  /**
+   * Remove a queue entry. By default its preview object URL is revoked with
+   * it. Pass `keepPreview: true` when the caller has taken ownership of the
+   * URL (e.g. handed it to a `Tile` as a placeholder until the real thumb
+   * loads) — the new owner is then responsible for revoking it.
+   */
+  const dismiss = useCallback((localId: string, keepPreview = false) => {
     setQueue((q) => {
       const it = q.find((x) => x.localId === localId);
-      if (it?.previewUrl) URL.revokeObjectURL(it.previewUrl);
+      if (it?.previewUrl && !keepPreview) URL.revokeObjectURL(it.previewUrl);
       return q.filter((x) => x.localId !== localId);
     });
   }, []);
