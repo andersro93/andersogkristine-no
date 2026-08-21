@@ -17,7 +17,8 @@
   "r2_buckets": [
     {
       "binding": "GALLERY",
-      "bucket_name": "andersogkristine-gallery"
+      "bucket_name": "andersogkristine-gallery",
+      "jurisdiction": "eu"
     }
   ],
   "d1_databases": [

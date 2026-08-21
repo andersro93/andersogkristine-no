@@ -102,7 +102,7 @@ Guest uploads go to the R2 bucket `andersogkristine-gallery` (`media/<id>/{thumb
 
 **⚠️ This one-time setup must be done *before* merging the `gallery` branch to `main`.** `wrangler.jsonc` currently ships with a placeholder `database_id` (`00000000-…`); `wrangler deploy` validates the R2 and D1 bindings on every deploy, so merging without replacing it would fail the production deploy for the *entire* site, not just the gallery.
 
-1. `bunx wrangler r2 bucket create andersogkristine-gallery`
+1. `bunx wrangler r2 bucket create andersogkristine-gallery --jurisdiction eu` (EU jurisdiction: bytes stay in the EU; the binding carries `"jurisdiction": "eu"`)
 2. `bunx wrangler d1 create andersogkristine-gallery` → paste the real `database_id` it prints into `wrangler.jsonc` (replacing the placeholder) and commit that change
 3. `bun run db:migrate:remote`
 4. `bunx wrangler secret put GALLERY_ADMIN_KEY`
