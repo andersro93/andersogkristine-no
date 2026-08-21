@@ -13,6 +13,9 @@ mock.module("cloudflare:workers", () => ({ env: mockEnv }));
 const media = await import("../../pages/api/galleri/media/index");
 const variant = await import("../../pages/api/galleri/media/[id]/[variant]");
 const complete = await import("../../pages/api/galleri/media/[id]/complete");
+const file = await import("../../pages/api/galleri/file/[id]/[variant]");
+const item = await import("../../pages/api/galleri/media/[id]/index");
+const unhide = await import("../../pages/api/galleri/media/[id]/unhide");
 const { generateAdminCookie, ADMIN_COOKIE_NAME } = await import(
   "../../services/gallery/admin"
 );
@@ -363,5 +366,248 @@ describe("POST /api/galleri/media/:id/complete", () => {
     const id = await createImage();
     expect((await finish(id, OTHER)).status).toBe(403);
     expect((await finish(crypto.randomUUID())).status).toBe(404);
+  });
+});
+
+async function readyImage(name?: string, deviceId = DEVICE) {
+  const id = await createImage(name, deviceId);
+  await put(id, "thumb", WEBP, "image/webp", deviceId);
+  await put(id, "display", WEBP, "image/webp", deviceId);
+  await put(id, "original", JPEG, "image/jpeg", deviceId);
+  await finish(id, deviceId);
+  return id;
+}
+
+describe("GET /api/galleri/media", () => {
+  test("newest first with cursor pagination, mine flag, hidden excluded", async () => {
+    const a = await readyImage("A");
+    const b = await readyImage("B", OTHER);
+    const c = await readyImage("C");
+    // make ordering deterministic
+    const db = mockEnv.DB as D1Database;
+    await db
+      .prepare("UPDATE media SET ready_at = ? WHERE id = ?")
+      .bind(1000, a)
+      .run();
+    await db
+      .prepare("UPDATE media SET ready_at = ? WHERE id = ?")
+      .bind(2000, b)
+      .run();
+    await db
+      .prepare("UPDATE media SET ready_at = ? WHERE id = ?")
+      .bind(3000, c)
+      .run();
+
+    let res = await media.GET(ctx("/api/galleri/media?limit=2"));
+    expect(res.status).toBe(200);
+    let body = (await res.json()) as any;
+    expect(body.items.map((i: any) => i.id)).toEqual([c, b]);
+    expect(body.items[0].mine).toBe(true);
+    expect(body.items[1].mine).toBe(false);
+    expect(body.items[0].hiddenAt).toBeNull();
+    expect(body.nextCursor).toBe(`2000_${b}`);
+
+    res = await media.GET(
+      ctx(`/api/galleri/media?limit=2&cursor=${body.nextCursor}`),
+    );
+    body = (await res.json()) as any;
+    expect(body.items.map((i: any) => i.id)).toEqual([a]);
+    expect(body.nextCursor).toBeNull();
+
+    res = await media.GET(ctx("/api/galleri/media?since=1500"));
+    expect(((await res.json()) as any).items.map((i: any) => i.id)).toEqual([
+      c,
+      b,
+    ]);
+
+    res = await media.GET(ctx("/api/galleri/media?mine=1"));
+    expect(((await res.json()) as any).items.map((i: any) => i.id)).toEqual([
+      c,
+      a,
+    ]);
+
+    await item.DELETE(
+      ctx(`/api/galleri/media/${c}`, { method: "DELETE", params: { id: c } }),
+    );
+    res = await media.GET(ctx("/api/galleri/media"));
+    expect(((await res.json()) as any).items.map((i: any) => i.id)).toEqual([
+      b,
+      a,
+    ]);
+  });
+  test("all=1 is admin-only and includes hidden + stuckCount; mine=1 needs a device id; bad cursor ignored", async () => {
+    const a = await readyImage();
+    await createImage(); // stuck (never completed)
+    await (mockEnv.DB as D1Database)
+      .prepare("UPDATE media SET created_at = 1 WHERE status = 'uploading'")
+      .run();
+    await item.DELETE(
+      ctx(`/api/galleri/media/${a}`, { method: "DELETE", params: { id: a } }),
+    );
+    expect((await media.GET(ctx("/api/galleri/media?all=1"))).status).toBe(403);
+    const res = await media.GET(
+      ctx("/api/galleri/media?all=1", { admin: true }),
+    );
+    const body = (await res.json()) as any;
+    expect(body.items.map((i: any) => i.id)).toEqual([a]);
+    expect(body.items[0].hiddenAt).toBeGreaterThan(0);
+    expect(body.stuckCount).toBe(1);
+    expect(
+      (await media.GET(ctx("/api/galleri/media?mine=1", { deviceId: null })))
+        .status,
+    ).toBe(400);
+    expect(
+      (await media.GET(ctx("/api/galleri/media?cursor=garbage"))).status,
+    ).toBe(200);
+  });
+  test("503 without bindings", async () => {
+    mockEnv.GALLERY = undefined;
+    expect((await media.GET(ctx("/api/galleri/media"))).status).toBe(503);
+  });
+});
+
+describe("GET /api/galleri/file/:id/:variant", () => {
+  const get = (
+    id: string,
+    v: string,
+    headers: Record<string, string> = {},
+    admin = false,
+  ) =>
+    file.GET(
+      ctx(`/api/galleri/file/${id}/${v}`, {
+        params: { id, variant: v },
+        headers,
+        admin,
+      }),
+    );
+
+  test("200 with metadata headers; 404 for unknown / missing variant", async () => {
+    const id = await readyImage();
+    const res = await get(id, "original");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(res.headers.get("Content-Length")).toBe(String(JPEG.length));
+    expect(res.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(res.headers.get("ETag")).toMatch(/^".+"$/);
+    expect(res.headers.get("Cache-Control")).toBe(
+      "private, max-age=31536000, immutable",
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(JPEG);
+    expect((await get(crypto.randomUUID(), "thumb")).status).toBe(404);
+    expect((await get(id, "poster")).status).toBe(404);
+  });
+  test("206 for Range requests incl. Safari's bytes=0-1 probe; 416 when unsatisfiable", async () => {
+    const id = await readyImage();
+    const res = await get(id, "original", { Range: "bytes=0-1" });
+    expect(res.status).toBe(206);
+    expect(res.headers.get("Content-Range")).toBe(`bytes 0-1/${JPEG.length}`);
+    expect(res.headers.get("Content-Length")).toBe("2");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(
+      JPEG.subarray(0, 2),
+    );
+    const tail = await get(id, "original", { Range: "bytes=-4" });
+    expect(tail.headers.get("Content-Range")).toBe(
+      `bytes ${JPEG.length - 4}-${JPEG.length - 1}/${JPEG.length}`,
+    );
+    expect((await get(id, "original", { Range: "bytes=9999-" })).status).toBe(
+      416,
+    );
+  });
+  test("304 on If-None-Match", async () => {
+    const id = await readyImage();
+    const first = await get(id, "thumb");
+    const res = await get(id, "thumb", {
+      "If-None-Match": first.headers.get("ETag") as string,
+    });
+    expect(res.status).toBe(304);
+  });
+  test("uploading and hidden items are 404 unless admin", async () => {
+    const pending = await createImage();
+    await put(pending, "thumb", WEBP, "image/webp");
+    expect((await get(pending, "thumb")).status).toBe(404);
+    expect((await get(pending, "thumb", {}, true)).status).toBe(200);
+    const id = await readyImage();
+    await item.DELETE(
+      ctx(`/api/galleri/media/${id}`, { method: "DELETE", params: { id } }),
+    );
+    expect((await get(id, "thumb")).status).toBe(404);
+    expect((await get(id, "thumb", {}, true)).status).toBe(200);
+  });
+});
+
+describe("DELETE / unhide", () => {
+  test("owner and admin can hide; others cannot; admin can unhide", async () => {
+    const id = await readyImage();
+    expect(
+      (
+        await item.DELETE(
+          ctx(`/api/galleri/media/${id}`, {
+            method: "DELETE",
+            params: { id },
+            deviceId: OTHER,
+          }),
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await item.DELETE(
+          ctx(`/api/galleri/media/${id}`, { method: "DELETE", params: { id } }),
+        )
+      ).status,
+    ).toBe(200);
+    let row = await (mockEnv.DB as D1Database)
+      .prepare("SELECT hidden_by FROM media WHERE id = ?")
+      .bind(id)
+      .first<any>();
+    expect(row.hidden_by).toBe("owner");
+    expect(
+      (
+        await unhide.POST(
+          ctx(`/api/galleri/media/${id}/unhide`, {
+            method: "POST",
+            params: { id },
+          }),
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await unhide.POST(
+          ctx(`/api/galleri/media/${id}/unhide`, {
+            method: "POST",
+            params: { id },
+            admin: true,
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await item.DELETE(
+          ctx(`/api/galleri/media/${id}`, {
+            method: "DELETE",
+            params: { id },
+            deviceId: OTHER,
+            admin: true,
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    row = await (mockEnv.DB as D1Database)
+      .prepare("SELECT hidden_by FROM media WHERE id = ?")
+      .bind(id)
+      .first<any>();
+    expect(row.hidden_by).toBe("admin");
+    expect(
+      (
+        await item.DELETE(
+          ctx(`/api/galleri/media/${crypto.randomUUID()}`, {
+            method: "DELETE",
+            params: { id: crypto.randomUUID() },
+          }),
+        )
+      ).status,
+    ).toBe(404);
   });
 });
