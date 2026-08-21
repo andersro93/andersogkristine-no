@@ -106,6 +106,7 @@ if (errorParam === 'invalid_invite') {
           const rawNext = urlParams.get('next') || '/';
           const next = /^\/(?![/\\])/.test(rawNext) ? rawNext : '/';
           if (btnText) btnText.innerText = '✓';
+          if (spinner) spinner.classList.add('hidden');
           setTimeout(() => {
             window.location.href = next;
           }, 400);

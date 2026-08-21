@@ -61,25 +61,17 @@ export default function SeatingChart({ tables }: Props) {
 
   // Scroll the first matched table into view whenever the match set changes.
   const tableRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const tableRefCallbacks = useRef<
-    Map<string, (el: HTMLDivElement | null) => void>
-  >(new Map());
-  function getTableRef(id: string) {
-    let cb = tableRefCallbacks.current.get(id);
-    if (!cb) {
-      cb = (el) => {
-        if (el) tableRefs.current.set(id, el);
-        else tableRefs.current.delete(id);
-      };
-      tableRefCallbacks.current.set(id, cb);
-    }
-    return cb;
-  }
+  const lastScrolledId = useRef<string | null>(null);
   useEffect(() => {
-    if (matchedTableIds.size === 0) return;
+    if (matchedTableIds.size === 0) {
+      lastScrolledId.current = null;
+      return;
+    }
     const firstMatch = tables.find((t) => matchedTableIds.has(t.id));
-    const el = firstMatch && tableRefs.current.get(firstMatch.id);
+    if (!firstMatch || firstMatch.id === lastScrolledId.current) return;
+    const el = tableRefs.current.get(firstMatch.id);
     if (!el) return;
+    lastScrolledId.current = firstMatch.id;
     el.scrollIntoView({
       block: "center",
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -124,7 +116,7 @@ export default function SeatingChart({ tables }: Props) {
         {isSearching && (
           <div
             key={matchCount}
-            className={`mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md motion-safe:animate-fade-in ${
+            className={`mt-2 bg-brand-title text-brand-bg text-center py-2 px-4 rounded-lg font-sans text-xs shadow-md ${
               matchCount > 0
                 ? "motion-safe:animate-pop"
                 : "motion-safe:animate-shake"
@@ -147,8 +139,10 @@ export default function SeatingChart({ tables }: Props) {
           return (
             <div
               key={table.id}
-              ref={getTableRef(table.id)}
-              data-table-id={table.id}
+              ref={(el) => {
+                if (el) tableRefs.current.set(table.id, el);
+                else tableRefs.current.delete(table.id);
+              }}
               className={`bg-[#fcfbf9]/85 backdrop-blur-sm border rounded-2xl p-6 shadow-md transition-all duration-300 relative overflow-hidden flex flex-col ${
                 isHighlighted
                   ? "border-brand-text/50 shadow-lg shadow-brand-text/10 scale-[1.02] bg-[#fffdfa]"

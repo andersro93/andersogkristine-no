@@ -23,4 +23,10 @@ describe("celebrateSingleMatch", () => {
     const result = celebrateSingleMatch(["b"], new Set(["a"]));
     expect(result).toEqual(new Set(["a", "b"]));
   });
+
+  test("does not mutate the input seen set", () => {
+    const seen = new Set(["a"]);
+    celebrateSingleMatch(["b"], seen);
+    expect(seen).toEqual(new Set(["a"]));
+  });
 });

@@ -186,7 +186,7 @@ export default function RSVPForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(["Kommer", "Kommer ikke"] as const).map((option) => (
                       <label
-                        key={`${option}-${state?.rsvp}`}
+                        key={option}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition select-none ${
                           state?.rsvp === option
                             ? "border-brand-title/40 bg-brand-title/5 motion-safe:animate-pop"
@@ -203,7 +203,10 @@ export default function RSVPForm({
                           onChange={() => setRsvp(guest.id, option)}
                           className="w-4 h-4 text-brand-title focus:ring-brand-title border-brand-title/20"
                         />
-                        <span className="text-sm font-medium text-brand-title">
+                        <span
+                          key={`${option}-${state?.rsvp}`}
+                          className={`inline-block text-sm font-medium text-brand-title ${state?.rsvp === option ? "motion-safe:animate-pop" : ""}`}
+                        >
                           {option === "Kommer"
                             ? "Ja, jeg gleder meg!"
                             : "Nei, jeg kan dessverre ikke"}

@@ -67,7 +67,7 @@ const initialContributor = contributors[0];
     <div id="egentid-content-card" class="max-w-2xl mx-auto bg-brand-bg rounded-xl border border-brand-title/15 shadow-sm p-6 md:p-8 min-h-[250px] scroll-mt-24">
       
       <!-- Framing decorative line -->
-      <div id="egentid-content-container" class="opacity-100 transition-opacity duration-200 ease-in-out space-y-6">
+      <div id="egentid-content-container" class="space-y-6">
         <div>
           <h3 id="egentid-role" class="mb-2">
             {initialContributor?.role}
@@ -120,12 +120,14 @@ const initialContributor = contributors[0];
       if (!contributor) return;
 
       // Pop the clicked polaroid (remove + reflow so repeated clicks re-animate)
-      card.classList.remove('motion-safe:animate-pop');
-      void card.offsetWidth;
-      card.classList.add('motion-safe:animate-pop');
-      card.addEventListener('animationend', () => {
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         card.classList.remove('motion-safe:animate-pop');
-      }, { once: true });
+        void card.offsetWidth;
+        card.classList.add('motion-safe:animate-pop');
+        card.addEventListener('animationend', () => {
+          card.classList.remove('motion-safe:animate-pop');
+        }, { once: true });
+      }
 
       // Update active polaroid styling
       const rotations = ['-rotate-1', 'rotate-2', '-rotate-2', 'rotate-1'];
