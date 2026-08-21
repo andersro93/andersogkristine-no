@@ -10,7 +10,9 @@ import {
   resetRateLimit,
   safeNextPath,
   secureCompare,
+  signValue,
   verifySessionCookie,
+  verifyValue,
 } from "./pin";
 
 describe("Security Gate - PIN & Session Controls", () => {
@@ -123,6 +125,28 @@ describe("Security Gate - PIN & Session Controls", () => {
         if (prevPin !== undefined) process.env.SITE_PIN = prevPin;
         __setCloudflareEnvForTests(prevCfEnv);
       }
+    });
+  });
+
+  describe("signValue / verifyValue", () => {
+    const env = { SESSION_SECRET: "test-secret-key-12345" } as Env;
+
+    test("round-trips for the same purpose", () => {
+      const v = signValue("gallery_admin", Date.now() + 60_000, env);
+      expect(verifyValue("gallery_admin", v, env)).toBe(true);
+    });
+    test("rejects another purpose, tampering, and expiry", () => {
+      const v = signValue("gallery_admin", Date.now() + 60_000, env);
+      expect(verifyValue("session", v, env)).toBe(false);
+      expect(verifyValue("gallery_admin", `${v}0`, env)).toBe(false);
+      const expired = signValue("gallery_admin", Date.now() - 1, env);
+      expect(verifyValue("gallery_admin", expired, env)).toBe(false);
+      expect(verifyValue("gallery_admin", "garbage", env)).toBe(false);
+    });
+    test("session cookie is signValue('session')", () => {
+      const cookie = generateSessionCookie(env);
+      expect(verifyValue("session", cookie, env)).toBe(true);
+      expect(verifySessionCookie(cookie, env)).toBe(true);
     });
   });
 

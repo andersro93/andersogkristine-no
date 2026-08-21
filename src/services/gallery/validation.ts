@@ -1,0 +1,259 @@
+/**
+ * Pure validation for the gallery: what we accept (kinds, MIME types, sizes),
+ * what an upload request must look like, magic-byte sniffing (we never trust
+ * the declared Content-Type alone), and the feed cursor codec.
+ *
+ * Deliberately free of Node/Workers imports so the browser island can share
+ * the caps and allowlists.
+ */
+import type { MediaKind, Variant } from "./types";
+
+export const VARIANTS = ["thumb", "display", "original"] as const;
+export const MAX_NAME_LENGTH = 60;
+
+const MB = 1024 * 1024;
+/** Per-variant byte caps. Workers' request body limit is 100 MB — keep video under it. */
+export const SIZE_CAPS = {
+  thumb: 1 * MB,
+  display: 4 * MB,
+  originalImage: 30 * MB,
+  originalVideo: 80 * MB,
+} as const;
+
+/** Originals we store, mime → file extension. */
+export const ORIGINAL_MIME_EXT: Record<MediaKind, Record<string, string>> = {
+  image: {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+  },
+  video: {
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+  },
+};
+
+/** Browser-generated derivatives (thumb / display / video poster). */
+export const DERIVATIVE_MIME_EXT: Record<string, string> = {
+  "image/webp": "webp",
+  "image/jpeg": "jpg",
+};
+
+export interface CreatePayload {
+  kind: MediaKind;
+  mime: string;
+  bytes: number;
+  name: string | null;
+  width: number | null;
+  height: number | null;
+  durationMs: number | null;
+}
+
+export type CreateValidation =
+  | { ok: true; value: CreatePayload }
+  | { ok: false; error: string };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(v: unknown): v is string {
+  return typeof v === "string" && UUID_RE.test(v);
+}
+
+export function isVariant(v: unknown): v is Variant {
+  return typeof v === "string" && (VARIANTS as readonly string[]).includes(v);
+}
+
+/** Lower-cased media type without parameters; null when absent/blank. */
+export function normalizeContentType(header: string | null): string | null {
+  if (!header) return null;
+  const type = header.split(";")[0].trim().toLowerCase();
+  return type.length > 0 ? type : null;
+}
+
+/** Trim, strip control characters, cap length; null when nothing is left. */
+export function sanitizeName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const cleaned = raw
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the point
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  return cleaned.slice(0, MAX_NAME_LENGTH);
+}
+
+export function allowedMimeFor(
+  kind: MediaKind,
+  variant: Variant,
+): Record<string, string> {
+  if (variant === "original") return ORIGINAL_MIME_EXT[kind];
+  if (variant === "display" && kind === "video") return {};
+  return DERIVATIVE_MIME_EXT;
+}
+
+export function sizeCapFor(kind: MediaKind, variant: Variant): number {
+  if (variant === "thumb") return SIZE_CAPS.thumb;
+  if (variant === "display") return SIZE_CAPS.display;
+  return kind === "image" ? SIZE_CAPS.originalImage : SIZE_CAPS.originalVideo;
+}
+
+function optionalInt(v: unknown, max: number): number | null | undefined {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > max) {
+    return undefined;
+  }
+  return Math.round(v);
+}
+
+export function validateCreatePayload(input: unknown): CreateValidation {
+  if (!input || typeof input !== "object") {
+    return { ok: false, error: "Ugyldig forespørsel." };
+  }
+  const body = input as Record<string, unknown>;
+
+  const kind = body.kind;
+  if (kind !== "image" && kind !== "video") {
+    return { ok: false, error: "Ukjent filtype." };
+  }
+
+  const mime =
+    typeof body.mime === "string" ? normalizeContentType(body.mime) : null;
+  if (!mime || !(mime in ORIGINAL_MIME_EXT[kind])) {
+    return {
+      ok: false,
+      error:
+        kind === "image"
+          ? "Bildeformatet støttes ikke (bruk JPEG, PNG, WebP eller HEIC)."
+          : "Videoformatet støttes ikke (bruk MP4 eller MOV).",
+    };
+  }
+
+  const bytes = body.bytes;
+  if (typeof bytes !== "number" || !Number.isInteger(bytes) || bytes <= 0) {
+    return { ok: false, error: "Ugyldig filstørrelse." };
+  }
+  const cap = sizeCapFor(kind, "original");
+  if (bytes > cap) {
+    return {
+      ok: false,
+      error:
+        kind === "image"
+          ? `Bildet er for stort (maks ${Math.round(cap / MB)} MB).`
+          : `Videoen er for stor (maks ${Math.round(cap / MB)} MB) – prøv en kortere video.`,
+    };
+  }
+
+  const width = optionalInt(body.width, 100_000);
+  const height = optionalInt(body.height, 100_000);
+  const durationMs = optionalInt(body.durationMs, 24 * 60 * 60 * 1000);
+  if (width === undefined || height === undefined || durationMs === undefined) {
+    return { ok: false, error: "Ugyldige bildedata." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      kind,
+      mime,
+      bytes,
+      name: sanitizeName(body.name),
+      width,
+      height,
+      durationMs,
+    },
+  };
+}
+
+const HEIC_BRANDS = new Set([
+  "heic",
+  "heix",
+  "hevc",
+  "hevx",
+  "mif1",
+  "msf1",
+  "heif",
+]);
+
+/**
+ * Identify the container from the first 16 bytes. Returns the canonical MIME
+ * or null when unrecognised. ISO-BMFF ("ftyp") covers HEIC, MP4 and MOV —
+ * the major brand tells them apart.
+ */
+export function sniffMime(head: Uint8Array): string | null {
+  if (head.length < 12) return null;
+  if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff)
+    return "image/jpeg";
+  if (
+    head[0] === 0x89 &&
+    head[1] === 0x50 &&
+    head[2] === 0x4e &&
+    head[3] === 0x47 &&
+    head[4] === 0x0d &&
+    head[5] === 0x0a &&
+    head[6] === 0x1a &&
+    head[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  const ascii = (from: number, to: number) =>
+    String.fromCharCode(...head.subarray(from, to));
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  if (ascii(4, 8) === "ftyp") {
+    const brand = ascii(8, 12).trim().toLowerCase();
+    if (HEIC_BRANDS.has(brand)) return "image/heic";
+    if (brand === "qt") return "video/quicktime";
+    return "video/mp4";
+  }
+  return null;
+}
+
+/** Images must match exactly (heic/heif interchangeable); any video brand is fine for any video MIME. */
+export function mimeMatchesSniff(
+  declared: string,
+  sniffed: string | null,
+): boolean {
+  if (!sniffed) return false;
+  if (declared === sniffed) return true;
+  const heic = (m: string) => m === "image/heic" || m === "image/heif";
+  if (heic(declared) && heic(sniffed)) return true;
+  if (declared.startsWith("video/") && sniffed.startsWith("video/"))
+    return true;
+  return false;
+}
+
+export function encodeCursor(readyAt: number, id: string): string {
+  return `${readyAt}_${id}`;
+}
+
+export function decodeCursor(
+  raw: string | null | undefined,
+): { readyAt: number; id: string } | null {
+  if (!raw) return null;
+  const idx = raw.indexOf("_");
+  if (idx <= 0) return null;
+  const readyAt = Number(raw.slice(0, idx));
+  const id = raw.slice(idx + 1);
+  if (!Number.isInteger(readyAt) || readyAt < 0 || !isUuid(id)) return null;
+  return { readyAt, id };
+}
+
+/** Normalise R2's three range shapes to inclusive start/end for Content-Range. */
+export function resolveRange(
+  range: R2Range | undefined,
+  size: number,
+): { start: number; end: number } | null {
+  if (!range) return null;
+  if ("suffix" in range) {
+    const suffix = Math.min(range.suffix, size);
+    return { start: size - suffix, end: size - 1 };
+  }
+  const start = range.offset ?? 0;
+  const end =
+    "length" in range && range.length !== undefined
+      ? Math.min(start + range.length, size) - 1
+      : size - 1;
+  return { start, end };
+}

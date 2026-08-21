@@ -37,6 +37,7 @@ Useful scripts:
 | `bun run dev:clean` | Clear local Wrangler KV state and the Astro cache |
 | `bun run src/scripts/spotify-auth.ts` | One-off: obtain a Spotify refresh token |
 | `bun run src/scripts/update_locations.ts` | One-off: bulk-update location coordinates in Notion |
+| `bun run db:migrate:local` / `bun run db:migrate:remote` | Apply D1 migrations (`migrations/`) locally / in production. `dev` runs the local one automatically; the remote one is manual (Workers Builds does not run migrations). |
 
 ### Environment variables
 
@@ -61,8 +62,9 @@ Secrets in production live in Cloudflare (Workers → Settings → Variables & S
 | `SPOTIFY_CLIENT_SECRET` | optional | — " — |
 | `SPOTIFY_REFRESH_TOKEN` | optional | — " — (generate with `src/scripts/spotify-auth.ts`) |
 | `SPOTIFY_PLAYLIST_ID` | optional | — " — |
+| `GALLERY_ADMIN_KEY` | optional | Unlocks gallery admin mode via `/galleri?admin=<key>` (hide/unhide uploads). Without it admin mode is simply unavailable. |
 
-Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace) and `ASSETS`.
+Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace), `ASSETS`, `GALLERY` (R2 bucket) and `DB` (D1 database).
 
 ### Notion schema expectations
 
@@ -93,6 +95,20 @@ Deployments run through **Cloudflare Workers Builds**, connected to this GitHub 
 ### KV cache
 
 One KV namespace, `CACHE`. Notion data is cached with stale-while-revalidate semantics (`src/services/cache.ts`): entries are refreshed in the background after 60 s and served indefinitely if Notion is unreachable — by design, so a Notion outage does not take the site down. Seating is invalidated on every RSVP. Rate-limit counters (`pin_limit:*`, `invite_limit:*`) expire after one hour. To force a refresh, delete the `notion_*` keys in the Cloudflare dashboard.
+
+### Gallery (R2 + D1)
+
+Guest uploads go to the R2 bucket `andersogkristine-gallery` (`media/<id>/{thumb,display,original}.<ext>`) and one row per item in the D1 database `andersogkristine-gallery` (`media` table, see `migrations/`).
+
+**⚠️ This one-time setup must be done *before* merging the `gallery` branch to `main`.** `wrangler.jsonc` currently ships with a placeholder `database_id` (`00000000-…`); `wrangler deploy` validates the R2 and D1 bindings on every deploy, so merging without replacing it would fail the production deploy for the *entire* site, not just the gallery.
+
+1. `bunx wrangler r2 bucket create andersogkristine-gallery --jurisdiction eu` (EU jurisdiction: bytes stay in the EU; the binding carries `"jurisdiction": "eu"`)
+2. `bunx wrangler d1 create andersogkristine-gallery` → paste the real `database_id` it prints into `wrangler.jsonc` (replacing the placeholder) and commit that change
+3. `bun run db:migrate:remote`
+4. `bunx wrangler secret put GALLERY_ADMIN_KEY`
+5. Add the `gallery` and `gallery_upload` flag rows in Notion (optional — missing flags mean enabled)
+
+Admin mode: open `/galleri?admin=<GALLERY_ADMIN_KEY>` once on your phone (30-day cookie); `/galleri?admin=logout` clears it. Hidden items are soft-hidden (R2 objects stay). Export afterwards with `rclone sync` (R2 S3 credentials) + `bunx wrangler d1 export andersogkristine-gallery --remote --output gallery.sql`. Purge stuck uploads: `bunx wrangler d1 execute andersogkristine-gallery --remote --command "DELETE FROM media WHERE status='uploading' AND created_at < <epoch-ms>"`.
 
 ---
 
@@ -131,5 +147,7 @@ Toggle components and subpages from a Notion database.
 | `map` | Map | Hides map sections/links; `/kart` redirects to `/`. |
 | `egentid` | Recommendations | Hides the section on the homepage. |
 | `program` | Timeline | Hides the section on the homepage. |
+| `gallery` | Guest gallery | Hides gallery links; `/galleri` redirects to `/`; `/api/galleri/*` answers 404. |
+| `gallery_upload` | Gallery uploads | Upload UI hidden; `POST /api/galleri/media` answers 403 ("Opplasting er stengt."). Close uploads after the wedding without hiding the gallery. |
 
 Flags are resolved once per request in the middleware (`Astro.locals.flags`), cached in KV like everything else, and default to **enabled** if the database cannot be read.

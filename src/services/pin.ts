@@ -16,7 +16,7 @@ const RATE_LIMIT_TTL_SECONDS = 60 * 60;
  * Rate-limit scopes. Each scope has its own counter per IP so that e.g.
  * invite-code guesses do not consume PIN attempts and vice versa.
  */
-export type RateLimitScope = "pin" | "invite";
+export type RateLimitScope = "pin" | "invite" | "gallery_admin";
 
 export interface RateLimitData {
   attempts: number;
@@ -70,55 +70,64 @@ export function getSitePin(env?: Env): string {
 }
 
 /**
- * Generate a secure, cryptographically signed session cookie value.
- * The cookie is valid for 30 days and includes an expiration date.
+ * Sign `${purpose}:${expiresAt}` with SESSION_SECRET. The purpose namespaces
+ * cookies (site session vs. gallery admin) so one can never be replayed as
+ * the other. Format: `<expiresAt>.<hmac-hex>`.
  */
-export function generateSessionCookie(env?: Env): string {
+export function signValue(
+  purpose: string,
+  expiresAt: number,
+  env?: Env,
+): string {
   const secret = getSessionSecret(env);
-  const expiration = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
-  const message = `session:${expiration}`;
   const signature = crypto
     .createHmac("sha256", secret)
-    .update(message)
+    .update(`${purpose}:${expiresAt}`)
     .digest("hex");
-  return `${expiration}.${signature}`;
+  return `${expiresAt}.${signature}`;
 }
 
-/**
- * Verify a signed session cookie value.
- * Returns true if the cookie signature is valid and it has not expired.
- */
-export function verifySessionCookie(cookieValue: string, env?: Env): boolean {
+/** Verify a value produced by signValue(): valid signature for `purpose` and not expired. */
+export function verifyValue(
+  purpose: string,
+  value: string,
+  env?: Env,
+): boolean {
   try {
-    const parts = cookieValue.split(".");
+    const parts = value.split(".");
     if (parts.length !== 2) return false;
-
     const [expirationStr, signature] = parts;
     const expiration = parseInt(expirationStr, 10);
-
-    // Check if expired
-    if (Number.isNaN(expiration) || expiration < Date.now()) {
-      return false;
-    }
+    if (Number.isNaN(expiration) || expiration < Date.now()) return false;
 
     const secret = getSessionSecret(env);
-    const message = `session:${expiration}`;
-    const expectedSignature = crypto
+    const expected = crypto
       .createHmac("sha256", secret)
-      .update(message)
+      .update(`${purpose}:${expiration}`)
       .digest("hex");
-
+    // Compare hex string lengths first: Buffer.from(hex, "hex") silently
+    // drops a trailing odd character, so a length check on the *decoded*
+    // buffers alone would miss a single appended hex digit.
+    if (signature.length !== expected.length) return false;
     const buf1 = Buffer.from(signature, "hex");
-    const buf2 = Buffer.from(expectedSignature, "hex");
-
-    if (buf1.length !== buf2.length) {
-      return false;
-    }
-
+    const buf2 = Buffer.from(expected, "hex");
+    if (buf1.length !== buf2.length || buf1.length === 0) return false;
     return crypto.timingSafeEqual(buf1, buf2);
   } catch {
     return false;
   }
+}
+
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Site-wide access cookie value (30 days). */
+export function generateSessionCookie(env?: Env): string {
+  return signValue("session", Date.now() + SESSION_TTL_MS, env);
+}
+
+/** Verify the site-wide access cookie. */
+export function verifySessionCookie(cookieValue: string, env?: Env): boolean {
+  return verifyValue("session", cookieValue, env);
 }
 
 /**

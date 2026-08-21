@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "andersogkristine-no",
+  "account_id": "cfef229176e71ea694c259a238556c0e",
   "compatibility_date": "2026-05-25",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -11,6 +12,21 @@
     {
       "binding": "CACHE",
       "id": "86176175555f4144a41c0e93583f789b"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "GALLERY",
+      "bucket_name": "andersogkristine-gallery",
+      "jurisdiction": "eu"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "andersogkristine-gallery",
+      "database_id": "086663bd-4edf-41a3-92d8-77dcafb97b6d",
+      "migrations_dir": "migrations"
     }
   ],
   "observability": {

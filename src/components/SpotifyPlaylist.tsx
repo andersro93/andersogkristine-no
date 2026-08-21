@@ -3,8 +3,8 @@ import { PlaylistTable } from "./spotify/PlaylistTable";
 import { SearchResults } from "./spotify/SearchResults";
 import type { SpotifyTrack } from "./spotify/types";
 import { useSpotifySearch } from "./spotify/useSpotifySearch";
-import { Toast, useToast } from "./spotify/useToast";
 import { Icon, Spinner } from "./ui/Icon";
+import { Toast, useToast } from "./ui/useToast";
 
 /** Guest-facing Spotify page: open-playlist link, search + add, current playlist. */
 export default function SpotifyPlaylist() {
