@@ -53,6 +53,9 @@ export function createMedia(
   }).then((r) => handle<{ id: string }>(r));
 }
 
+/** No upload progress for this long → treat the connection as stalled. */
+const STALL_MS = 45_000;
+
 /** XHR so we get upload progress events (fetch has none). */
 export function putVariant(
   id: string,
@@ -64,37 +67,53 @@ export function putVariant(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(stallTimer);
+      fn();
+    };
+    const onStall = () => {
+      settle(() => {
+        reject(new ApiError(0, "Opplastingen tok for lang tid. Prøv igjen."));
+      });
+      xhr.abort();
+    };
+    let stallTimer = setTimeout(onStall, STALL_MS);
     xhr.open("PUT", `/api/galleri/media/${id}/${variant}`);
     xhr.setRequestHeader("Content-Type", contentType);
     xhr.setRequestHeader("X-Device-Id", deviceId);
-    xhr.timeout = 120_000;
     xhr.upload.onprogress = (e) => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(onStall, STALL_MS);
       if (e.lengthComputable) onProgress(e.loaded / e.total);
     };
     xhr.onload = () => {
-      if (xhr.status === 401) {
-        window.location.reload();
-        reject(new ApiError(401, "Logg inn på nytt."));
-        return;
-      }
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onProgress(1);
-        resolve();
-        return;
-      }
-      let message = "Opplastingen feilet.";
-      try {
-        message = JSON.parse(xhr.responseText).error ?? message;
-      } catch {
-        /* keep default */
-      }
-      reject(new ApiError(xhr.status, message));
+      settle(() => {
+        if (xhr.status === 401) {
+          window.location.reload();
+          reject(new ApiError(401, "Logg inn på nytt."));
+          return;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(1);
+          resolve();
+          return;
+        }
+        let message = "Opplastingen feilet.";
+        try {
+          message = JSON.parse(xhr.responseText).error ?? message;
+        } catch {
+          /* keep default */
+        }
+        reject(new ApiError(xhr.status, message));
+      });
     };
     xhr.onerror = () =>
-      reject(new ApiError(0, "Nettverksfeil under opplasting."));
-    xhr.onabort = () => reject(new ApiError(0, "Opplastingen ble avbrutt."));
-    xhr.ontimeout = () =>
-      reject(new ApiError(0, "Opplastingen tok for lang tid. Prøv igjen."));
+      settle(() => reject(new ApiError(0, "Nettverksfeil under opplasting.")));
+    xhr.onabort = () =>
+      settle(() => reject(new ApiError(0, "Opplastingen ble avbrutt.")));
     xhr.send(blob);
   });
 }

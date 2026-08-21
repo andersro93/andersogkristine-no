@@ -91,7 +91,7 @@ export function Lightbox({
   return (
     <dialog
       ref={dialog}
-      className="fixed inset-0 m-0 w-screen h-screen max-w-none max-h-none bg-black/95 text-white p-0 backdrop:bg-black/80 motion-safe:animate-fade-in"
+      className="fixed inset-0 m-0 w-screen h-dvh max-w-none max-h-none bg-black/95 text-white p-0 backdrop:bg-black/80 motion-safe:animate-fade-in"
       onClose={onClose}
       onCancel={onClose}
       onKeyDown={onKey}

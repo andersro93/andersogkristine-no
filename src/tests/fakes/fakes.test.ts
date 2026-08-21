@@ -53,29 +53,36 @@ describe("fake R2", () => {
     expect(put?.size).toBe(10);
     const obj = await r2.get("k");
     expect(obj).not.toBeNull();
-    expect(new Uint8Array(await obj!.arrayBuffer())).toEqual(bytes);
+    const found = obj as NonNullable<typeof obj>;
+    expect(new Uint8Array(await found.arrayBuffer())).toEqual(bytes);
     const h = new Headers();
-    obj!.writeHttpMetadata(h);
+    found.writeHttpMetadata(h);
     expect(h.get("Content-Type")).toBe("image/webp");
-    expect(obj!.httpEtag.startsWith('"')).toBe(true);
+    expect(found.httpEtag.startsWith('"')).toBe(true);
   });
 
   test("range by object and by Headers", async () => {
     const r2 = createFakeR2();
     await r2.put("k", bytes);
     const a = await r2.get("k", { range: { offset: 2, length: 3 } });
-    expect(new Uint8Array(await a!.arrayBuffer())).toEqual(
+    expect(a).not.toBeNull();
+    const rangeA = a as NonNullable<typeof a>;
+    expect(new Uint8Array(await rangeA.arrayBuffer())).toEqual(
       new Uint8Array([2, 3, 4]),
     );
-    expect(a!.range).toEqual({ offset: 2, length: 3 });
+    expect(rangeA.range).toEqual({ offset: 2, length: 3 });
     const b = await r2.get("k", {
       range: new Headers({ Range: "bytes=0-1" }),
     });
-    expect(new Uint8Array(await b!.arrayBuffer())).toEqual(
+    expect(b).not.toBeNull();
+    const rangeB = b as NonNullable<typeof b>;
+    expect(new Uint8Array(await rangeB.arrayBuffer())).toEqual(
       new Uint8Array([0, 1]),
     );
     const c = await r2.get("k", { range: new Headers({ Range: "bytes=-2" }) });
-    expect(new Uint8Array(await c!.arrayBuffer())).toEqual(
+    expect(c).not.toBeNull();
+    const rangeC = c as NonNullable<typeof c>;
+    expect(new Uint8Array(await rangeC.arrayBuffer())).toEqual(
       new Uint8Array([8, 9]),
     );
     await expect(
@@ -87,11 +94,14 @@ describe("fake R2", () => {
     const r2 = createFakeR2();
     await r2.put("k", bytes);
     const obj = await r2.get("k");
+    expect(obj).not.toBeNull();
+    const found = obj as NonNullable<typeof obj>;
     const again = await r2.get("k", {
-      onlyIf: new Headers({ "If-None-Match": obj!.httpEtag }),
+      onlyIf: new Headers({ "If-None-Match": found.httpEtag }),
     });
     expect(again).not.toBeNull();
-    expect("body" in again!).toBe(false);
+    const bodyless = again as NonNullable<typeof again>;
+    expect("body" in bodyless).toBe(false);
   });
 
   test("head, delete, list", async () => {

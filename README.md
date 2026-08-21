@@ -64,7 +64,7 @@ Secrets in production live in Cloudflare (Workers → Settings → Variables & S
 | `SPOTIFY_PLAYLIST_ID` | optional | — " — |
 | `GALLERY_ADMIN_KEY` | optional | Unlocks gallery admin mode via `/galleri?admin=<key>` (hide/unhide uploads). Without it admin mode is simply unavailable. |
 
-Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace) and `ASSETS`.
+Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace), `ASSETS`, `GALLERY` (R2 bucket) and `DB` (D1 database).
 
 ### Notion schema expectations
 
@@ -98,10 +98,12 @@ One KV namespace, `CACHE`. Notion data is cached with stale-while-revalidate sem
 
 ### Gallery (R2 + D1)
 
-Guest uploads go to the R2 bucket `andersogkristine-gallery` (`media/<id>/{thumb,display,original}.<ext>`) and one row per item in the D1 database `andersogkristine-gallery` (`media` table, see `migrations/`). One-time setup:
+Guest uploads go to the R2 bucket `andersogkristine-gallery` (`media/<id>/{thumb,display,original}.<ext>`) and one row per item in the D1 database `andersogkristine-gallery` (`media` table, see `migrations/`).
+
+**⚠️ This one-time setup must be done *before* merging the `gallery` branch to `main`.** `wrangler.jsonc` currently ships with a placeholder `database_id` (`00000000-…`); `wrangler deploy` validates the R2 and D1 bindings on every deploy, so merging without replacing it would fail the production deploy for the *entire* site, not just the gallery.
 
 1. `bunx wrangler r2 bucket create andersogkristine-gallery`
-2. `bunx wrangler d1 create andersogkristine-gallery` → paste the `database_id` into `wrangler.jsonc`
+2. `bunx wrangler d1 create andersogkristine-gallery` → paste the real `database_id` it prints into `wrangler.jsonc` (replacing the placeholder) and commit that change
 3. `bun run db:migrate:remote`
 4. `bunx wrangler secret put GALLERY_ADMIN_KEY`
 5. Add the `gallery` and `gallery_upload` flag rows in Notion (optional — missing flags mean enabled)

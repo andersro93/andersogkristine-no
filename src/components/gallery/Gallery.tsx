@@ -21,7 +21,12 @@ const JUST_ARRIVED_MS = 700;
 /** The gallery island: upload bar + feed + lightbox + admin controls. */
 export default function Gallery({ isAdmin, uploadOpen }: GalleryProps) {
   const deviceId = useMemo(() => getDeviceId(), []);
-  const [name, setName] = useState(() => getSavedName());
+  // Reading localStorage during the initial render would mismatch SSR
+  // (which always renders ""), so the saved name is applied post-hydration.
+  const [name, setName] = useState("");
+  useEffect(() => {
+    setName(getSavedName());
+  }, []);
   const [filter, setFilter] = useState<"all" | "mine">("all");
   const [open, setOpen] = useState<number | null>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);

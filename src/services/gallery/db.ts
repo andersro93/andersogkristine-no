@@ -165,6 +165,10 @@ export async function listFeed(
   return res.results;
 }
 
+/**
+ * Soft-hide. Guarded with `hidden_at IS NULL` so a later owner delete on a
+ * row an admin already hid doesn't overwrite the admin's `hidden_by` marker.
+ */
 export async function setHidden(
   db: D1Database,
   id: string,
@@ -172,7 +176,9 @@ export async function setHidden(
   at: number,
 ): Promise<void> {
   await db
-    .prepare("UPDATE media SET hidden_at = ?, hidden_by = ? WHERE id = ?")
+    .prepare(
+      "UPDATE media SET hidden_at = ?, hidden_by = ? WHERE id = ? AND hidden_at IS NULL",
+    )
     .bind(at, by, id)
     .run();
 }

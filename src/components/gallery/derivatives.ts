@@ -13,8 +13,36 @@ interface Decoded {
   close(): void;
 }
 
+/**
+ * Large photos are almost always wider than DISPLAY_EDGE, so decoding them
+ * straight to that size skips a full-resolution decode + an extra resample
+ * pass. Below this threshold we decode at native size instead, since
+ * `resizeWidth` would otherwise *upscale* small images.
+ */
+const RESIZE_ON_DECODE_THRESHOLD_BYTES = 6 * 1024 * 1024;
+
 async function decodeImage(file: File): Promise<Decoded> {
   if (typeof createImageBitmap === "function") {
+    if (file.size > RESIZE_ON_DECODE_THRESHOLD_BYTES) {
+      try {
+        const bitmap = await createImageBitmap(file, {
+          imageOrientation: "from-image",
+          resizeWidth: DISPLAY_EDGE,
+          resizeQuality: "high",
+        });
+        // NOTE: for large files the reported width/height are the resized
+        // (not original) dimensions — the server only uses them for layout,
+        // so this is acceptable.
+        return {
+          source: bitmap,
+          width: bitmap.width,
+          height: bitmap.height,
+          close: () => bitmap.close(),
+        };
+      } catch {
+        /* browser rejected the resize options — fall back to plain decode below */
+      }
+    }
     try {
       const bitmap = await createImageBitmap(file, {
         imageOrientation: "from-image",

@@ -169,6 +169,15 @@ describe("gallery db", () => {
     expect(row?.hidden_by).toBeNull();
   });
 
+  test("setHidden keeps the admin marker if the owner hides an already admin-hidden row", async () => {
+    await createItem(db, input(0));
+    await setHidden(db, ids[0], "admin", T0 + 1);
+    await setHidden(db, ids[0], "owner", T0 + 2);
+    const row = await getItem(db, ids[0]);
+    expect(row?.hidden_at).toBe(T0 + 1);
+    expect(row?.hidden_by).toBe("admin");
+  });
+
   test("countRecent and countStuck", async () => {
     await createItem(db, input(0, { createdAt: T0 }));
     await createItem(db, input(1, { createdAt: T0 + 10 }));
