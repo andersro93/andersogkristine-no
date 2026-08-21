@@ -98,6 +98,7 @@ function Tile({
             loading="lazy"
             decoding="async"
             onLoad={preview ? onPreviewShown : undefined}
+            onError={preview ? onPreviewShown : undefined}
             className={`w-full h-full object-cover bg-cover bg-center ${hidden ? "opacity-40" : ""}`}
             style={preview ? { backgroundImage: `url(${preview})` } : undefined}
           />

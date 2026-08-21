@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Toast, useToast } from "../ui/useToast";
 import { deleteMedia, unhideMedia } from "./api";
 import { fireConfetti } from "./confetti";
@@ -96,15 +96,33 @@ export default function Gallery({ isAdmin, uploadOpen }: GalleryProps) {
   queueListRef.current = queue.queue;
   dismissRef.current = queue.dismiss;
 
+  // Kept in sync every render so both `releasePreview` and the unmount
+  // cleanup below can read the current map without it being a dependency —
+  // and so the revoke can happen outside the `setPreviewFor` updater, which
+  // must stay pure (updaters can run more than once, e.g. under Strict Mode).
+  const previewForRef = useRef<Map<string, string>>(previewFor);
+  previewForRef.current = previewFor;
+
   const releasePreview = useCallback((id: string) => {
+    const url = previewForRef.current.get(id);
+    if (!url) return;
+    URL.revokeObjectURL(url);
     setPreviewFor((prev) => {
-      const url = prev.get(id);
-      if (!url) return prev;
-      URL.revokeObjectURL(url);
+      if (!prev.has(id)) return prev;
       const next = new Map(prev);
       next.delete(id);
       return next;
     });
+  }, []);
+
+  // Revoke any preview object URLs still outstanding when the gallery
+  // unmounts (e.g. navigating away before a thumb finished loading) —
+  // otherwise they leak for the life of the tab.
+  useEffect(() => {
+    return () => {
+      for (const url of previewForRef.current.values())
+        URL.revokeObjectURL(url);
+    };
   }, []);
 
   const onOpen = useCallback((index: number, rect: DOMRect) => {
