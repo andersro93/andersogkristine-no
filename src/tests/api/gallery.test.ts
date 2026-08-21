@@ -509,9 +509,25 @@ describe("GET /api/galleri/file/:id/:variant", () => {
     expect(tail.headers.get("Content-Range")).toBe(
       `bytes ${JPEG.length - 4}-${JPEG.length - 1}/${JPEG.length}`,
     );
-    expect((await get(id, "original", { Range: "bytes=9999-" })).status).toBe(
-      416,
+    const unsatisfiable = await get(id, "original", {
+      Range: "bytes=9999-",
+    });
+    expect(unsatisfiable.status).toBe(416);
+    expect(unsatisfiable.headers.get("Content-Range")).toBe(
+      `bytes */${JPEG.length}`,
     );
+  });
+  test("R2 get failure without a Range header is a 500, not a misleading 416", async () => {
+    const id = await readyImage();
+    const bucket = mockEnv.GALLERY as any;
+    const orig = bucket.get;
+    bucket.get = async () => {
+      throw new Error("boom");
+    };
+    const plain = await get(id, "original");
+    expect(plain.status).toBe(500);
+    expect(((await plain.json()) as any).error).toBe("Noe gikk galt.");
+    bucket.get = orig;
   });
   test("304 on If-None-Match", async () => {
     const id = await readyImage();

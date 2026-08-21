@@ -46,10 +46,22 @@ export const GET: APIRoute = async (context) => {
         range: context.request.headers,
         onlyIf: context.request.headers,
       });
-    } catch {
+    } catch (err) {
+      if (!context.request.headers.has("range")) {
+        console.error("Gallery R2 get failed:", err);
+        return json({ error: "Noe gikk galt." }, 500);
+      }
+      let size: number | undefined;
+      try {
+        const head = await bindings.bucket.head(key);
+        size = head?.size;
+      } catch {
+        size = undefined;
+      }
       return new Response(null, {
         status: 416,
-        headers: { "Content-Range": "bytes */0" },
+        headers:
+          size === undefined ? {} : { "Content-Range": `bytes */${size}` },
       });
     }
     if (!object) return json({ error: "Ikke funnet." }, 404);
