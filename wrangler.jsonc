@@ -13,6 +13,20 @@
       "id": "86176175555f4144a41c0e93583f789b"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "GALLERY",
+      "bucket_name": "andersogkristine-gallery"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "andersogkristine-gallery",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true,

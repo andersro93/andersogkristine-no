@@ -19,6 +19,12 @@ interface Env {
   SPOTIFY_REFRESH_TOKEN?: string;
   SPOTIFY_PLAYLIST_ID?: string;
   CACHE?: KVNamespace;
+  /** Gallery bytes (R2). Optional so the site degrades to "ikke tilgjengelig" without it. */
+  GALLERY?: R2Bucket;
+  /** Gallery metadata (D1). */
+  DB?: D1Database;
+  /** Secret that unlocks gallery admin mode via /galleri?admin=<key>. */
+  GALLERY_ADMIN_KEY?: string;
 }
 
 declare module "cloudflare:workers" {

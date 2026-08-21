@@ -6,7 +6,9 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "bun run src/scripts/prebuild.ts && astro dev",
+    "dev": "bun run src/scripts/prebuild.ts && bun run db:migrate:local && astro dev",
+    "db:migrate:local": "bunx wrangler d1 migrations apply andersogkristine-gallery --local",
+    "db:migrate:remote": "bunx wrangler d1 migrations apply andersogkristine-gallery --remote",
     "build": "bun run src/scripts/prebuild.ts && astro build",
     "deploy": "bun run build && bunx wrangler deploy",
     "preview": "astro preview",
