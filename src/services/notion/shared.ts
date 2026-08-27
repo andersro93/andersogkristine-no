@@ -1,7 +1,7 @@
 import type { PageObjectResponse } from "@notionhq/client";
 import { Client } from "@notionhq/client";
 import notionFallback from "../../config/notion-fallback.json";
-import { escapeHtml } from "../../utils/html";
+import { escapeHtml, linkifyEscapedText } from "../../utils/html";
 import { getDataSourceId, queryAll } from "../cache";
 import type { FaqItem, StoryItem } from "./content";
 import type { WeddingLocation } from "./locations";
@@ -74,6 +74,9 @@ export function notionRichTextToHtml(prop: any, fallback = ""): string {
     let text = escapeHtml(item.plain_text || "");
 
     const ann = item.annotations || {};
+    // Markdown-style [label](url) links plus bare URLs/e-mails typed as plain
+    // text. Items Notion already linked (href) keep their own anchor below.
+    if (!item.href && !ann.code) text = linkifyEscapedText(text);
     if (ann.bold) text = `<strong>${text}</strong>`;
     if (ann.italic) text = `<em>${text}</em>`;
     if (ann.strikethrough) text = `<del>${text}</del>`;

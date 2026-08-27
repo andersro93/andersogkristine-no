@@ -275,6 +275,37 @@ describe("Notion Service Integration & Fallbacks", () => {
       expect(faqs[0].question).toBe("Hva er kleskoden?");
       expect(faqs[0].answer).toContain("<strong>Mørk Dress / Smoking</strong>");
     });
+
+    test("should render markdown links, bare URLs and e-mails in answers", async () => {
+      mockFaqResults = [
+        {
+          properties: {
+            Spørsmål: {
+              type: "title",
+              title: [{ plain_text: "Hvordan kontakter jeg dere?" }],
+            },
+            Svar: {
+              type: "rich_text",
+              rich_text: [
+                {
+                  plain_text:
+                    "Se [kartet](/kart) eller les mer på https://example.com. Skriv til k@example.com",
+                  annotations: {},
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const faqs = await fetchFaqFromNotion(mockEnv);
+      const answer = faqs[0].answer;
+      expect(answer).toContain('<a href="/kart"');
+      expect(answer).toContain('<a href="https://example.com"');
+      expect(answer).toContain('<a href="mailto:k@example.com"');
+      // Markdown syntax should no longer be visible as text
+      expect(answer).not.toContain("[kartet]");
+    });
   });
 
   describe("fetchEgentidData", () => {
