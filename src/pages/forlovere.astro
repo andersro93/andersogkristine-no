@@ -15,6 +15,14 @@ const forloverNames = forlovere.map(f => f.name.split(' ')[0]);
 const namesText = forloverNames.length > 1
   ? `${forloverNames.slice(0, -1).join(', ')} eller ${forloverNames[forloverNames.length - 1]}`
   : forloverNames.join('');
+
+// No photos of the forlovere yet — show their initials instead
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
+}
 ---
 
 <SubpageLayout
@@ -31,15 +39,11 @@ const namesText = forloverNames.length > 1
           <div class={`grid gap-8 md:gap-12 ${forlovere.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} justify-items-center`}>
             {forlovere.map((forlover) => (
               <div class="flex flex-col items-center space-y-4">
-                {/* Photo */}
-                <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
-                  <img
-                    src={forlover.photo}
-                    alt={forlover.name}
-                    class="w-full h-full object-cover"
-                    loading="lazy"
-                    onerror="this.style.display='none'"
-                  />
+                {/* Initials avatar (no photos yet) */}
+                <div class="w-36 h-36 md:w-44 md:h-44 rounded-full border-4 border-brand-title/10 shadow-lg bg-brand-title/10 flex items-center justify-center select-none">
+                  <span class="font-serif text-5xl md:text-6xl text-brand-title font-semibold" aria-hidden="true">
+                    {initials(forlover.name)}
+                  </span>
                 </div>
 
                 {/* Name & Role */}
