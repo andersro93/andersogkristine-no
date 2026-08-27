@@ -396,6 +396,9 @@ export async function addTrackToPlaylist(
       },
       body: JSON.stringify({
         uris: [trackUri],
+        // Insert at the top so the newest suggestions lead the playlist
+        // (matches mock mode, which also prepends)
+        position: 0,
       }),
     });
 
