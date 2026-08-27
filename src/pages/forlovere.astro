@@ -48,17 +48,29 @@ const namesText = forloverNames.length > 1
                   <p class="text-lead">{forlover.role || 'Forlover'}</p>
                 </div>
 
-                {/* Email */}
-                {forlover.email && (
-                  <p class="text-body text-base">
-                    <a
-                      href={`mailto:${forlover.email}`}
-                      class="text-brand-title hover:underline font-medium transition-colors"
-                    >
-                      {forlover.email}
-                    </a>
-                  </p>
-                )}
+                {/* Contact */}
+                <div class="space-y-1">
+                  {forlover.email && (
+                    <p class="text-body text-base">
+                      <a
+                        href={`mailto:${forlover.email}`}
+                        class="text-brand-title hover:underline font-medium transition-colors"
+                      >
+                        {forlover.email}
+                      </a>
+                    </p>
+                  )}
+                  {forlover.phone && (
+                    <p class="text-body text-base">
+                      <a
+                        href={`tel:${forlover.phone.replace(/\s+/g, '')}`}
+                        class="text-brand-title hover:underline font-medium transition-colors"
+                      >
+                        {forlover.phone}
+                      </a>
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

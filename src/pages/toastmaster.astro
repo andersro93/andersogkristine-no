@@ -1,9 +1,9 @@
 ---
 import { env } from '../runtime';
 import SubpageLayout from '../layouts/SubpageLayout.astro';
-import { fetchToastmasters } from '../services/notion';
+import { type ContributorContact, fetchToastmasters } from '../services/notion';
 
-let toastmasters: { name: string; email: string; photo: string }[] = [];
+let toastmasters: ContributorContact[] = [];
 const context = Astro.locals?.cfContext;
 try {
   toastmasters = await fetchToastmasters(env, context);
@@ -48,17 +48,29 @@ const namesText = toastmasterNames.length === 2
                   <p class="text-lead">Toastmaster</p>
                 </div>
 
-                {/* Email */}
-                {tm.email && (
-                  <p class="text-body text-base">
-                    <a
-                      href={`mailto:${tm.email}`}
-                      class="text-brand-title hover:underline font-medium transition-colors"
-                    >
-                      {tm.email}
-                    </a>
-                  </p>
-                )}
+                {/* Contact */}
+                <div class="space-y-1">
+                  {tm.email && (
+                    <p class="text-body text-base">
+                      <a
+                        href={`mailto:${tm.email}`}
+                        class="text-brand-title hover:underline font-medium transition-colors"
+                      >
+                        {tm.email}
+                      </a>
+                    </p>
+                  )}
+                  {tm.phone && (
+                    <p class="text-body text-base">
+                      <a
+                        href={`tel:${tm.phone.replace(/\s+/g, '')}`}
+                        class="text-brand-title hover:underline font-medium transition-colors"
+                      >
+                        {tm.phone}
+                      </a>
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

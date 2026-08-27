@@ -21,6 +21,7 @@ export interface RawContributor {
   role: string;
   emoji: string;
   email: string;
+  phone: string;
 }
 
 export interface RawEgentidItem {
@@ -56,7 +57,7 @@ try {
 }
 
 export function resolveContributorPhoto(
-  contributor: { id: string; name: string },
+  contributor: { id: string; name: string; role?: string },
   notionUrl: string,
   localFiles: string[] = LOCAL_PHOTO_FILES,
 ): string {
@@ -65,14 +66,20 @@ export function resolveContributorPhoto(
     f.startsWith(`/images/egentid/downloads/${contributor.id}.`),
   );
   if (byId) return byId;
-  const byName = localFiles.find(
-    (f) =>
-      f.startsWith(`/images/egentid/${firstName}.`) ||
-      f.startsWith(`/images/toastmaster/${firstName}.`) ||
-      f.startsWith(`/images/forlovere/${firstName}.`),
+  // The first-name lookup only searches the folder belonging to the
+  // contributor's role, so two people sharing a first name (e.g. a toastmaster
+  // and a forlover both called Marte) never borrow each other's photo.
+  const role = contributor.role?.toLowerCase() ?? "";
+  const roleDir = role.includes("toastmaster")
+    ? "toastmaster"
+    : role.includes("forlover")
+      ? "forlovere"
+      : "egentid";
+  const byName = localFiles.find((f) =>
+    f.startsWith(`/images/${roleDir}/${firstName}.`),
   );
   if (byName) return byName;
-  return notionUrl || `/images/egentid/${firstName}.webp`;
+  return notionUrl || `/images/${roleDir}/${firstName}.webp`;
 }
 
 async function loadRawContributors(env: Env): Promise<RawContributor[]> {
@@ -81,6 +88,7 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
     const props = page.properties;
     const m = notionConfig.mappings.contributors;
     const name = getTitleProperty(props[m.name], "Ukjent");
+    const role = getRichTextFull(props[m.role], "");
 
     let email = "";
     const emailProp = props[m.email];
@@ -88,6 +96,14 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
       email = emailProp.email;
     } else if (emailProp?.type === "rich_text") {
       email = getRichTextFull(emailProp, "");
+    }
+
+    let phone = "";
+    const phoneProp = props[m.phone];
+    if (phoneProp?.type === "phone_number" && phoneProp.phone_number) {
+      phone = phoneProp.phone_number;
+    } else if (phoneProp?.type === "rich_text") {
+      phone = getRichTextFull(phoneProp, "");
     }
 
     let notionPhoto = "";
@@ -105,10 +121,11 @@ async function loadRawContributors(env: Env): Promise<RawContributor[]> {
     return {
       id: page.id,
       name,
-      photo: resolveContributorPhoto({ id: page.id, name }, notionPhoto),
-      role: getRichTextFull(props[m.role], ""),
+      photo: resolveContributorPhoto({ id: page.id, name, role }, notionPhoto),
+      role,
       emoji: getRichTextFull(props[m.emoji], ""),
       email,
+      phone,
     };
   });
 }
@@ -220,6 +237,7 @@ export async function fetchEgentidData(
 export interface ContributorContact {
   name: string;
   email: string;
+  phone: string;
   photo: string;
   role: string;
 }
@@ -239,7 +257,13 @@ async function fetchContributorsWithRole(
       const rawContributors = await fetchRawContributors(env, ctx);
       return rawContributors
         .filter((c) => c.role.toLowerCase().includes(roleNeedle))
-        .map(({ name, email, photo, role }) => ({ name, email, photo, role }));
+        .map(({ name, email, phone, photo, role }) => ({
+          name,
+          email,
+          phone,
+          photo,
+          role,
+        }));
     },
   );
 }
