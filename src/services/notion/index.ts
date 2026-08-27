@@ -11,11 +11,12 @@ export * from "./invites";
 export * from "./locations";
 export {
   type Contributor,
+  type ContributorContact,
   type EgentidSuggestion,
   fetchEgentidData,
+  fetchForlovere,
   fetchToastmasters,
   resolveContributorPhoto,
-  type Toastmaster,
 } from "./people";
 export * from "./program";
 export * from "./seating";
