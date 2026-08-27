@@ -2,7 +2,9 @@
 import { env } from '../runtime';
 import SubpageLayout from '../layouts/SubpageLayout.astro';
 import RSVPForm from '../components/RSVPForm';
+import { weddingConfig } from '../config';
 import { DEFAULT_FLAGS, fetchAllergyOptions, fetchInviteByCode, type Invite } from '../services/notion';
+import { isRsvpClosed } from '../services/rsvp';
 import {
   LOCKOUT_MINUTES,
   SESSION_COOKIE_NAME,
@@ -12,13 +14,17 @@ import {
   recordFailedAttempt,
 } from '../services/pin';
 
+// Once the deadline has passed the form is locked: no invite lookup, just a
+// friendly message pointing guests to us directly.
+const rsvpClosed = isRsvpClosed();
+
 // Server-side invite lookup
 const code = Astro.url.searchParams.get('code');
 let invite: Invite | null = null;
 let errorMsg: string | null = null;
 let allergySuggestions: string[] = [];
 
-if (code) {
+if (code && !rsvpClosed) {
   const ip = Astro.clientAddress || 'unknown-ip';
   const kv = env?.CACHE;
   try {
@@ -30,10 +36,10 @@ if (code) {
       if (invite) {
         // Existing options are offered back as suggestions so guests reuse the
         // same spelling instead of creating a new option each time.
-        allergySuggestions = await fetchAllergyOptionsenv;
+        allergySuggestions = await fetchAllergyOptions(env);
 
         // Valid invite: grant a site-wide session so guests can browse other pages
-        const cookieValue = generateSessionCookieenv;
+        const cookieValue = generateSessionCookie(env);
         Astro.cookies.set(SESSION_COOKIE_NAME, cookieValue, SESSION_COOKIE_OPTIONS);
       } else {
         await recordFailedAttempt(ip, kv, 'invite');
@@ -50,8 +56,36 @@ if (code) {
 const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
 ---
 
-<SubpageLayout title="Svar på invitasjon - Kristine og Anders" heading="Svar på invitasjon" subtitle="Svarfrist: 26. august 2026">
-  {!invite ? (
+<SubpageLayout
+  title="Svar på invitasjon - Kristine og Anders"
+  heading="Svar på invitasjon"
+  subtitle={rsvpClosed ? 'Svarfristen har gått ut' : `Svarfrist: ${weddingConfig.rsvp.displayDeadline}`}
+>
+  {rsvpClosed ? (
+        /* State 0: Deadline passed — the form is locked */
+        <div class="text-center py-6 space-y-6">
+          <span class="text-4xl select-none" aria-hidden="true">💌</span>
+          <h3>Svarfristen har gått ut</h3>
+          <p class="text-caption max-w-md mx-auto">
+            Fristen for å svare på invitasjonen var {weddingConfig.rsvp.displayDeadline},
+            og skjemaet er derfor stengt. Lurer du på noe, eller trenger du å gi oss
+            beskjed om en endring? Ta kontakt med oss, så ordner vi det!
+          </p>
+          <p class="font-sans">
+            <a
+              href={`mailto:${weddingConfig.rsvp.contactEmail}`}
+              class="text-brand-title hover:underline font-medium"
+            >
+              {weddingConfig.rsvp.contactEmail}
+            </a>
+          </p>
+          <div class="pt-2">
+            <a href="/" class="btn-primary inline-block px-8 py-3 duration-300 hover:shadow-lg">
+              Til hovedsiden
+            </a>
+          </div>
+        </div>
+      ) : !invite ? (
         /* State A: Code entry form (no JS needed — plain HTML form GET) */
         <div class="text-center py-6">
           {errorMsg && (
@@ -59,23 +93,23 @@ const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
               {errorMsg}
             </div>
           )}
-          
+
           <h3 class="mb-4">Vennligst oppgi din invitasjonskode</h3>
           <p class="text-caption max-w-md mx-auto mb-8">
             For å kunne svare elektronisk må du skrive inn den unike koden som står i invitasjonen du har mottatt.
           </p>
 
           <form method="GET" action="/rsvp" class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input 
-              type="text" 
-              name="code" 
+            <input
+              type="text"
+              name="code"
               required
-              placeholder="F.eks. LILO2026" 
+              placeholder="F.eks. LILO2026"
               class="input-base flex-1 px-4 py-3 text-center uppercase tracking-widest text-lg font-medium"
               value={code || ""}
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               class="btn-primary px-8 py-3 duration-300 hover:shadow-lg"
             >
               Finn invitasjon

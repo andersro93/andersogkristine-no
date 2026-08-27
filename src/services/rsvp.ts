@@ -1,5 +1,11 @@
+import { weddingConfig } from "../config";
 import { notionConfig } from "../config/notion";
 import { type Invite, sanitizeAllergyItems } from "./notion";
+
+/** Whether the RSVP deadline has passed and the form should be locked. */
+export function isRsvpClosed(now: Date = new Date()): boolean {
+  return now.getTime() > new Date(weddingConfig.rsvp.deadlineIso).getTime();
+}
 
 /** RSVP values a guest may submit. "Venter" is reserved for the organisers. */
 export const ALLOWED_RSVP_VALUES: readonly string[] = [

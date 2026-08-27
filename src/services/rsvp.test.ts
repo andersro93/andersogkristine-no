@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Invite } from "./notion";
-import { validateRsvpPayload } from "./rsvp";
+import { isRsvpClosed, validateRsvpPayload } from "./rsvp";
 
 const invite: Invite = {
   id: "invite-1",
@@ -11,6 +11,21 @@ const invite: Invite = {
     { id: "guest-b", name: "B", rsvp: "Venter", allergies: [] },
   ],
 };
+
+describe("isRsvpClosed", () => {
+  test("is open before the deadline", () => {
+    expect(isRsvpClosed(new Date("2026-08-20T12:00:00+02:00"))).toBe(false);
+  });
+
+  test("stays open through the whole deadline day (Oslo time)", () => {
+    expect(isRsvpClosed(new Date("2026-08-26T23:30:00+02:00"))).toBe(false);
+  });
+
+  test("is closed after the deadline day has ended", () => {
+    expect(isRsvpClosed(new Date("2026-08-27T00:00:01+02:00"))).toBe(true);
+    expect(isRsvpClosed(new Date("2026-09-01T10:00:00+02:00"))).toBe(true);
+  });
+});
 
 describe("validateRsvpPayload", () => {
   test("accepts guests belonging to the invite with allowed values", () => {

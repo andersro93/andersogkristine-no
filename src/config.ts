@@ -6,9 +6,16 @@ export const weddingConfig = {
     fullTitle: "Kristine & Anders",
   },
   date: {
-    iso: "2026-09-26T11:00:00",
+    // Time of the ceremony (vielsen) in Paulus Kirke, Oslo time
+    iso: "2026-09-26T13:00:00+02:00",
     displayDate: "Lørdag 26. September 2026",
-    displayTime: "Kl. 11:00",
+    displayTime: "Kl. 13:00",
+  },
+  rsvp: {
+    // The form locks itself once this moment has passed (end of the deadline day, Oslo time)
+    deadlineIso: "2026-08-26T23:59:59+02:00",
+    displayDeadline: "26. august 2026",
+    contactEmail: "kristine.lindland@ros-nett.com",
   },
   venue: {
     name: "Tårnet Kulturarena",
