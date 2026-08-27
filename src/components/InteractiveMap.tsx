@@ -185,7 +185,7 @@ export default function InteractiveMap() {
 
   return (
     <div
-      className={`flex flex-col lg:flex-row h-[75vh] lg:h-[70vh] rounded-2xl overflow-hidden border border-brand-title/10 shadow-lg bg-brand-bg/40 backdrop-blur-md relative ${
+      className={`flex flex-col lg:flex-row h-[75dvh] lg:h-[70vh] rounded-2xl overflow-hidden border border-brand-title/10 shadow-lg bg-brand-bg/40 backdrop-blur-md relative ${
         isSidebarOpen ? "sidebar-open" : ""
       }`}
     >

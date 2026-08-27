@@ -19,17 +19,17 @@ const { flags } = Astro.props;
     Vi gleder oss til å feire dagen med dere!
   </p>
 
-  <div class="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs uppercase tracking-wider text-brand-title font-medium pt-4 select-none">
+  <div class="flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-1 text-xs uppercase tracking-wider text-brand-title font-medium pt-4 select-none">
     {
       [
-        flags.rsvp && <a href="/rsvp" class="hover:underline">Svar på invitasjon</a>,
-        <a href="/faq" class="hover:underline">Praktisk info</a>,
-        flags.seating && <a href="/bordoppsett" class="hover:underline">Bordplassering</a>,
-        <a href="/toastmaster" class="hover:underline">Toastmaster</a>,
-        <a href="/forlovere" class="hover:underline">Forlovere</a>,
-        flags.map && <a href="/kart" class="hover:underline">Kart</a>,
-        flags.music && <a href="/musikk" class="hover:underline">Musikkønsker</a>,
-        flags.gallery && <a href="/galleri" class="hover:underline">Galleri</a>
+        flags.rsvp && <a href="/rsvp" class="hover:underline inline-block py-2">Svar på invitasjon</a>,
+        <a href="/faq" class="hover:underline inline-block py-2">Praktisk info</a>,
+        flags.seating && <a href="/bordoppsett" class="hover:underline inline-block py-2">Bordplassering</a>,
+        <a href="/toastmaster" class="hover:underline inline-block py-2">Toastmaster</a>,
+        <a href="/forlovere" class="hover:underline inline-block py-2">Forlovere</a>,
+        flags.map && <a href="/kart" class="hover:underline inline-block py-2">Kart</a>,
+        flags.music && <a href="/musikk" class="hover:underline inline-block py-2">Musikkønsker</a>,
+        flags.gallery && <a href="/galleri" class="hover:underline inline-block py-2">Galleri</a>
       ]
         .filter(Boolean)
         .map((link, idx, arr) => (
@@ -41,8 +41,8 @@ const { flags } = Astro.props;
     }
   </div>
 
-  
-  <p class="text-caption text-[10px] text-brand-text/50 pt-8">
+
+  <p class="text-caption text-xs text-brand-text/50 pt-8">
     &copy; {new Date().getFullYear()} &mdash; Laget med kjærlighet
   </p>
 </footer>

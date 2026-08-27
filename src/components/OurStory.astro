@@ -6,7 +6,7 @@ import { fetchStoryFromNotion } from '../services/notion';
 const story = await fetchStoryFromNotion(env, Astro.locals?.cfContext);
 ---
 
-<section id="story" class="py-20 px-4 md:px-8 bg-brand-bg/40 max-w-6xl mx-auto border-b border-brand-title/5">
+<section id="story" class="py-20 px-4 md:px-8 bg-brand-bg/40 max-w-6xl mx-auto border-b border-brand-title/5 scroll-mt-20">
   <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
     <h2>Vår Historie</h2>
     <div class="w-12 h-[1px] bg-brand-title/30 mx-auto"></div>

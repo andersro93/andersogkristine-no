@@ -1,6 +1,6 @@
 ---
 /**
- * Shared chrome for every sub-page: document <title>, optional back link,
+ * Shared chrome for every sub-page: document <title>, sticky site header,
  * centered heading + subtitle + divider, and (optionally) the frosted card
  * with the four corner ornaments. Pages only provide their content.
  *
@@ -11,12 +11,13 @@
  * Slots: default (card/page content), `header` (replace the standard header).
  */
 import Layout from './Layout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 
 interface Props {
   /** Document title */
   title: string;
   description?: string;
-  /** Page heading; omit to render only the back link (e.g. when a component brings its own <h1>) */
+  /** Page heading; omit when a component brings its own <h1> */
   heading?: string;
   subtitle?: string;
   subtitleClass?: string;
@@ -27,6 +28,8 @@ interface Props {
   /** Wrap the content in the frosted card with corner ornaments */
   card?: boolean;
   cardPadding?: string;
+  /** Render the sticky site header; disable on pages outside the PIN gate */
+  nav?: boolean;
   backLink?: boolean;
   /** Extra classes for <main> / header / card */
   mainClass?: string;
@@ -43,8 +46,9 @@ const {
   width = 'max-w-3xl',
   center = true,
   card = true,
-  cardPadding = 'p-8 md:p-12',
-  backLink = true,
+  cardPadding = 'p-5 sm:p-8 md:p-12',
+  nav = true,
+  backLink = false,
   mainClass = '',
   headerClass = '',
   cardClass = '',
@@ -54,7 +58,8 @@ const hasStandardHeader = !Astro.slots.has('header');
 ---
 
 <Layout title={title} description={description}>
-  <main class:list={['min-h-screen py-16 px-4 md:px-8 mx-auto', width, center && 'flex flex-col justify-center', mainClass]}>
+  {nav && <SiteHeader />}
+  <main class:list={['min-h-screen py-10 md:py-16 px-4 md:px-8 mx-auto', width, center && 'flex flex-col justify-center', mainClass]}>
 
     <slot name="header">
       {hasStandardHeader && heading && (
