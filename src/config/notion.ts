@@ -43,6 +43,7 @@ export const notionConfig = {
       role: "Role", // rich_text ("Toastmaster" marks toastmasters, "Forlover" marks forlovere)
       emoji: "Emoji", // rich_text
       email: "Email", // email
+      phone: "Telefon", // phone_number
       photo: "Bilde", // files (local files under public/images win when present)
     },
     egentid: {

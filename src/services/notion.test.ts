@@ -377,6 +377,7 @@ describe("Notion Service Integration & Fallbacks", () => {
               rich_text: [{ plain_text: "Forlover" }],
             },
             Email: { type: "email", email: "marte@example.com" },
+            Telefon: { type: "phone_number", phone_number: "+47 123 45 678" },
           },
         },
         {
@@ -404,7 +405,9 @@ describe("Notion Service Integration & Fallbacks", () => {
       const forlovere = await fetchForlovere(mockEnv);
       expect(forlovere.map((f) => f.name)).toEqual(["Marte", "Lars"]);
       expect(forlovere[0].email).toBe("marte@example.com");
+      expect(forlovere[0].phone).toBe("+47 123 45 678");
       expect(forlovere[1].role).toBe("Brudgommens forlover");
+      expect(forlovere[1].phone).toBe("");
     });
   });
 
@@ -644,28 +647,54 @@ describe("resolveContributorPhoto", () => {
     "/images/egentid/anders.webp",
     "/images/egentid/downloads/page-123.jpg",
     "/images/toastmaster/marte.webp",
+    "/images/forlovere/lars.webp",
   ];
   test("prefers the prebuild download by page id", () => {
     expect(
       resolveContributorPhoto(
-        { id: "page-123", name: "Anders Olsen" },
+        { id: "page-123", name: "Anders Olsen", role: "Brudgom" },
         "https://s3/expiring",
         files,
       ),
     ).toBe("/images/egentid/downloads/page-123.jpg");
   });
-  test("falls back to first-name match in egentid or toastmaster folders", () => {
+  test("matches first name only inside the role's own folder", () => {
     expect(
-      resolveContributorPhoto({ id: "x", name: "Anders" }, "", files),
+      resolveContributorPhoto(
+        { id: "x", name: "Anders", role: "Brudgom" },
+        "",
+        files,
+      ),
     ).toBe("/images/egentid/anders.webp");
     expect(
-      resolveContributorPhoto({ id: "x", name: "Marte Hansen" }, "", files),
+      resolveContributorPhoto(
+        { id: "x", name: "Marte Gerhardsen", role: "Toastmaster" },
+        "",
+        files,
+      ),
     ).toBe("/images/toastmaster/marte.webp");
+    expect(
+      resolveContributorPhoto(
+        { id: "x", name: "Lars", role: "Forlover" },
+        "",
+        files,
+      ),
+    ).toBe("/images/forlovere/lars.webp");
+  });
+  test("does not borrow a same-first-name photo from another role's folder", () => {
+    // Forlover Marte must NOT get toastmaster Marte's photo
+    expect(
+      resolveContributorPhoto(
+        { id: "x", name: "Marte", role: "Forlover" },
+        "https://s3/expiring",
+        files,
+      ),
+    ).toBe("https://s3/expiring");
   });
   test("uses the Notion URL when nothing local matches", () => {
     expect(
       resolveContributorPhoto(
-        { id: "x", name: "Ukjent" },
+        { id: "x", name: "Ukjent", role: "" },
         "https://s3/expiring",
         files,
       ),
