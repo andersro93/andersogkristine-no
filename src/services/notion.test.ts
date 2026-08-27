@@ -4,6 +4,7 @@ import {
   fetchEgentidData,
   fetchFaqFromNotion,
   fetchFeatureFlags,
+  fetchForlovere,
   fetchInviteByCode,
   fetchScheduleFromNotion,
   fetchStoryFromNotion,
@@ -330,6 +331,49 @@ describe("Notion Service Integration & Fallbacks", () => {
       expect(egentidData[0].suggestions[0].locationId).toBe(
         "location-liebling",
       );
+    });
+  });
+
+  describe("fetchForlovere", () => {
+    test("should return contributors whose role contains 'forlover', keeping the role text", async () => {
+      mockMedvirkendeResults = [
+        {
+          id: "contrib-marte",
+          properties: {
+            Navn: { type: "title", title: [{ plain_text: "Marte" }] },
+            Role: {
+              type: "rich_text",
+              rich_text: [{ plain_text: "Forlover" }],
+            },
+            Email: { type: "email", email: "marte@example.com" },
+          },
+        },
+        {
+          id: "contrib-tom",
+          properties: {
+            Navn: { type: "title", title: [{ plain_text: "Tom" }] },
+            Role: {
+              type: "rich_text",
+              rich_text: [{ plain_text: "Toastmaster" }],
+            },
+          },
+        },
+        {
+          id: "contrib-lars",
+          properties: {
+            Navn: { type: "title", title: [{ plain_text: "Lars" }] },
+            Role: {
+              type: "rich_text",
+              rich_text: [{ plain_text: "Brudgommens forlover" }],
+            },
+          },
+        },
+      ];
+
+      const forlovere = await fetchForlovere(mockEnv);
+      expect(forlovere.map((f) => f.name)).toEqual(["Marte", "Lars"]);
+      expect(forlovere[0].email).toBe("marte@example.com");
+      expect(forlovere[1].role).toBe("Brudgommens forlover");
     });
   });
 

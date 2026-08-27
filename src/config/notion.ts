@@ -40,7 +40,7 @@ export const notionConfig = {
     },
     contributors: {
       name: "Navn", // title
-      role: "Role", // rich_text ("Toastmaster" marks toastmasters)
+      role: "Role", // rich_text ("Toastmaster" marks toastmasters, "Forlover" marks forlovere)
       emoji: "Emoji", // rich_text
       email: "Email", // email
       photo: "Bilde", // files (local files under public/images win when present)

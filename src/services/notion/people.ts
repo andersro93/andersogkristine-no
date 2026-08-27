@@ -34,7 +34,8 @@ export interface RawEgentidItem {
 /**
  * Local photo lookup: files in public/images/egentid (by lowercase first name),
  * public/images/egentid/downloads (by Notion page id, written by prebuild) and
- * public/images/toastmaster (by lowercase first name). Resolved at build time
+ * public/images/toastmaster / public/images/forlovere (by lowercase first
+ * name). Resolved at build time
  * via Vite glob so the Worker never needs the filesystem. Falls back to the
  * (expiring) Notion URL when nothing local exists.
  */
@@ -47,6 +48,7 @@ try {
       "/public/images/egentid/*.{webp,jpg,jpeg,png,gif}",
       "/public/images/egentid/downloads/*.{webp,jpg,jpeg,png,gif}",
       "/public/images/toastmaster/*.{webp,jpg,jpeg,png,gif}",
+      "/public/images/forlovere/*.{webp,jpg,jpeg,png,gif}",
     ]),
   ).map((p) => p.replace(/^\/public/, ""));
 } catch {
@@ -66,7 +68,8 @@ export function resolveContributorPhoto(
   const byName = localFiles.find(
     (f) =>
       f.startsWith(`/images/egentid/${firstName}.`) ||
-      f.startsWith(`/images/toastmaster/${firstName}.`),
+      f.startsWith(`/images/toastmaster/${firstName}.`) ||
+      f.startsWith(`/images/forlovere/${firstName}.`),
   );
   if (byName) return byName;
   return notionUrl || `/images/egentid/${firstName}.webp`;
@@ -214,26 +217,48 @@ export async function fetchEgentidData(
   );
 }
 
-export interface Toastmaster {
+export interface ContributorContact {
   name: string;
   email: string;
   photo: string;
+  role: string;
 }
 
-/** Contributors whose role contains "toastmaster" (KV SWR cached). */
-export async function fetchToastmasters(
+/** Contributors whose role contains `roleNeedle` (KV SWR cached per role). */
+async function fetchContributorsWithRole(
   env: Env,
-  ctx?: WaitUntilContext,
-): Promise<Toastmaster[]> {
+  ctx: WaitUntilContext | undefined,
+  cacheKey: string,
+  roleNeedle: string,
+): Promise<ContributorContact[]> {
   return cachedSWR(
     env,
     ctx,
-    { key: CACHE_KEYS.toastmasters, fallback: () => [] },
+    { key: cacheKey, fallback: () => [] },
     async () => {
       const rawContributors = await fetchRawContributors(env, ctx);
       return rawContributors
-        .filter((c) => c.role.toLowerCase().includes("toastmaster"))
-        .map(({ name, email, photo }) => ({ name, email, photo }));
+        .filter((c) => c.role.toLowerCase().includes(roleNeedle))
+        .map(({ name, email, photo, role }) => ({ name, email, photo, role }));
     },
   );
+}
+
+export function fetchToastmasters(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<ContributorContact[]> {
+  return fetchContributorsWithRole(
+    env,
+    ctx,
+    CACHE_KEYS.toastmasters,
+    "toastmaster",
+  );
+}
+
+export function fetchForlovere(
+  env: Env,
+  ctx?: WaitUntilContext,
+): Promise<ContributorContact[]> {
+  return fetchContributorsWithRole(env, ctx, CACHE_KEYS.forlovere, "forlover");
 }

@@ -1,0 +1,84 @@
+---
+import { env } from '../runtime';
+import SubpageLayout from '../layouts/SubpageLayout.astro';
+import { type ContributorContact, fetchForlovere } from '../services/notion';
+
+let forlovere: ContributorContact[] = [];
+const context = Astro.locals?.cfContext;
+try {
+  forlovere = await fetchForlovere(env, context);
+} catch (err) {
+  console.error("Failed to load forlovere from Notion:", err);
+}
+
+const forloverNames = forlovere.map(f => f.name.split(' ')[0]);
+const namesText = forloverNames.length > 1
+  ? `${forloverNames.slice(0, -1).join(', ')} eller ${forloverNames[forloverNames.length - 1]}`
+  : forloverNames.join('');
+---
+
+<SubpageLayout
+  title="Forlovere - Kristine og Anders"
+  description="Møt forloverne til Kristine og Anders. Ta kontakt med forloverne om du planlegger en overraskelse eller lurer på noe."
+  heading="Forlovere"
+  subtitle="Våre nærmeste på den store dagen"
+  width="max-w-5xl"
+>
+  {forlovere.length > 0 ? (
+        <div class="flex flex-col items-center text-center space-y-8">
+
+          {/* Forlover photos and names */}
+          <div class={`grid gap-8 md:gap-12 ${forlovere.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} justify-items-center`}>
+            {forlovere.map((forlover) => (
+              <div class="flex flex-col items-center space-y-4">
+                {/* Photo */}
+                <div class="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-brand-title/10 shadow-lg">
+                  <img
+                    src={forlover.photo}
+                    alt={forlover.name}
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    onerror="this.style.display='none'"
+                  />
+                </div>
+
+                {/* Name & Role */}
+                <div class="space-y-1">
+                  <h2 class="text-3xl md:text-4xl">{forlover.name}</h2>
+                  <p class="text-lead">{forlover.role || 'Forlover'}</p>
+                </div>
+
+                {/* Email */}
+                {forlover.email && (
+                  <p class="text-body text-base">
+                    <a
+                      href={`mailto:${forlover.email}`}
+                      class="text-brand-title hover:underline font-medium transition-colors"
+                    >
+                      {forlover.email}
+                    </a>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div class="w-16 h-px bg-brand-title/15"></div>
+
+          {/* Contact info */}
+          <div class="max-w-lg space-y-4">
+            <p class="text-body text-base leading-relaxed">
+              Forloverne hjelper oss med stort og smått rundt bryllupet.
+              Planlegger du en overraskelse, eller lurer du på noe du ikke vil
+              spørre oss to om? Ta kontakt med {namesText}.
+            </p>
+          </div>
+
+        </div>
+      ) : (
+        <div class="text-center py-12">
+          <p class="text-body text-base">Informasjon om forloverne kommer snart.</p>
+        </div>
+      )}
+</SubpageLayout>

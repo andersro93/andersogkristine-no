@@ -26,6 +26,7 @@ export const CACHE_KEYS = {
   locations: "notion_locations",
   egentid: "notion_egentid_contributors",
   toastmasters: "notion_toastmaster",
+  forlovere: "notion_forlovere",
   faq: "notion_faq",
   story: "notion_story",
   flags: "notion_flags",
