@@ -25,7 +25,9 @@ export default function InteractiveMap() {
     null,
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showTouchHint, setShowTouchHint] = useState(false);
 
+  const touchHintTimerRef = useRef<number | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
@@ -78,7 +80,49 @@ export default function InteractiveMap() {
     mapRef.current = map;
     markersGroupRef.current = L.layerGroup().addTo(map);
 
+    // On touch devices one finger scrolls the page (so the map doesn't trap
+    // scrolling); two fingers pan the map. Leaflet only sets touch-action to
+    // block page scroll while its drag handler is enabled.
+    const container = mapContainerRef.current;
+    let cleanupTouch: (() => void) | undefined;
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      map.dragging.disable();
+
+      const showHint = () => {
+        setShowTouchHint(true);
+        if (touchHintTimerRef.current)
+          window.clearTimeout(touchHintTimerRef.current);
+        touchHintTimerRef.current = window.setTimeout(
+          () => setShowTouchHint(false),
+          1500,
+        );
+      };
+      const onTouchStart = (e: TouchEvent) => {
+        if (e.touches.length >= 2) {
+          map.dragging.enable();
+          setShowTouchHint(false);
+        }
+      };
+      const onTouchMove = (e: TouchEvent) => {
+        if (e.touches.length === 1 && !map.dragging.enabled()) showHint();
+      };
+      const onTouchEnd = (e: TouchEvent) => {
+        if (e.touches.length < 2) map.dragging.disable();
+      };
+      container.addEventListener("touchstart", onTouchStart, { passive: true });
+      container.addEventListener("touchmove", onTouchMove, { passive: true });
+      container.addEventListener("touchend", onTouchEnd, { passive: true });
+      cleanupTouch = () => {
+        container.removeEventListener("touchstart", onTouchStart);
+        container.removeEventListener("touchmove", onTouchMove);
+        container.removeEventListener("touchend", onTouchEnd);
+      };
+    }
+
     return () => {
+      cleanupTouch?.();
+      if (touchHintTimerRef.current)
+        window.clearTimeout(touchHintTimerRef.current);
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -218,6 +262,18 @@ export default function InteractiveMap() {
 
       {/* Map Element */}
       <div ref={mapContainerRef} className="w-full h-full lg:flex-1 z-10" />
+
+      {/* One-finger pan hint (touch devices) */}
+      <div
+        aria-hidden="true"
+        className={`absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300 ${
+          showTouchHint ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <p className="bg-black/70 text-white text-sm font-sans px-5 py-3 rounded-lg shadow-lg">
+          Bruk to fingre for å flytte kartet
+        </p>
+      </div>
     </div>
   );
 }

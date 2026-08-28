@@ -5,8 +5,8 @@
   --color-brand-title: #000000;
   --color-brand-text: #000000;
 
-  --font-wedding: "Breathing", "Playfair Display", "Cormorant Garamond", serif;
-  --font-serif: "Playfair Display", "Cormorant Garamond", serif;
+  --font-wedding: "Breathing", "Playfair Display", serif;
+  --font-serif: "Playfair Display", Georgia, serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.3s ease-out both;
@@ -57,9 +57,10 @@
   }
 }
 
+/* Subsetted to Latin-1 + typographic punctuation (649KB TTF -> 200KB woff2) */
 @font-face {
   font-family: "Breathing";
-  src: url("/fonts/Breathing.ttf") format("truetype");
+  src: url("/fonts/Breathing.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
