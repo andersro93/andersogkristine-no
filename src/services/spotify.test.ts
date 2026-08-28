@@ -194,7 +194,7 @@ describe("addTrackToPlaylist (Spotify API contract)", () => {
       const url =
         typeof input === "string" ? input : (input as Request | URL).toString();
       requests.push({ url, body: init?.body as string | undefined });
-      if (url.includes("accounts.spotify.com")) {
+      if (new URL(url).hostname === "accounts.spotify.com") {
         return new Response(
           JSON.stringify({ access_token: "test-token", expires_in: 3600 }),
           { status: 200 },
