@@ -174,3 +174,49 @@ describe("Production without configuration", () => {
     }
   });
 });
+
+describe("addTrackToPlaylist (Spotify API contract)", () => {
+  test("inserts new tracks at the top of the playlist (position 0)", async () => {
+    // A fully configured env forces the real API path; fetch is stubbed.
+    const configuredEnv = {
+      SPOTIFY_CLIENT_ID: "id",
+      SPOTIFY_CLIENT_SECRET: "secret",
+      SPOTIFY_REFRESH_TOKEN: "refresh",
+      SPOTIFY_PLAYLIST_ID: "playlist123",
+    } as unknown as Env;
+
+    const requests: { url: string; body?: string }[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const url =
+        typeof input === "string" ? input : (input as Request | URL).toString();
+      requests.push({ url, body: init?.body as string | undefined });
+      if (new URL(url).hostname === "accounts.spotify.com") {
+        return new Response(
+          JSON.stringify({ access_token: "test-token", expires_in: 3600 }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ snapshot_id: "snap" }), {
+        status: 200,
+      });
+    }) as typeof fetch;
+
+    try {
+      await addTrackToPlaylist("spotify:track:abc123", configuredEnv);
+
+      const playlistCall = requests.find((r) =>
+        r.url.includes("/playlists/playlist123/items"),
+      );
+      expect(playlistCall).toBeDefined();
+      const body = JSON.parse(playlistCall?.body ?? "{}");
+      expect(body.uris).toEqual(["spotify:track:abc123"]);
+      expect(body.position).toBe(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
