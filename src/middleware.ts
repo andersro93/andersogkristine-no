@@ -64,7 +64,9 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
   const isStaticAsset =
     pathname.startsWith("/_") ||
     pathname.startsWith("/fonts/") ||
+    pathname.startsWith("/icons/") ||
     pathname === "/favicon.svg" ||
+    pathname === "/manifest.webmanifest" ||
     pathname === "/robots.txt";
 
   if (isRsvpPage && invalidCodes.includes(searchParams.get("code") ?? "")) {
