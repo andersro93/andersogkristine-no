@@ -134,6 +134,20 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     expect(nextCalled).toHaveBeenCalled();
   });
 
+  test("should pass through the PWA manifest and icons without checks", async () => {
+    for (const path of ["/manifest.webmanifest", "/icons/icon-192.png"]) {
+      const context = createMockContext(path);
+      const nextCalled = mock(async () => new Response("OK"));
+
+      const response = (await onRequest(
+        context as any,
+        nextCalled,
+      )) as Response;
+      expect(await response.text()).toBe("OK");
+      expect(nextCalled).toHaveBeenCalled();
+    }
+  });
+
   test("should add baseline security headers to responses", async () => {
     const context = createMockContext("/pin");
     const response = (await onRequest(
