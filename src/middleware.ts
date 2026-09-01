@@ -1,5 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
 import { env } from "./runtime";
+import { isGalleryAdmin } from "./services/gallery";
 import {
   DEFAULT_FLAGS,
   fetchFeatureFlags,
@@ -167,11 +168,20 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
   if (pathname === "/kart" && !flags.map) {
     return context.redirect("/");
   }
+  // Admin preview: the couple can test the gallery before the flag flips —
+  // either arriving with ?admin=<key> (the page validates and rate-limits the
+  // key) or with the signed gallery_admin cookie already set.
   if (pathname === "/galleri" && !flags.gallery) {
-    return context.redirect("/");
+    const adminPreview =
+      searchParams.has("admin") || isGalleryAdmin(context.cookies, env);
+    if (!adminPreview) return context.redirect("/");
   }
   // A null-body 404 from middleware would be rerouted to Astro's error page; JSON keeps it an API answer.
-  if (pathname.startsWith("/api/galleri") && !flags.gallery) {
+  if (
+    pathname.startsWith("/api/galleri") &&
+    !flags.gallery &&
+    !isGalleryAdmin(context.cookies, env)
+  ) {
     return json({ error: "Ikke funnet." }, 404);
   }
 

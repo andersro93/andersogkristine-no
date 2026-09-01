@@ -74,6 +74,7 @@ const { onRequest } = await import("./middleware");
 const { generateSessionCookie, verifySessionCookie } = await import(
   "./services/pin"
 );
+const { generateAdminCookie } = await import("./services/gallery");
 
 function createMockContext(
   urlPath: string,
@@ -404,6 +405,41 @@ describe("Astro Middleware & Invite Code Bypass", () => {
       expect(await (res.json() as Promise<any>)).toEqual({
         error: "Ikke funnet.",
       });
+    });
+
+    test("lets the gallery admin preview /galleri while the flag is off", async () => {
+      mockFlagsResponse = [{ key: "gallery", enabled: false }];
+      const context = createMockContext("/galleri", {
+        ...authed(),
+        gallery_admin: generateAdminCookie(mockEnv as any),
+      });
+      const next = mock(async () => new Response("OK"));
+      const res = (await onRequest(context as any, next)) as Response;
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalled();
+    });
+
+    test("lets ?admin= reach the page for validation while the flag is off", async () => {
+      // The page validates and rate-limits the key; middleware only lets the
+      // attempt through instead of bouncing it to /.
+      mockFlagsResponse = [{ key: "gallery", enabled: false }];
+      const context = createMockContext("/galleri?admin=some-key", authed());
+      const next = mock(async () => new Response("OK"));
+      const res = (await onRequest(context as any, next)) as Response;
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalled();
+    });
+
+    test("lets the gallery admin use /api/galleri/* while the flag is off", async () => {
+      mockFlagsResponse = [{ key: "gallery", enabled: false }];
+      const context = createMockContext("/api/galleri/media", {
+        ...authed(),
+        gallery_admin: generateAdminCookie(mockEnv as any),
+      });
+      const next = mock(async () => new Response("OK"));
+      const res = (await onRequest(context as any, next)) as Response;
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalled();
     });
 
     test("answers unauthenticated /api/* with JSON 401 instead of a redirect", async () => {
