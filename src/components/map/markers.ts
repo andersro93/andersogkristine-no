@@ -1,4 +1,8 @@
+import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import * as L from "leaflet";
+import { setWorkerUrl } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { buildMarkerHtml, buildPopupHtml, getZoneColor } from "./popup";
 import type { WeddingLocation } from "./types";
 
@@ -47,7 +51,11 @@ export function createUserMarker(lat: number, lng: number): L.Marker {
   );
 }
 
-/** Base map: CartoDB Voyager tiles with a warm filter, zoom control bottom-right. */
+/**
+ * Base map: OpenFreeMap Positron vector tiles (free, no API key) rendered by
+ * MapLibre inside Leaflet's tile pane, with a warm filter and zoom control
+ * bottom-right.
+ */
 export function createBaseMap(container: HTMLDivElement): L.Map {
   const map = L.map(container, {
     center: [59.924, 10.758], // Grünerløkka, Oslo
@@ -55,15 +63,13 @@ export function createBaseMap(container: HTMLDivElement): L.Map {
     zoomControl: false,
   });
   L.control.zoom({ position: "bottomright" }).addTo(map);
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
-    },
-  ).addTo(map);
+  // MapLibre locates its worker next to its own module, which bundling breaks
+  setWorkerUrl(maplibreWorkerUrl);
+  maplibreGL({
+    style: "https://tiles.openfreemap.org/styles/positron",
+    attribution:
+      '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  } as L.LeafletMaplibreGLOptions).addTo(map);
   const pane = container.querySelector<HTMLDivElement>(".leaflet-tile-pane");
   if (pane) {
     pane.style.filter =
