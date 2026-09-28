@@ -21,12 +21,12 @@
     "dev:clean": "rm -rf .wrangler/state/v3 .astro"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "14.3.1",
-    "@astrojs/react": "6.0.5",
+    "@astrojs/cloudflare": "14.3.3",
+    "@astrojs/react": "7.0.0",
     "@maplibre/maplibre-gl-leaflet": "0.1.4",
     "@notionhq/client": "5.26.0",
     "@tailwindcss/vite": "4.3.3",
-    "astro": "7.3.2",
+    "astro": "7.3.5",
     "leaflet": "1.9.4",
     "maplibre-gl": "6.11.2",
     "react": "19.3.0",
@@ -34,10 +34,10 @@
     "tailwindcss": "4.3.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
-    "@cloudflare/workers-types": "5.20260911.1",
+    "@biomejs/biome": "2.5.14",
+    "@cloudflare/workers-types": "5.20260925.1",
     "@types/leaflet": "1.9.22",
-    "@types/node": "26.5.1",
+    "@types/node": "26.6.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "bun-types": "1.4.2",
