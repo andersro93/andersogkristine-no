@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // Mock environment
 const mockEnv = {
@@ -209,6 +209,80 @@ describe("Astro Middleware & Invite Code Bypass", () => {
     )) as Response;
     expect(await response.text()).toBe("API_RSVP");
     expect(apiRsvpNext).toHaveBeenCalled();
+  });
+
+  describe("SITE_CLOSED", () => {
+    const closed = mockEnv as { SITE_CLOSED?: string };
+    beforeEach(() => {
+      closed.SITE_CLOSED = "true";
+    });
+    afterEach(() => {
+      delete closed.SITE_CLOSED;
+    });
+
+    test("serves / without a PIN session", async () => {
+      const context = createMockContext("/");
+      const next = mock(async () => new Response("LANDING"));
+      const res = (await onRequest(context as any, next)) as Response;
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe("LANDING");
+      expect(next).toHaveBeenCalled();
+    });
+
+    test("redirects every other page to /, even with a valid session", async () => {
+      const validCookie = generateSessionCookie(mockEnv as any);
+      for (const path of [
+        "/pin",
+        "/rsvp?code=x",
+        "/faq",
+        "/galleri",
+        "/musikk",
+      ]) {
+        const context = createMockContext(path, {
+          wedding_access: validCookie,
+        });
+        const next = mock(async () => new Response("PAGE"));
+        const res = (await onRequest(context as any, next)) as Response;
+        expect(res.status).toBe(302);
+        expect(res.headers.get("Location")).toBe("/");
+        expect(next).not.toHaveBeenCalled();
+      }
+    });
+
+    test("answers APIs with JSON 404 but keeps /api/health and static assets", async () => {
+      for (const path of [
+        "/api/rsvp",
+        "/api/validate-pin",
+        "/api/galleri/media",
+      ]) {
+        const context = createMockContext(path);
+        const next = mock(async () => new Response("API"));
+        const res = (await onRequest(context as any, next)) as Response;
+        expect(res.status).toBe(404);
+        expect(res.headers.get("Content-Type")).toContain("application/json");
+        expect(next).not.toHaveBeenCalled();
+      }
+      for (const path of [
+        "/api/health",
+        "/favicon.svg",
+        "/images/collage.webp",
+      ]) {
+        const context = createMockContext(path);
+        const next = mock(async () => new Response("OK"));
+        const res = (await onRequest(context as any, next)) as Response;
+        expect(await res.text()).toBe("OK");
+      }
+    });
+
+    test("stays open when the variable is false", async () => {
+      closed.SITE_CLOSED = "false";
+      const context = createMockContext("/musikk");
+      const res = (await onRequest(
+        context as any,
+        mock(async () => new Response("OK")),
+      )) as Response;
+      expect(res.headers.get("Location")).toBe("/pin?next=%2Fmusikk");
+    });
   });
 
   describe("Invalid code blocklist", () => {

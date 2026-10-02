@@ -63,6 +63,7 @@ Secrets in production live in Cloudflare (Workers → Settings → Variables & S
 | `SPOTIFY_REFRESH_TOKEN` | optional | — " — (generate with `src/scripts/spotify-auth.ts`) |
 | `SPOTIFY_PLAYLIST_ID` | optional | — " — |
 | `GALLERY_ADMIN_KEY` | optional | Unlocks gallery admin mode via `/galleri?admin=<key>` (hide/unhide uploads). Without it admin mode is simply unavailable. |
+| `SITE_CLOSED` | optional | `true` closes the site after the wedding: `/` serves a thank-you landing page (no PIN) and every other route redirects there. See [Closing the site](#-closing-the-site). |
 
 Bindings (in `wrangler.jsonc`): `CACHE` (KV namespace), `ASSETS`, `GALLERY` (R2 bucket) and `DB` (D1 database).
 
@@ -117,6 +118,17 @@ Admin mode: open `/galleri?admin=<GALLERY_ADMIN_KEY>` once on your phone (30-day
 - **Health endpoint**: `GET /api/health` (unauthenticated) returns `{ ok, kv, notion, ts }` with HTTP 200 or 503. It only reports booleans.
 - **Uptime**: point an external monitor (Cloudflare Health Checks, UptimeRobot, Better Stack, …) at `https://andersogkristine.no/api/health` every 5 minutes with alerting to your phone. `/pin` is a good secondary check for "does the site render at all".
 - **Logs & traces**: enabled in `wrangler.jsonc` (Workers → Observability).
+
+---
+
+## 🎉 Closing the site
+
+After the wedding the site collapses to a single thank-you landing page, controlled by one variable: `SITE_CLOSED`.
+
+- `SITE_CLOSED=true` → `/` renders `src/components/ThankYou.astro` ("Vi giftet oss …, takk for at dere ville dele dagen med oss"), reachable without the PIN. The middleware (`src/middleware.ts`) redirects every other page to `/` and answers `/api/*` with a JSON 404. `/api/health` and static assets are unaffected.
+- Any other value, or unset → the full site, exactly as before. Nothing is removed from the code base.
+
+The variable is set in `wrangler.jsonc` (`vars.SITE_CLOSED`) so the state is versioned with the code; `keep_vars` is on so deploying does not wipe variables defined in the Cloudflare dashboard. To reopen the site, set it to `"false"` and deploy. Locally, `wrangler.jsonc` wins over `.env`; put `SITE_CLOSED=false` in `.dev.vars` to work on the open site while production is closed.
 
 ---
 

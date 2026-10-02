@@ -4,6 +4,12 @@
   "account_id": "cfef229176e71ea694c259a238556c0e",
   "compatibility_date": "2026-05-25",
   "compatibility_flags": ["nodejs_compat"],
+  // SITE_CLOSED: "true" = post-wedding thank-you page only (see README "Closing the site").
+  "vars": {
+    "SITE_CLOSED": "true"
+  },
+  // Do not delete dashboard-defined variables on deploy (vars above are merged in).
+  "keep_vars": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"

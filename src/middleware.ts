@@ -13,6 +13,7 @@ import {
   SESSION_COOKIE_OPTIONS,
   verifySessionCookie,
 } from "./services/pin";
+import { isSiteClosed } from "./services/site";
 import { json } from "./utils/http";
 
 const invalidCodes = ["evig-troskap"];
@@ -65,6 +66,7 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
     pathname.startsWith("/_") ||
     pathname.startsWith("/fonts/") ||
     pathname.startsWith("/icons/") ||
+    pathname.startsWith("/images/") ||
     pathname === "/favicon.svg" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/robots.txt";
@@ -82,13 +84,21 @@ const handleRequest: Parameters<typeof defineMiddleware>[0] = async (
     }
   };
 
-  if (
-    isPinPage ||
-    isValidatePinApi ||
-    isRsvpApi ||
-    isHealthApi ||
-    isStaticAsset
-  ) {
+  if (isHealthApi || isStaticAsset) {
+    return next();
+  }
+
+  // SITE_CLOSED: the wedding is over. Only the thank-you landing page on "/"
+  // is served; every other page goes there and APIs answer 404. No PIN needed.
+  if (isSiteClosed(env)) {
+    if (pathname === "/") return next();
+    if (pathname.startsWith("/api/")) {
+      return json({ error: "Siden er stengt." }, 404);
+    }
+    return context.redirect("/", 302);
+  }
+
+  if (isPinPage || isValidatePinApi || isRsvpApi) {
     return next();
   }
 

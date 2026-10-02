@@ -9,6 +9,8 @@ export const weddingConfig = {
     // Time of the ceremony (vielsen) in Paulus Kirke, Oslo time
     iso: "2026-09-26T13:00:00+02:00",
     displayDate: "Lørdag 26. September 2026",
+    // Same date in running text ("Vi giftet oss …")
+    displayDateSentence: "lørdag 26. september 2026",
     displayTime: "Kl. 13:00",
   },
   rsvp: {

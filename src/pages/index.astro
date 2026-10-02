@@ -7,20 +7,36 @@ import Schedule from '../components/Schedule.astro';
 import Egentid from '../components/Egentid.astro';
 import Location from '../components/Location.astro';
 import Footer from '../components/Footer.astro';
+import ThankYou from '../components/ThankYou.astro';
 import { DEFAULT_FLAGS } from '../services/notion';
+import { isSiteClosed } from '../services/site';
+import { env } from '../runtime';
+import { weddingConfig } from '../config';
+
+// After the wedding the whole site collapses to a thank-you page (SITE_CLOSED)
+const closed = isSiteClosed(env);
 
 // Feature flags are resolved once per request by the middleware
 const flags = Astro.locals.flags ?? DEFAULT_FLAGS;
 ---
 
-<Layout>
-  <SiteHeader overlay />
-  <main class="overflow-x-hidden min-h-screen">
-    <Hero flags={flags} />
-    {flags.program && <Schedule flags={flags} />}
-    {flags.egentid && <Egentid />}
-    {flags.map && <Location />}
-    <OurStory />
-    <Footer flags={flags} />
-  </main>
-</Layout>
+{closed ? (
+  <Layout
+    title={`${weddingConfig.names.fullTitle} - Takk for dagen`}
+    description={`${weddingConfig.names.fullTitle} giftet seg ${weddingConfig.date.displayDateSentence}. Takk for at dere delte dagen med oss.`}
+  >
+    <ThankYou />
+  </Layout>
+) : (
+  <Layout>
+    <SiteHeader overlay />
+    <main class="overflow-x-hidden min-h-screen">
+      <Hero flags={flags} />
+      {flags.program && <Schedule flags={flags} />}
+      {flags.egentid && <Egentid />}
+      {flags.map && <Location />}
+      <OurStory />
+      <Footer flags={flags} />
+    </main>
+  </Layout>
+)}
