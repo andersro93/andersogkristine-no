@@ -25,6 +25,8 @@ interface Env {
   DB?: D1Database;
   /** Secret that unlocks gallery admin mode via /galleri?admin=<key>. */
   GALLERY_ADMIN_KEY?: string;
+  /** "true" closes the site: only the thank-you landing page on `/` is served. */
+  SITE_CLOSED?: string;
 }
 
 declare module "cloudflare:workers" {

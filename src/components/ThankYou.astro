@@ -1,0 +1,54 @@
+---
+/**
+ * Post-wedding landing page. Rendered on "/" when SITE_CLOSED is set; the
+ * middleware sends every other route here. Single viewport, no navigation.
+ */
+import { weddingConfig } from '../config';
+
+const { names, date } = weddingConfig;
+---
+
+<main class="relative min-h-dvh w-full flex items-center justify-center overflow-hidden select-none">
+  <img
+    src="/images/collage.webp"
+    alt=""
+    width="1024"
+    height="575"
+    fetchpriority="high"
+    decoding="async"
+    draggable="false"
+    class="absolute inset-0 w-full h-full object-cover"
+  />
+  <!-- Darker vignette than the invitation hero: this screen carries a paragraph of text -->
+  <div class="absolute inset-0 bg-black/45 pointer-events-none"></div>
+  <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none"></div>
+
+  <section class="relative z-10 text-center px-6 py-16 max-w-2xl mx-auto text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)] animate-fade-in">
+    <p class="text-xs sm:text-sm uppercase tracking-[0.3em] font-semibold text-white/85 mb-6">
+      Tusen takk
+    </p>
+
+    <h1 class="text-6xl sm:text-8xl md:text-9xl font-wedding leading-none text-white py-2">
+      {names.bride} <span class="font-sans text-2xl sm:text-4xl font-light italic opacity-95 mx-1">{names.ampersand}</span> {names.groom}
+    </h1>
+
+    <div class="flex items-center justify-center gap-3 my-8">
+      <div class="w-12 h-px bg-white/40"></div>
+      <span class="text-white/70 text-xs">&#10084;</span>
+      <div class="w-12 h-px bg-white/40"></div>
+    </div>
+
+    <p class="font-serif text-xl sm:text-2xl md:text-3xl font-medium">
+      Vi giftet oss {date.displayDateSentence}
+    </p>
+
+    <p class="font-serif text-base sm:text-lg md:text-xl leading-relaxed text-white/90 mt-6">
+      Vi er så takknemlige for at dere ville dele dagen med oss. Takk for alle gode ord, klemmer og
+      minner &ndash; dagen hadde ikke vært den samme uten dere.
+    </p>
+
+    <p class="font-wedding text-3xl sm:text-4xl text-white/90 mt-10">
+      {names.bride} {names.ampersand} {names.groom}
+    </p>
+  </section>
+</main>
