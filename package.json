@@ -21,26 +21,26 @@
     "dev:clean": "rm -rf .wrangler/state/v3 .astro"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "14.3.3",
-    "@astrojs/react": "7.0.0",
+    "@astrojs/cloudflare": "14.4.6",
+    "@astrojs/react": "7.1.4",
     "@maplibre/maplibre-gl-leaflet": "0.1.4",
-    "@notionhq/client": "5.26.0",
-    "@tailwindcss/vite": "4.3.3",
-    "astro": "7.3.5",
+    "@notionhq/client": "5.31.0",
+    "@tailwindcss/vite": "4.3.4",
+    "astro": "7.4.7",
     "leaflet": "1.9.4",
-    "maplibre-gl": "6.11.2",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "tailwindcss": "4.3.3"
+    "maplibre-gl": "6.16.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwindcss": "4.3.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
-    "@cloudflare/workers-types": "5.20260925.1",
+    "@biomejs/biome": "2.6.5",
+    "@cloudflare/workers-types": "5.20261106.1",
     "@types/leaflet": "1.9.22",
-    "@types/node": "26.6.2",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "bun-types": "1.4.2",
+    "bun-types": "1.4.4",
     "typescript": "7.0.2"
   }
 }
